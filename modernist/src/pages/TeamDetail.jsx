@@ -24,6 +24,7 @@ import { formatDate, formatNumber, formatTime, mediaUrl, recordEventLabel } from
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import { ClubLogo, SwimmerMedalsByMeet, DepthTab, RecordsTab } from '../components/team/TeamWidgets'
 import Pic from '../components/Pic'
+import RosterGrid from '../components/RosterGrid'
 
 // Not yet in src/api/teams.js — defined locally
 const getTeamRecords = (id) => api.get(`/teams/${id}/records/`)
@@ -92,75 +93,6 @@ const TABS = [
   { value: 'training', label: 'Training', g: 2 },
   { value: 'multimedia', label: 'Multimedia', g: 2 },
 ]
-
-// Postel's Law: the roster search ignores case and accents
-const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-const ROSTER_FIRST = 24
-
-/* Team tab → Swimmers. A big squad (200+) is found by name or narrowed by
-   gender, and opens on the first 24 cards instead of one endless grid
-   (Miller's Law, Working Memory: the count always shows what is on screen). */
-function RosterGrid({ roster, isAdmin }) {
-  const [q, setQ] = useState('')
-  const [sex, setSex] = useState('')
-  const [all, setAll] = useState(false)
-  const men = roster.filter((s) => s.sex === 'M').length
-  const women = roster.filter((s) => s.sex === 'F').length
-  const matched = roster.filter((s) => (!sex || s.sex === sex) && (!q.trim() || fold(s.name).includes(fold(q))))
-  const shown = all || q.trim() ? matched : matched.slice(0, ROSTER_FIRST)
-  return (
-    <>
-      {roster.length > 12 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-          <input className="input" type="search" aria-label="Find a swimmer in this squad" placeholder="Find a swimmer…" value={q} onChange={(e) => setQ(e.target.value)}
-            style={{ width: 'auto', flex: '0 1 260px', minWidth: 0, minHeight: 40 }} />
-          {men > 0 && women > 0 && (
-            <Seg options={[{ value: '', label: `All (${roster.length})` }, { value: 'M', label: `Men (${men})` }, { value: 'F', label: `Women (${women})` }]} value={sex} onChange={setSex} />
-          )}
-          <span className="asw-num" aria-live="polite" style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Showing {shown.length} of {matched.length}</span>
-        </div>
-      )}
-      {matched.length === 0 ? (
-        <Empty label="No swimmer matches" hint="Check the spelling or clear the search.">
-          <button type="button" className="btn btn-secondary" onClick={() => { setQ(''); setSex('') }}>Show the whole squad</button>
-        </Empty>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-          {shown.map((s) => (
-            <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-accent-100)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
-                {s.photo ? <Pic kind="person" w={160} src={s.photo} /> : <Waves size={22} aria-hidden="true" />}
-              </div>
-              <div style={{ padding: '10px 2px 0' }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
-                  <SwimmerLink id={s.id} name={s.name} />
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-800)', fontWeight: 600, lineHeight: 1.5 }}>
-                  {s.sex === 'F' ? "Women's" : "Men's"}{s.birth_year ? ` · ${s.birth_year}` : ''}
-                </div>
-              </div>
-              <div style={{ marginTop: 'auto', paddingTop: 2, borderTop: '1px solid var(--color-neutral-200)' }}>
-                <Link to={`/swimmers/${s.id}`} aria-label={`View profile of ${s.name}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
-                  <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
-                </Link>
-                {isAdmin && (
-                  <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {!q.trim() && matched.length > ROSTER_FIRST && (
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <button type="button" className="btn btn-secondary" style={{ fontSize: 13, minHeight: 40, padding: '0 16px' }} aria-expanded={all} onClick={() => setAll((v) => !v)}>
-            {all ? `Show the first ${ROSTER_FIRST} only` : `Show all ${matched.length} swimmers`}
-          </button>
-        </div>
-      )}
-    </>
-  )
-}
 
 function SwimmerLink({ id, name, pad = true }) {
   if (!id) return <span style={{ fontWeight: 600 }}>{name}</span>
@@ -1248,6 +1180,14 @@ export default function TeamDetail() {
 
   const team = profile?.team
   const roster = useMemo(() => (profile?.roster || []).filter((s) => !s.is_relay_team), [profile])
+  // The squad is shown one season at a time, latest first (a swimmer who
+  // raced here in 2021 and left is in the 2021 squad only)
+  const rosterYears = profile?.roster_years || []
+  const [rosterYearPicked, setRosterYear] = useState(null)
+  const rosterYear = rosterYears.includes(rosterYearPicked) ? rosterYearPicked : rosterYears[0]
+  const seasonRoster = useMemo(
+    () => (rosterYear ? roster.filter((s) => (s.seasons || []).includes(rosterYear)) : roster),
+    [roster, rosterYear])
   const photoById = useMemo(() => {
     const m = {}
     roster.forEach((s) => { if (s.photo) m[s.id] = s.photo })
@@ -1880,7 +1820,9 @@ export default function TeamDetail() {
                   { label: '17-18', lo: 17, hi: 18 },
                   { label: '19+', lo: 19, hi: 200 },
                 ]
-                const aged = roster.filter((s) => s.age != null)
+                // age in the season on screen, not today's
+                const back = rosterYear ? new Date().getFullYear() - rosterYear : 0
+                const aged = seasonRoster.filter((s) => s.age != null).map((s) => ({ ...s, age: s.age - back }))
                 if (aged.length < 3) return null
                 const pyramid = bands.map((b) => ({
                   label: b.label,
@@ -1889,13 +1831,13 @@ export default function TeamDetail() {
                 })).filter((r) => r.male || r.female)
                 return (
                   <div style={{ maxWidth: 560, margin: '0 auto 22px' }}>
-                    <MiniPanel title="Roster Age Profile" subtitle={`Age distribution of ${aged.length} swimmers with a known birth year`}>
+                    <MiniPanel title="Roster Age Profile" subtitle={`Age distribution of ${aged.length} swimmers with a known birth year${rosterYear ? ` · ${rosterYear} squad` : ''}`}>
                       <AgePyramid rows={pyramid} />
                     </MiniPanel>
                   </div>
                 )
               })()}
-              <RosterGrid roster={roster} isAdmin={isAdmin} />
+              <RosterGrid key={rosterYear} roster={seasonRoster} years={rosterYears} year={rosterYear} onYear={setRosterYear} isAdmin={isAdmin} canManage={canManage} />
               </>
             )}
           </>)}

@@ -556,6 +556,34 @@ class OwnerAccountRulesTests(TestCase):
         self.assertEqual(self.ath.post(f'/api/v1/swimmers/{self.swimmer.id}/upload_photo/').status_code, 403)
 
 
+    def test_club_and_federation_upload_photos_for_their_own_swimmers_only(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from swimmers.models import Swimmer
+
+        def pic():
+            buf = io.BytesIO()
+            Image.new('RGB', (400, 500), (200, 60, 60)).save(buf, 'JPEG')
+            return SimpleUploadedFile('p.jpg', buf.getvalue(), content_type='image/jpeg')
+
+        def up(client, swimmer):
+            return client.post(f'/api/v1/swimmers/{swimmer.id}/upload_photo/', {'photo': pic()}, format='multipart')
+
+        mine = Swimmer.objects.create(name='Omar NILE', sex='M', nationality=self.tun, club='nile club')
+        theirs = Swimmer.objects.create(name='Sami OTHER', sex='M', nationality=self.tun, club='Other Club')
+        self.assertEqual(up(self.club, mine).status_code, 200)          # on its roster
+        self.assertEqual(up(self.club, theirs).status_code, 403)        # another club's swimmer
+        self.assertEqual(up(self.club, self.swimmer).status_code, 403)  # no club link at all
+        self.assertEqual(up(self.fed, self.swimmer).status_code, 200)   # Egyptian swimmer, Egyptian federation
+        self.assertEqual(up(self.fed, mine).status_code, 403)           # Tunisian swimmer
+        self.assertEqual(up(self.ath, self.swimmer).status_code, 403)   # a swimmer still goes through review
+        mine.refresh_from_db()
+        self.assertTrue(mine.photo)
+        # removing a photo stays with the admin
+        self.assertEqual(self.club.delete(f'/api/v1/swimmers/{mine.id}/delete-photo/').status_code, 403)
+
+
 class PrelaunchLockTests(TestCase):
     """Before launch the API gives nothing to a visitor who is not signed in."""
 
@@ -598,3 +626,63 @@ class PrelaunchLockTests(TestCase):
             self.assertEqual(self._token_client('boss').patch('/api/v1/features/', {'prelaunch': False}, format='json').status_code, 200)
             self.assertFalse(self.anon.get('/api/v1/features/').json()['prelaunch'])
             self.assertEqual(self.anon.get('/api/v1/countries/').status_code, 200)
+
+
+class SeasonSquadTests(TestCase):
+    """A swimmer is in a club's / country's squad for the years they raced
+    for it, and in no other year."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from teams.models import Team
+        self.c = APIClient()
+        self.c.force_authenticate(get_user_model().objects.create_user('adm', password='x', role='ADMIN'))
+        self.egy = Country.objects.create(name='Egypt', code='EGY', region='ARAB')
+        self.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        self.ev = Event.objects.create(name='50m Freestyle', distance=50, stroke='Freestyle', sort_order=1)
+        self.nile = Team.objects.create(name='Nile Club', country=self.egy)
+        self.this_year = date.today().year
+        self.m21 = Championship.objects.create(name='Cup 21', date=date(2021, 5, 1), pool='LCM', country=self.egy, location='Cairo')
+        self.m23 = Championship.objects.create(name='Cup 23', date=date(2023, 5, 1), pool='LCM', country=self.egy, location='Cairo')
+
+    def swim(self, swimmer, meet, team, nat, pts=500):
+        return Result.objects.create(swimmer=swimmer, championship=meet, event=self.ev, round_type='Finals',
+                                     time_centiseconds=2500, fina_points=pts, team=team, nationality=nat)
+
+    def test_club_roster_carries_the_years_each_swimmer_raced_for_it(self):
+        moved = Swimmer.objects.create(name='Moved AWAY', sex='M', nationality=self.egy, club='Delta Club')
+        self.swim(moved, self.m21, 'Nile Club', self.egy)
+        self.swim(moved, self.m23, 'Delta Club', self.egy)
+        stale = Swimmer.objects.create(name='Stale CLUB', sex='M', nationality=self.egy, club='Nile Club')
+        self.swim(stale, self.m21, 'nile club', self.egy)          # last seen here in 2021
+        new = Swimmer.objects.create(name='New SIGNING', sex='F', nationality=self.egy, club='Nile Club')
+        back = Swimmer.objects.create(name='Came BACK', sex='F', nationality=self.egy, club='Nile Club')
+        self.swim(back, self.m21, 'Nile Club', self.egy)
+        self.swim(back, self.m23, 'Delta Club', self.egy)
+        data = self.c.get(f'/api/v1/teams/{self.nile.id}/profile/').json()
+        seasons = {r['name']: r['seasons'] for r in data['roster']}
+        self.assertEqual(seasons['Moved AWAY'], [2021])
+        self.assertEqual(seasons['Stale CLUB'], [2021])
+        self.assertEqual(seasons['New SIGNING'], [self.this_year])
+        self.assertEqual(seasons['Came BACK'], [self.this_year, 2021])
+        self.assertEqual(data['roster_years'], [self.this_year, 2021])
+
+    def test_country_squad_is_per_year_and_follows_the_country_represented(self):
+        a = Swimmer.objects.create(name='Ali EGY', sex='M', nationality=self.egy)
+        self.swim(a, self.m21, 'Egypt', self.egy, 600)
+        self.swim(a, self.m23, 'Egypt', self.egy, 650)
+        switched = Swimmer.objects.create(name='Sami SWITCH', sex='M', nationality=self.tun)
+        self.swim(switched, self.m21, 'Egypt', self.egy, 700)     # swam for Egypt in 2021
+        self.swim(switched, self.m23, 'Tunisia', self.tun, 720)   # for Tunisia since
+        Swimmer.objects.create(name='No SWIMS', sex='F', nationality=self.egy)
+        latest = self.c.get(f'/api/v1/countries/{self.egy.id}/squad/').json()
+        self.assertEqual(latest['years'], [self.this_year, 2023, 2021])
+        self.assertEqual([s['name'] for s in latest['swimmers']], ['No SWIMS'])
+        y21 = self.c.get(f'/api/v1/countries/{self.egy.id}/squad/?year=2021').json()
+        self.assertEqual([s['name'] for s in y21['swimmers']], ['Sami SWITCH', 'Ali EGY'])   # best first
+        y23 = self.c.get(f'/api/v1/countries/{self.egy.id}/squad/?year=2023').json()
+        self.assertEqual([s['name'] for s in y23['swimmers']], ['Ali EGY'])
+        tun = self.c.get(f'/api/v1/countries/{self.tun.id}/squad/?year=2023').json()
+        self.assertEqual([s['name'] for s in tun['swimmers']], ['Sami SWITCH'])
+        arab = self.c.get('/api/v1/countries/arab/squad/?year=2023').json()
+        self.assertEqual(len(arab['swimmers']), 2)

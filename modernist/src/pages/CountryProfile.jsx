@@ -11,6 +11,7 @@ import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
 import { getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember, getTeams } from '../api/teams'
 import { CropUpload } from '../components/ImageCropper'
+import { FederationSquad } from '../components/RosterGrid'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
 import { getCoaches } from '../api/coaches'
@@ -2615,31 +2616,6 @@ export default function CountryProfile({ arabFed = false }) {
             <h3 className="prof-h" style={{ margin: 0 }}>{text}</h3>
           </div>
         )
-        const swimmerCard = (s) => (
-          <div key={s.id} style={{ borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 10px 12px', display: 'flex', flexDirection: 'column' }}>
-            {/* Circular photo with navy ring */}
-            <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '3px solid var(--color-accent-800)', overflow: 'hidden' }}>
-              {s.photo ? <Pic kind="person" w={160} src={s.photo} /> : <Waves size={22} aria-hidden="true" />}
-            </div>
-            {/* Info */}
-            <div style={{ padding: '10px 2px 0' }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-accent-800)', marginBottom: 5, lineHeight: 1.25 }}>
-                <SwimmerLink id={s.id} name={s.name} />
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--color-neutral-800)', fontWeight: 600, lineHeight: 1.5 }}>
-                {s.sex === 'F' ? "Women's" : "Men's"}
-              </div>
-            </div>
-            <div style={{ marginTop: 'auto', paddingTop: 9, borderTop: '1px solid var(--color-neutral-200)' }}>
-              <Link to={`/swimmers/${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, fontSize: 12, color: 'var(--color-accent-800)', fontWeight: 700, textDecoration: 'none', padding: '0 2px' }}>
-                <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
-              </Link>
-              {isAdmin && (
-                <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>
-              )}
-            </div>
-          </div>
-        )
         const waveHeights = [7, 12, 5, 15, 9, 17, 6, 13, 8, 16, 5, 11, 14, 7, 18, 10, 5, 13, 7, 15, 9, 6, 12, 8]
         const coachCard = ({ role, name, photo }, i) => (
           <div key={i} style={{ borderRadius: 0, textAlign: 'center', background: '#fff', border: '1px solid var(--color-neutral-300)', borderTop: '3px solid var(--color-box-top)', padding: '16px 16px 20px', display: 'flex', flexDirection: 'column', minHeight: 370 }}>
@@ -2677,11 +2653,7 @@ export default function CountryProfile({ arabFed = false }) {
             </>)}
             {teamSub === 'swimmers' && (<>
               {secTitle(<Waves size={22} aria-hidden="true" />, 'Swimmers')}
-              {topSwimmers.length === 0 ? <Empty label="No swimmers" hint="Swimmers appear here once this federation has results in the database." /> : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-                  {topSwimmers.map(swimmerCard)}
-                </div>
-              )}
+              <FederationSquad countryId={id} isAdmin={isAdmin} canManage={canManageFed} />
             </>)}
           </div>
         )

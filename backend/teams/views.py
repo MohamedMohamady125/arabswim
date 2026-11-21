@@ -122,6 +122,39 @@ class TeamViewSet(viewsets.ModelViewSet):
             .values_list('swimmer_id', flat=True).distinct()
         )
 
+    def _roster_seasons(self, team):
+        """{swimmer_id: {years}} — the seasons (calendar years) each swimmer
+        was with this team.
+
+        A swimmer belongs to the squad of every year they raced for the team,
+        and to no other: someone who swam here in 2021 and moved on is in the
+        2021 squad only. The "current club" on a profile counts for the
+        current year — unless the swimmer's latest swim on file was already
+        for this team, in which case their results tell the whole story (a
+        swimmer last seen here in 2021 is not in this year's squad).
+        """
+        from django.utils import timezone
+        seasons = {}
+        rows = (Result.objects
+                .filter(team__iexact=team.name, swimmer__is_relay_team=False)
+                .values_list('swimmer_id', 'championship__date__year').distinct())
+        for sid, year in rows:
+            seasons.setdefault(sid, set()).add(year)
+        current = list(Swimmer.objects.filter(club__iexact=team.name, is_relay_team=False)
+                       .values_list('id', flat=True))
+        if current:
+            this_year = timezone.localdate().year
+            last_team = {}
+            for sid, name in (Result.objects.filter(swimmer_id__in=current)
+                              .order_by('swimmer_id', '-championship__date', '-id')
+                              .values_list('swimmer_id', 'team')):
+                last_team.setdefault(sid, name)
+            mine = team.name.strip().lower()
+            for sid in current:
+                if (last_team.get(sid) or '').strip().lower() != mine:
+                    seasons.setdefault(sid, set()).add(this_year)
+        return seasons
+
     def _other_arab_club_names(self, team):
         """Names of other Arab clubs (non-national) in the system."""
         return list(
@@ -166,6 +199,10 @@ class TeamViewSet(viewsets.ModelViewSet):
             is_relay_team=False,
         ).select_related('nationality').distinct()
         roster_data = SwimmerListSerializer(roster, many=True).data
+        seasons = self._roster_seasons(team)
+        for row in roster_data:
+            row['seasons'] = sorted(seasons.get(row['id'], ()), reverse=True)
+        roster_years = sorted({y for row in roster_data for y in row['seasons']}, reverse=True)
 
         # Best swimmers: by max FINA points across full report
         best_swimmers = (
@@ -228,6 +265,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         return Response({
             'team': serializer.data,
             'roster': roster_data,
+            'roster_years': roster_years,
             'best_swimmers': best_list,
             'medal_counts': medal_counts,
             'classification_breakdown': classification_list,

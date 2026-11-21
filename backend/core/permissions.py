@@ -21,6 +21,27 @@ def user_manages_team(user, team):
     return False
 
 
+def user_can_set_swimmer_photo(user, swimmer):
+    """Who may put a photo on a swimmer: an admin; a club or academy account
+    for the swimmers on its roster (current club, or raced for it); a
+    federation account for the swimmers of its country."""
+    if is_admin(user):
+        return True
+    if not (user and user.is_authenticated) or swimmer.is_relay_team:
+        return False
+    if user.role == 'CLUB' and user.team_id:
+        from championships.models import Result
+        from teams.models import Team
+        name = (Team.objects.filter(pk=user.team_id).values_list('name', flat=True).first() or '').strip()
+        if not name:
+            return False
+        return ((swimmer.club or '').strip().lower() == name.lower()
+                or Result.objects.filter(swimmer_id=swimmer.pk, team__iexact=name).exists())
+    if user.role == 'FEDERATION' and user.country_id:
+        return swimmer.nationality_id == user.country_id
+    return False
+
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return is_admin(request.user)

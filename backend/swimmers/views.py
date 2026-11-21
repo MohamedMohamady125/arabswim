@@ -57,8 +57,12 @@ class SwimmerViewSet(viewsets.ModelViewSet):
                         'youtube_url', 'tiktok_url', 'x_url'}
 
     def get_permissions(self):
-        # upload_photo / delete_photo fall through to the admin-only default:
-        # a swimmer's own photo goes through the photo request queue instead.
+        # delete_photo falls through to the admin-only default. upload_photo is
+        # open to the swimmer's club / academy / federation (checked in the
+        # action); a swimmer's own photo goes through the photo request queue.
+        if self.action == 'upload_photo':
+            from rest_framework.permissions import IsAuthenticated
+            return [IsAuthenticated()]
         if self.action in ('partial_update', 'update'):
             from core.permissions import CanEditOwnSwimmer
             return [CanEditOwnSwimmer()]
@@ -1753,6 +1757,9 @@ class SwimmerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def upload_photo(self, request, pk=None):
         swimmer = self.get_object()
+        from core.permissions import user_can_set_swimmer_photo
+        if not user_can_set_swimmer_photo(request.user, swimmer):
+            return Response({'error': 'You can only add photos for your own swimmers.'}, status=403)
         photo = request.FILES.get('photo')
         from core.uploads import validate_image
         err = validate_image(photo)

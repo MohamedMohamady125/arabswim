@@ -1395,3 +1395,15 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
   .live-event-head { padding: 8px 12px; }
 }
 
+
+/* Squad toolbar (club, academy, federation): season first, then find / gender / count.
+   Proximity + Common Region: one row on a laptop, stacked full-width on a phone. */
+.roster-bar { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.roster-season { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--color-accent-800); }
+.roster-season select { width: auto; min-height: 40px; min-width: 96px; font-weight: 700; }
+.roster-find { width: auto; flex: 0 1 260px; min-width: 0; min-height: 40px; }
+.roster-count { font-size: 13px; color: var(--color-neutral-700); }
+@media (max-width: 640px) {
+  .roster-season, .roster-find { flex: 1 1 100%; }
+  .roster-season select { flex: 1; }
+}

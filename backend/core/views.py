@@ -1050,6 +1050,59 @@ class CountryViewSet(viewsets.ModelViewSet):
 
 
     @action(detail=True, methods=['get'])
+    def squad(self, request, pk=None):
+        """GET /countries/<pk>/squad/?year=2024 — the swimmers who raced for
+        this country in one season (calendar year), best first.
+
+        Uses the country stamped on each result (who the swimmer REPRESENTED
+        at that meet), so a swimmer who changed nationality stays in the old
+        country's squads for the years they swam for it. Swimmers of the
+        country with no swim on file yet are listed in the current year.
+        Without ?year the latest season is returned.
+        """
+        from django.db.models import Max, Q
+        from championships.models import Result
+        from swimmers.models import Swimmer
+        regions = ['ARAB', 'GCC']
+        if pk == 'arab':   # the virtual pan-Arab federation
+            scope = (Q(nationality__region__in=regions)
+                     | Q(nationality__isnull=True, swimmer__nationality__region__in=regions))
+            own = Q(nationality__region__in=regions)
+        else:
+            country = self.get_object()
+            scope = Q(nationality=country) | Q(nationality__isnull=True, swimmer__nationality=country)
+            own = Q(nationality=country)
+        raced = Result.objects.filter(scope, swimmer__is_relay_team=False)
+        years = set(raced.values_list('championship__date__year', flat=True).distinct())
+        this_year = timezone.localdate().year
+        unraced = list(Swimmer.objects.filter(own, is_relay_team=False, results__isnull=True)
+                       .values_list('id', flat=True))
+        if unraced:
+            years.add(this_year)
+        years = sorted(years, reverse=True)
+        try:
+            year = int(request.query_params.get('year') or 0)
+        except ValueError:
+            year = 0
+        if year not in years:
+            year = years[0] if years else None
+        best = {}
+        if year:
+            best = dict(raced.filter(championship__date__year=year)
+                        .values('swimmer_id').annotate(b=Max('fina_points'))
+                        .values_list('swimmer_id', 'b'))
+            if year == this_year:
+                for sid in unraced:
+                    best.setdefault(sid, None)
+        swimmers = [{
+            'id': s.id, 'name': s.name, 'sex': s.sex, 'birth_year': s.birth_year,
+            'photo': s.photo.url if s.photo else None,
+            'best_fina': best.get(s.id),
+        } for s in Swimmer.objects.filter(id__in=list(best)).only('id', 'name', 'sex', 'birth_year', 'photo')]
+        swimmers.sort(key=lambda r: (-(r['best_fina'] or 0), r['name']))
+        return Response({'years': years, 'year': year, 'swimmers': swimmers})
+
+    @action(detail=True, methods=['get'])
     def progression(self, request, pk=None):
         """Time progression for a country's swimmers by stroke."""
         # pk='arab' → the virtual pan-Arab federation (all ARAB+GCC nations)

@@ -147,12 +147,16 @@ def normalize_fieldfile(instance, field):
     if (meta.app_label, meta.model_name, field.name) in PORTRAIT_FIELDS:
         from django.conf import settings
         if getattr(settings, 'PORTRAIT_CUTOUT', True):
-            from core.cutout import isolate_upload, is_marked, marked_name
+            from core.cutout import (isolate_upload, is_marked, marked_name,
+                                     is_current, repair_bytes)
             if is_marked(name) and _is_cutout(data):
                 # A portrait that has already been cut out, re-framed by hand
                 # in the crop tool ("Crop and zoom" on the saved photo): keep
                 # the person's framing — cutting it out again would re-centre
-                # it and soften the edge.
+                # it and soften the edge. One made by the first version of
+                # the cut-out is cleaned by the current rules on the way.
+                if not is_current(name):
+                    data = (repair_bytes(data, name) or (data,))[0]
                 name = marked_name(name)
             else:
                 cut = isolate_upload(data, name)

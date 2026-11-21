@@ -2,13 +2,16 @@
 centred, transparent background that the site shows on Arab Swim navy) —
 the same treatment new uploads get.
 
-Safe to run again: a photo that has been through it carries a mark in its
+A photo cut out by the first version of the rules is cleaned by the current
+ones (see-through leftovers and pale rings around hair removed).
+
+Safe to run again: a photo done by the current rules carries a mark in its
 file name and is skipped. The previous file is left on disk.
 """
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 
-from core.cutout import is_marked, isolate_upload
+from core.cutout import is_current, is_marked, isolate_upload, repair_bytes
 from core.images import normalize_image_bytes
 
 
@@ -40,13 +43,30 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         from swimmers.models import Swimmer
-        done = skipped = failed = 0
+        done = skipped = failed = repaired = 0
         for s in Swimmer.objects.exclude(photo='').exclude(photo__isnull=True).iterator():
-            if is_marked(s.photo.name):
+            if is_current(s.photo.name):
                 skipped += 1
                 continue
             if opts['dry_run']:
                 self.stdout.write(f'would process {s.pk} {s.photo.name}')
+                continue
+            if is_marked(s.photo.name):
+                # cut out by the first version: the upload itself was not
+                # kept, so the cut-out is cleaned by the current rules
+                # (same framing, no model needed)
+                try:
+                    with s.photo.open('rb') as fh:
+                        fixed = repair_bytes(fh.read(), s.photo.name)
+                except Exception:
+                    fixed = None
+                res = normalize_image_bytes(*fixed) if fixed else None
+                if not res:
+                    failed += 1
+                    continue
+                name = s.photo.storage.save(f'swimmers/photos/{res[1]}', ContentFile(res[0]))
+                Swimmer.objects.filter(pk=s.pk).update(photo=name)
+                repaired += 1
                 continue
             data = self._original_bytes(s.photo)
             if data is None:
@@ -66,4 +86,4 @@ class Command(BaseCommand):
             name = s.photo.storage.save(f'swimmers/photos/{new_name}', ContentFile(new_bytes))
             Swimmer.objects.filter(pk=s.pk).update(photo=name)
             done += 1
-        self.stdout.write(f'portraits: {done} cut out, {skipped} already done, {failed} left as they were')
+        self.stdout.write(f'portraits: {done} cut out, {repaired} cleaned, {skipped} already done, {failed} left as they were')

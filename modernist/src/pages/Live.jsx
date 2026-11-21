@@ -271,16 +271,19 @@ function DayProgram({ day, meetId, meet, resultKeys, gender = '', category = '' 
   if (evening.length) groups.push(['Evening', 'Finals session', evening, true])
   if (rest.length) {
     const allFinals = rest.every((i) => i.session === 'FINALS')
-    groups.push([allFinals ? 'Finals' : 'Program', allFinals ? 'Medal events' : 'All events', rest, allFinals])
+    // A day with no morning/evening split has no heading at all: the list
+    // opens on the first event name (a "Program · All events" bar only
+    // repeated the tab's own label).
+    groups.push([allFinals ? 'Finals' : '', allFinals ? 'Medal events' : '', rest, allFinals])
   }
   return (
     <div className="live-fade-in" style={{ display: 'grid', gap: 16 }}>
       {groups.map(([label, sub, items, isFinals]) => (
-        <div key={label} style={{
+        <div key={label || 'all'} style={{
           border: '1px solid var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden',
           border: '1px solid var(--color-divider)',
         }}>
-          <div style={{
+          {label && <div style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
             background: isFinals ? 'var(--color-accent-800)' : 'var(--color-surface)',
             borderBottom: '1px solid var(--color-neutral-200)',
@@ -302,7 +305,7 @@ function DayProgram({ day, meetId, meet, resultKeys, gender = '', category = '' 
             }}>
               {items.length} {items.length === 1 ? 'event' : 'events'}
             </span>
-          </div>
+          </div>}
           {/* Proximity: an event swum by several age categories is named once,
               with its categories under it in a fixed order (heats before
               finals inside each category). On a laptop the blocks sit two

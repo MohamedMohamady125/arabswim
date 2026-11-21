@@ -214,33 +214,23 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
-            <label htmlFor="cal-f8">Category</label>
-            <select id="cal-f8" className="select" aria-label="Category" value={form.classification_category}
-              onChange={(e) => setForm({ ...form, classification_category: e.target.value, classification: '', sub_classification: '' })}>
-              <option value="">Select category</option>
-              {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="field">
             <label htmlFor="cal-f9">Classification</label>
             <select id="cal-f9" className="select" aria-label="Classification" value={form.classification}
               onChange={(e) => setForm({ ...form, classification: e.target.value, sub_classification: '' })}>
               <option value="">Select classification</option>
-              {classifications
-                .filter((c) => !form.classification_category || String(c.category) === String(form.classification_category))
-                .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="cal-f10">Sub-classification</label>
+            <select id="cal-f10" className="select" aria-label="Sub-classification" value={form.sub_classification}
+              disabled={!subClassifications.length}
+              onChange={(e) => setForm({ ...form, sub_classification: e.target.value })}>
+              <option value="">{!form.classification ? 'Choose a classification first' : subClassifications.length ? 'Select sub-classification' : 'None for this classification'}</option>
+              {subClassifications.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </select>
           </div>
         </div>
-        {subClassifications.length > 0 && (
-          <div className="field">
-            <label htmlFor="cal-f10">Sub-classification</label>
-            <select id="cal-f10" className="select" aria-label="Sub-classification" value={form.sub_classification} onChange={set('sub_classification')}>
-              <option value="">None</option>
-              {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        )}
         <div className="field">
           <label htmlFor="cal-f11">Website</label>
           <input id="cal-f11" className="input" aria-label="Website" type="url" value={form.website} onChange={set('website')} placeholder="https://…" />
@@ -1085,34 +1075,23 @@ export default function Calendar() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="field">
-                  <label htmlFor="cal-f23">Category</label>
-                  <select id="cal-f23" className="select" aria-label="Category" value={newEvent.classification_category}
-                    onChange={(e) => setNewEvent({ ...newEvent, classification_category: e.target.value, classification: '', sub_classification: '' })}>
-                    <option value="">Select category</option>
-                    {classCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="field">
                   <label htmlFor="cal-f24">Classification</label>
                   <select id="cal-f24" className="select" aria-label="Classification" value={newEvent.classification}
                     onChange={(e) => setNewEvent({ ...newEvent, classification: e.target.value, sub_classification: '' })}>
                     <option value="">Select classification</option>
-                    {classifications
-                      .filter((c) => !newEvent.classification_category || String(c.category) === String(newEvent.classification_category))
-                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-              </div>
-              {subClassifications.length > 0 && (
                 <div className="field">
                   <label htmlFor="cal-f25">Sub-classification</label>
                   <select id="cal-f25" className="select" aria-label="Sub-classification" value={newEvent.sub_classification}
+                    disabled={!subClassifications.length}
                     onChange={(e) => setNewEvent({ ...newEvent, sub_classification: e.target.value })}>
-                    <option value="">None</option>
-                    {subClassifications.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    <option value="">{!newEvent.classification ? 'Choose a classification first' : subClassifications.length ? 'Select sub-classification' : 'None for this classification'}</option>
+                    {subClassifications.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                   </select>
                 </div>
-              )}
+              </div>
               {PREDICTABLE.has(classifications.find((c) => String(c.id) === String(newEvent.classification))?.name) && (
                 <div className="micro" style={{ color: 'var(--color-accent-800)' }}>
                   This meet will get automatic medal predictions on the Predictions page.

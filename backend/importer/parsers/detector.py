@@ -1242,9 +1242,9 @@ def _parse_excel(file_path, filename=''):
     # (classification, sub-classification, meet country are used by the import confirm step)
     if first_row is not None:
         if classification_col:
-            meet._excel_classification = _safe_str(first_row[classification_col])
+            meet._excel_classification = _first_filled(df, classification_col)
         if sub_classification_col:
-            meet._excel_sub_classification = _safe_str(first_row[sub_classification_col])
+            meet._excel_sub_classification = _first_filled(df, sub_classification_col)
         if meet_country_col:
             meet._excel_meet_country = _safe_str(first_row[meet_country_col])
 
@@ -1455,9 +1455,9 @@ def _extract_excel_meet_metadata(meet, df, filename):
                 if len(iso) > 1:
                     meet.date_end = iso[-1]
     if classification_col:
-        meet._excel_classification = _safe_str(first_row[classification_col])
+        meet._excel_classification = _first_filled(df, classification_col)
     if sub_classification_col:
-        meet._excel_sub_classification = _safe_str(first_row[sub_classification_col])
+        meet._excel_sub_classification = _first_filled(df, sub_classification_col)
     if meet_country_col:
         meet._excel_meet_country = _safe_str(first_row[meet_country_col])
 
@@ -1951,6 +1951,16 @@ def _coerce_date(val):
         return ts.date()
     except Exception:
         return None
+
+
+def _first_filled(df, col):
+    """First non-empty value in a column (the first row is often blank for
+    columns people fill in further down the sheet)."""
+    for v in df[col]:
+        t = _safe_str(v)
+        if t and t.lower() not in ('nan', 'none', 'nat'):
+            return t
+    return ''
 
 
 def _find_column(cols_map, candidates):

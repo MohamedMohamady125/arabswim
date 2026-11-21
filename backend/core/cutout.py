@@ -43,6 +43,10 @@ OUT_SIDE = 1600      # longest side of the result
 # '-wb' was the earlier white-background version: those are done again.
 MARK = '-cut'
 OLD_MARKS = ('-wb',)
+# Sits in front of the mark on files made by the current rules (refine_mask,
+# remove_halo, colours not mixed with navy). A marked file without it was made
+# by the first version and is put right by repair().
+VERSION = '-v2'
 # Arab Swim navy (#102e56 = --color-accent-800 in theme.css)
 BRAND_NAVY = (16, 46, 86)
 
@@ -165,6 +169,170 @@ def subject_frame(mask, ratio=RATIO):
     return left, top, fw, fh
 
 
+# How sure the model must be. Above CORE_HI a pixel is the swimmer, full stop.
+# Between the two it is the swimmer only where it is a real edge (hair, the
+# outline of an arm): a thin strip with solid swimmer on one side and clear
+# background on the other. A wide half-sure area (a mascot held next to the
+# swimmer, another person's arm, a banner) is REMOVED, never left as a
+# see-through ghost.
+CORE_LO, CORE_HI = 0.70, 0.90
+FRINGE_LO = 0.15
+FRINGE_REACH = 0.008   # how far from the solid swimmer a soft edge may reach (share of the long side)
+ISLAND = 0.25          # a separate piece smaller than this share of the main one is dropped
+SLIVER = 0.011         # anything thinner than twice this share of the long side is a sliver
+OPEN_SIDE = 640        # slivers are found on a copy this small
+LABEL_SIDE = 256       # pieces and holes are found on a copy this small
+
+
+def _ramp(a, lo, hi):
+    import numpy as np
+    return np.clip((a - lo) / (hi - lo), 0.0, 1.0)
+
+
+def _spread(labels, inside, limit=4000):
+    """Grow labels to their neighbours while staying inside `inside`."""
+    import numpy as np
+    for _ in range(limit):
+        p = np.pad(labels, 1)
+        new = np.where(inside, np.maximum.reduce(
+            [p[1:-1, 1:-1], p[:-2, 1:-1], p[2:, 1:-1], p[1:-1, :-2], p[1:-1, 2:]]), 0)
+        if (new == labels).all():
+            break
+        labels = new
+    return labels
+
+
+def refine_mask(mask):
+    """Model confidence (PIL 'L') -> final alpha (PIL 'L'): solid swimmer,
+    soft only along true edges, nothing see-through anywhere else."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+
+    p = np.asarray(mask, dtype=np.float32) / 255.0
+    h, w = p.shape
+    scale = LABEL_SIDE / max(h, w)
+    sw, sh = max(1, round(w * scale)), max(1, round(h * scale))
+
+    def small(arr):   # bool, full size -> bool, small
+        return np.asarray(Image.fromarray((arr * 255).astype('uint8'), 'L')
+                          .resize((sw, sh), Image.BILINEAR)) > 127
+
+    def full(arr, grow=0.0):   # bool, small -> float 0..1, full size (optionally grown)
+        im = Image.fromarray((arr * 255).astype('uint8'), 'L').resize((w, h), Image.BILINEAR)
+        if grow:
+            im = im.filter(ImageFilter.GaussianBlur(grow))
+        return np.asarray(im, dtype=np.float32) / 255.0
+
+    core = p >= (CORE_LO + CORE_HI) / 2
+    sm = small(core)
+    if not sm.any():
+        return mask
+    # 1. separate pieces: keep the swimmer, drop bystanders and specks
+    labels = _spread(np.where(sm, np.arange(1, sm.size + 1).reshape(sm.shape), 0), sm)
+    ids, counts = np.unique(labels[labels > 0], return_counts=True)
+    main = np.isin(labels, ids[counts >= ISLAND * counts.max()])
+    # 2. holes: a half-sure patch fully inside the swimmer (a crest, a medal,
+    #    something held in front of the chest) belongs to the swimmer
+    outside = ~main
+    seed = np.zeros_like(main)
+    seed[0, :] = seed[-1, :] = seed[:, 0] = seed[:, -1] = True
+    reached = _spread((seed & outside).astype(np.int32), outside) > 0
+    enclosed = full(outside & ~reached, grow=1 / scale) > 0.5
+
+    near_main = full(main, grow=1.5 / scale) > 0.15
+    solid = _ramp(p, CORE_LO, CORE_HI) * near_main
+    solid = np.maximum(solid, _ramp(p, FRINGE_LO, 0.35) * enclosed)
+
+    # 3. slivers: a thin spike or rim hanging off the swimmer (the edge of
+    #    something that was removed next to them) goes too
+    side = OPEN_SIDE / max(h, w)
+    ow, oh = max(1, round(w * side)), max(1, round(h * side))
+    r = max(1, round(SLIVER * max(ow, oh)))
+    shrunk = (Image.fromarray(((solid > 0.5) * 255).astype('uint8'), 'L')
+              .resize((ow, oh), Image.BILINEAR).point(lambda v: 255 if v > 127 else 0)
+              .filter(ImageFilter.MinFilter(2 * r + 1)))
+    opened = shrunk.filter(ImageFilter.MaxFilter(2 * r + 3)).resize((w, h), Image.BILINEAR)
+    solid = solid * _ramp(np.asarray(opened, dtype=np.float32) / 255.0, 0.3, 0.7)
+    #    ...and where a wide half-sure area was removed right beside the
+    #    swimmer, its outline stays stuck to them: cut that seam back
+    gone = (p > FRINGE_LO) & (solid < 0.1)
+    wide = np.asarray(Image.fromarray((gone * 255).astype('uint8'), 'L')
+                      .filter(ImageFilter.GaussianBlur(3 * r / side)), dtype=np.float32) / 255.0
+    seam = _ramp(wide, 0.25, 0.45)
+    if seam.any():
+        back = np.asarray(shrunk.filter(ImageFilter.MaxFilter(3)).resize((w, h), Image.BILINEAR),
+                          dtype=np.float32) / 255.0
+        solid = solid * (1 - seam + seam * _ramp(back, 0.3, 0.7))
+
+    # 4. soft edges: only between solid swimmer and clear background
+    reach = max(2.0, FRINGE_REACH * max(h, w))
+
+    def blur(arr):
+        return np.asarray(Image.fromarray((arr * 255).astype('uint8'), 'L')
+                          .filter(ImageFilter.GaussianBlur(reach)), dtype=np.float32) / 255.0
+    by_swimmer = _ramp(blur(solid > 0.5), 0.04, 0.25)
+    by_background = _ramp(blur(p < FRINGE_LO), 0.04, 0.25)
+    fringe = _ramp(p, FRINGE_LO, CORE_LO) * by_swimmer * by_background
+
+    alpha = Image.fromarray((np.maximum(solid, fringe) * 255).round().astype('uint8'), 'L')
+    # pull the outline in by a pixel: the outermost ring is where the old
+    # background still shows through
+    return alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.6))
+
+
+HALO_BAND = 0.014      # how deep into the outline old background may hide (share of the long side)
+
+
+def backdrop_colour(img, where):
+    """The old background's colour (RGB floats) when it is one plain colour
+    (a wall, a studio backdrop), else None. `where`: bool array of pixels
+    known to be background."""
+    import numpy as np
+    px = np.asarray(img, dtype=np.float32)[where]
+    if len(px) < 200:
+        return None
+    if len(px) > 40000:
+        px = px[:: len(px) // 40000]
+    mid = np.median(px, axis=0)
+    spread = np.median(np.abs(px - mid).sum(axis=1))
+    return mid if spread < 45 else None
+
+
+def remove_halo(img, mask, backdrop):
+    """Hair and curls let the old wall show through, and the model calls
+    those gaps "swimmer": a pale ring around dark hair. Along the outline,
+    a pixel that has the wall's colour while the swimmer just inside it has
+    a clearly different one is wall, and goes. A white shirt on a white wall
+    is left alone (inside and wall look the same there)."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    if backdrop is None:
+        return mask
+    a = np.asarray(mask, dtype=np.float32) / 255.0
+    band = max(2.0, HALO_BAND * max(mask.size))
+    solid = a >= 0.98
+    deep = np.asarray(Image.fromarray((solid * 255).astype('uint8'), 'L')
+                      .filter(ImageFilter.GaussianBlur(band / 2)), dtype=np.float32) / 255.0 > 0.97
+    if not deep.any():
+        return mask
+    rgb = np.asarray(img, dtype=np.float32)
+    w8 = deep.astype(np.float32)
+    num = np.asarray(Image.fromarray((rgb * w8[..., None]).astype('uint8'), 'RGB')
+                     .filter(ImageFilter.GaussianBlur(band)), dtype=np.float32)
+    den = np.asarray(Image.fromarray((w8 * 255).astype('uint8'), 'L')
+                     .filter(ImageFilter.GaussianBlur(band)), dtype=np.float32) / 255.0
+    rim = (a > 0) & ~deep & (den > 0.03)
+    if not rim.any():
+        return mask
+    inside = num[rim] / den[rim][:, None]
+    like_wall = np.sqrt(((rgb[rim] - backdrop) ** 2).sum(axis=1))
+    contrast = np.sqrt(((inside - backdrop) ** 2).sum(axis=1))
+    keep = np.where(contrast > 90, _ramp(like_wall, 28, np.maximum(60, 0.55 * contrast)), 1.0)
+    out = a.copy()
+    out[rim] = a[rim] * keep
+    return Image.fromarray((out * 255).round().astype('uint8'), 'L').filter(ImageFilter.GaussianBlur(0.6))
+
+
 def clean_edges(img, mask):
     """Edge pixels are a mix of the swimmer and the OLD background (a white
     wall leaves a pale halo once the photo sits on navy). Replace their colour
@@ -194,8 +362,17 @@ def compose(img, mask, frame):
     swimmer, brand navy hidden under the transparent pixels."""
     from PIL import Image
     left, top, fw, fh = frame
-    out = Image.new('RGBA', (max(1, round(fw)), max(1, round(fh))), BRAND_NAVY + (0,))
-    out.paste(img, (-round(left), -round(top)), mask)
+    size = (max(1, round(fw)), max(1, round(fh)))
+    at = (-round(left), -round(top))
+    alpha = Image.new('L', size, 0)
+    alpha.paste(mask, at)
+    rgb = Image.new('RGB', size, BRAND_NAVY)
+    rgb.paste(img, at)
+    # the swimmer's own colours at full strength (mixing navy in here and
+    # again on the page darkened every soft edge); navy only where nothing shows
+    rgb.paste(BRAND_NAVY, (0, 0), alpha.point(lambda a: 255 if a == 0 else 0))
+    out = rgb.convert('RGBA')
+    out.putalpha(alpha)
     return out
 
 
@@ -211,15 +388,45 @@ def isolate(img):
     mask = person_mask(img)
     if mask is None:
         return None
+    # decide every pixel (swimmer / edge / gone) before anything is measured
+    sure_background = np.asarray(mask) < FRINGE_LO * 255
+    mask = refine_mask(mask)
+    mask = remove_halo(img, mask, backdrop_colour(img, sure_background))
     frame = subject_frame(np.asarray(mask))
     if frame is None:
         return None
-    # firm up the soft edge, then take the old background out of what is left of it
-    mask = mask.point(lambda a: 0 if a < 40 else 255 if a > 215 else int((a - 40) * 255 / 175))
+    # take the old background's colour out of the soft edge
     out = compose(clean_edges(img, mask), mask, frame)
     if max(out.size) > OUT_SIDE:
         out.thumbnail((OUT_SIDE, OUT_SIDE), Image.LANCZOS)
     return out
+
+
+def repair(cut):
+    """A cut-out saved by the earlier version -> (the same picture in the same
+    framing with every pixel decided again, share of the swimmer's area that
+    was see-through junk). The original upload is not kept, so this works
+    from the cut-out itself.
+
+    The earlier version stretched the model's 40..215 into the alpha and mixed
+    navy into soft pixels; both are undone first."""
+    import numpy as np
+    from PIL import Image
+    rgba = cut.convert('RGBA')
+    a = np.asarray(rgba.getchannel('A'), dtype=np.float32)
+    conf = np.where(a <= 0, 0, np.where(a >= 255, 255, a * 175 / 255 + 40))
+    new = refine_mask(Image.fromarray(conf.astype('uint8'), 'L'))
+    n = np.asarray(new, dtype=np.float32)
+    body = max(1.0, float((n > 128).sum()))
+    ghost = float(((a > 20) & (a < 235) & (n < 10)).sum()) / body
+    m = (a / 255.0)[..., None]
+    rgb = np.asarray(rgba.convert('RGB'), dtype=np.float32)
+    navy = np.array(BRAND_NAVY, dtype=np.float32)
+    plain = np.where(m > 0.05, (rgb - navy * (1 - m)) / np.maximum(m, 0.05), rgb)
+    img = Image.fromarray(np.clip(plain, 0, 255).astype('uint8'), 'RGB')
+    # the wall's colour survives only in the old soft edge
+    new = remove_halo(img, new, backdrop_colour(img, (a > 12) & (a < 110)))
+    return compose(clean_edges(img, new), new, (0, 0, rgba.width, rgba.height)), ghost
 
 
 def isolate_bytes(data, filename=''):
@@ -254,12 +461,36 @@ def source_stem(filename):
     import re
     stem = os.path.splitext(os.path.basename(filename or ''))[0]
     for mark in (MARK,) + OLD_MARKS:
-        stem = re.sub(rf'{re.escape(mark)}(-[0-9a-f]{{10}})?$', '', stem)
+        stem = re.sub(rf'({re.escape(VERSION)})?{re.escape(mark)}(-[0-9a-f]{{10}})?$', '', stem)
     return stem
 
 
 def marked_name(filename):
-    return f'{source_stem(filename) or "photo"}{MARK}.png'
+    return f'{source_stem(filename) or "photo"}{VERSION}{MARK}.png'
+
+
+def is_current(filename):
+    """True for a cut-out made by the current rules."""
+    stem = os.path.splitext(os.path.basename(filename or ''))[0]
+    return stem.endswith(VERSION + MARK) or f'{VERSION}{MARK}-' in stem
+
+
+def repair_bytes(data, filename=''):
+    """A first-version cut-out (file bytes) -> (png_bytes, filename) by the
+    current rules, or None to leave it."""
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data))
+        img.load()
+        if img.mode not in ('RGBA', 'LA', 'P'):
+            return None
+        out, _ = repair(img)
+        buf = io.BytesIO()
+        out.save(buf, format='PNG')
+        return buf.getvalue(), marked_name(filename)
+    except Exception:
+        log.exception('portrait repair failed; keeping the file as it is')
+        return None
 
 
 def is_marked(filename):

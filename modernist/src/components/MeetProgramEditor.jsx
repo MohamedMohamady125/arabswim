@@ -6,6 +6,24 @@ import { formatDate } from '../utils'
 const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const TIME_OF_DAY_LABEL = { MORNING: 'Morning', EVENING: 'Evening' }
+/* The pool programme only: the events of an official swimming meet.
+   Open water, 25 m sprints, 400 m of a single stroke and single-stroke
+   relays are left out of the picker (an event already in this meet's
+   program stays listed so it can still be seen). */
+const POOL_DISTANCES = {
+  Freestyle: [50, 100, 200, 400, 800, 1500],
+  Backstroke: [50, 100, 200],
+  Breaststroke: [50, 100, 200],
+  Butterfly: [50, 100, 200],
+  'Individual Medley': [100, 200, 400],
+}
+const isProgramEvent = (e) => {
+  const name = (e.name || '').toLowerCase()
+  if (e.stroke === 'Open Water' || name.includes('open water')) return false
+  if (e.is_relay) return /(freestyle|medley) relay/.test(name)
+  return (POOL_DISTANCES[e.stroke] || []).includes(e.distance)
+}
+
 const ROUNDS = ['HEATS', 'SEMIS', 'FINALS']
 const TIMES = ['MORNING', 'EVENING']
 // When a meet runs both sessions, this is where each round normally sits
@@ -149,6 +167,7 @@ function ProgramEditorCore({ days, patchDay, action, msg, setMsg, hint, top }) {
   const eventOptions = useMemo(() => {
     const wanted = gender === 'BOTH' ? ['M', 'F'] : [gender]
     return [...events]
+      .filter((e) => isProgramEvent(e) || wanted.some((g) => usedByGender.has(`${e.id}-${g}`)))
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
       .map((e) => ({
         ...e,

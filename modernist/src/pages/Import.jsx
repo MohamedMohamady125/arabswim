@@ -192,6 +192,16 @@ export default function Import() {
     }
   }, [activeClassification])
 
+  // The file's "Sub-Classification" column fills the picker by itself, once,
+  // as soon as the list for the chosen classification has loaded.
+  const fileSub = (meet?.preview?.meet?.sub_classification || '').trim().toLowerCase()
+  useEffect(() => {
+    if (!meet || !fileSub || meet.subPrefilled || meet.champForm.sub_classification) return
+    const hit = subClassifications.find((x) =>
+      String(x.classification) === String(meet.champForm.classification) && x.name?.trim().toLowerCase() === fileSub)
+    if (hit) updateMeet(active, { subPrefilled: true, champForm: { ...meet.champForm, sub_classification: String(hit.id) } })
+  }, [subClassifications, active, fileSub, meet?.champForm?.classification])
+
   const selectMethod = (method) => {
     setImportMethod(method)
     setNamePdfs([])

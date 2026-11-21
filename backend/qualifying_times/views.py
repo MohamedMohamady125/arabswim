@@ -718,7 +718,8 @@ class QualifyingStandardViewSet(viewsets.ModelViewSet):
                 'championship': info.get('championship'),
                 'date': info.get('date'),
             })
-        qualified.sort(key=lambda x: (x['event'], x['cut'], x['time']))
+        # A cuts first, then B cuts (user rule 2026-11-21); inside each, by event
+        qualified.sort(key=lambda x: (x['cut'], x['event'], x['time']))
         return Response({'window': window, 'qualified': qualified})
 
     @action(detail=True, methods=['post'], url_path='upload-pdf',

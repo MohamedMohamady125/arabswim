@@ -318,7 +318,7 @@ class PortraitCutoutTests(TestCase):
             images.normalize_on_save(Swimmer, s)
             self.assertEqual(cut.call_count, 0)
             self.assertTrue(is_marked(s.photo.name))
-            self.assertTrue(s.photo.name.startswith('ali-cut-'))
+            self.assertTrue(s.photo.name.startswith('ali-v2-cut-'))
             # a marked NAME on an ordinary photo is not enough to skip the cut-out
             t = Swimmer(name='C D', photo=SimpleUploadedFile('x-cut.png', flat.getvalue(), 'image/png'))
             images.normalize_on_save(Swimmer, t)
@@ -370,10 +370,81 @@ class PortraitNavyBackgroundTests(TestCase):
         self.assertLess(max(out.getpixel((30, 30))), 60)                     # pulled back to the swimmer's colour
         self.assertEqual(out.getpixel((10, 30)), (20, 20, 20))
 
+    def _scene(self):
+        """Confidence map: a sure swimmer (left block), a wide half-sure
+        object touching them (right block), a soft one-sided edge on top."""
+        import numpy as np
+        m = np.zeros((400, 320), dtype='uint8')
+        m[60:400, 40:180] = 255          # the swimmer
+        m[200:330, 180:300] = 150        # something held beside them: 59% sure
+        m[56:60, 40:180] = 120           # hairline: a thin soft edge
+        return m
+
+    def test_a_half_sure_object_beside_the_swimmer_is_removed_not_left_see_through(self):
+        import numpy as np
+        from PIL import Image
+        from core.cutout import refine_mask
+        out = np.asarray(refine_mask(Image.fromarray(self._scene(), 'L')))
+        self.assertEqual(int(out[220:310, 215:290].max()), 0)                # the object: gone completely
+        self.assertEqual(int(out[150, 100]), 255)                            # the swimmer: solid
+        self.assertGreater(int(out[58, 100]), 0)                             # the soft edge on top: kept
+        # nothing see-through away from the outline
+        mid = (out > 25) & (out < 230)
+        self.assertLess(mid.sum() / (out > 128).sum(), 0.08)
+
+    def test_a_bystander_piece_is_dropped_and_a_patch_inside_the_swimmer_is_kept(self):
+        import numpy as np
+        from PIL import Image
+        from core.cutout import refine_mask
+        m = np.zeros((400, 320), dtype='uint8')
+        m[60:400, 40:220] = 255
+        m[200:240, 100:150] = 110        # a crest on the chest the model doubted
+        m[20:60, 270:310] = 255          # a small separate piece
+        out = np.asarray(refine_mask(Image.fromarray(m, 'L')))
+        self.assertEqual(int(out[40, 290]), 0)
+        self.assertGreater(int(out[220, 125]), 200)
+
+    def test_wall_colour_hiding_in_dark_hair_goes_but_a_white_shirt_on_a_white_wall_stays(self):
+        import numpy as np
+        from PIL import Image
+        from core.cutout import remove_halo
+        wall = np.array([240, 240, 240], dtype='float32')
+        img = np.full((300, 300, 3), 240, dtype='uint8')
+        img[40:150, 60:240] = (25, 20, 18)        # dark hair
+        img[150:300, 60:240] = (238, 238, 236)    # white shirt
+        mask = np.zeros((300, 300), dtype='uint8')
+        mask[34:300, 54:246] = 255                # the model took a ring of wall with it
+        out = np.asarray(remove_halo(Image.fromarray(img, 'RGB'), Image.fromarray(mask, 'L'), wall))
+        self.assertLess(int(out[36, 150]), 40)        # wall above the hair: gone
+        self.assertEqual(int(out[90, 150]), 255)      # hair: kept
+        self.assertGreater(int(out[230, 56]), 200)    # shirt edge against the wall: kept
+
+    def test_a_first_version_cutout_is_cleaned_in_place(self):
+        import io
+        import numpy as np
+        from PIL import Image
+        from core.cutout import repair_bytes
+        a = self._scene()
+        rgba = np.zeros(a.shape + (4,), dtype='uint8')
+        rgba[..., :3] = (200, 30, 30)
+        rgba[..., 3] = np.where(a == 255, 255, np.where(a == 0, 0, a))
+        buf = io.BytesIO(); Image.fromarray(rgba, 'RGBA').save(buf, 'PNG')
+        data, name = repair_bytes(buf.getvalue(), 'swimmers/photos/ali-cut-0a1b2c3d4e.png')
+        self.assertEqual(name, 'ali-v2-cut.png')
+        out = Image.open(io.BytesIO(data))
+        self.assertEqual(out.size, (320, 400))                               # same framing
+        self.assertEqual(out.getpixel((250, 260))[3], 0)                     # the ghost: gone
+        self.assertEqual(out.getpixel((100, 200)), (200, 30, 30, 255))
+
     def test_names_mark_current_cutouts_and_redo_the_white_ones(self):
         from core.cutout import is_marked, marked_name, source_stem
-        self.assertEqual(marked_name('swimmers/photos/ali.jpg'), 'ali-cut.png')
-        self.assertEqual(marked_name('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'), 'ali-cut.png')
+        from core.cutout import is_current
+        self.assertEqual(marked_name('swimmers/photos/ali.jpg'), 'ali-v2-cut.png')
+        self.assertEqual(marked_name('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'), 'ali-v2-cut.png')
+        self.assertEqual(marked_name('ali-v2-cut-0a1b2c3d4e.png'), 'ali-v2-cut.png')
+        self.assertTrue(is_marked('ali-v2-cut-0a1b2c3d4e.png'))
+        self.assertTrue(is_current('ali-v2-cut-0a1b2c3d4e.png'))
+        self.assertFalse(is_current('ali-cut-0a1b2c3d4e.png'))               # first version: cleaned by repair
         self.assertTrue(is_marked('swimmers/photos/ali-cut-0a1b2c3d4e.png'))
         self.assertFalse(is_marked('swimmers/photos/ali-wb-0a1b2c3d4e.jpg'))  # white version: done again
         self.assertFalse(is_marked('swimmers/photos/ali.jpg'))

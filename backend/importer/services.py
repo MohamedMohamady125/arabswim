@@ -1212,6 +1212,11 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
         )
         championship_created_now = True
 
+    # The Excel "Classification"/"Sub-Classification" columns apply to every
+    # import, also into a meet that already exists, but only where the meet
+    # has none (a value chosen in the form or set by hand is never replaced).
+    _fill_classification_from_file(championship, meet_info)
+
     # STRICT nationality rule: a swimmer's nationality comes from the file
     # (explicit code, or a Team/club column that IS a country). The ONE
     # fallback: a classification scheme that NAMES a country ("National" /
@@ -2185,6 +2190,31 @@ def _parse_relay_legs(raw_splits, is_excel=False):
             name = raw_name if is_excel else normalize_swimmer_name(raw_name)
             legs.append({'name': name, 'split_time': ''})
     return legs
+
+
+def _fill_classification_from_file(championship, meet_info):
+    """Give an existing meet the file's classification / sub-classification
+    where it has none of its own."""
+    from championships.models import Classification, SubClassification
+    fields = []
+    cls_name = (meet_info.get('classification') or '').strip()
+    if not championship.classification_id and cls_name:
+        championship.classification = (
+            Classification.objects.filter(name__iexact=cls_name).first()
+            or Classification.objects.create(name=cls_name))
+        fields.append('classification')
+    sub_name = (meet_info.get('sub_classification') or '').strip()
+    if (not championship.sub_classification_id and sub_name
+            and championship.classification_id):
+        championship.sub_classification = (
+            SubClassification.objects.filter(
+                classification_id=championship.classification_id,
+                name__iexact=sub_name).first()
+            or SubClassification.objects.create(
+                classification_id=championship.classification_id, name=sub_name))
+        fields.append('sub_classification')
+    if fields:
+        championship.save(update_fields=fields)
 
 
 def _create_swimmer(result_data, fallback_country=None, is_excel_format=False,

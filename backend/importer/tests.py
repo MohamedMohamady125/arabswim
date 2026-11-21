@@ -4683,6 +4683,28 @@ class ExcelClassificationTests(TransactionTestCase):
         c = Championship.objects.get()
         self.assertEqual(c.classification_id, other.id)
 
+    def test_file_classification_fills_a_meet_that_already_exists(self):
+        from datetime import date
+        from championships.models import Championship
+        from importer.services import confirm_import
+        meet = Championship.objects.create(name='Regional', date=date(2024, 1, 1), pool='LCM', country=self.ksa)
+        confirm_import(self._pv(), _auto('John Smith'), championship_id=meet.id)
+        meet.refresh_from_db()
+        self.assertEqual(meet.classification.name, 'National')
+        self.assertEqual(meet.sub_classification.name, 'Saudi Arabia')
+
+    def test_file_never_replaces_a_classification_set_on_the_meet(self):
+        from datetime import date
+        from championships.models import Championship, Classification, SubClassification
+        from importer.services import confirm_import
+        other = Classification.objects.create(name='Other')
+        sub = SubClassification.objects.create(classification=other, name='France')
+        meet = Championship.objects.create(name='Regional', date=date(2024, 1, 1), pool='LCM',
+                                           country=self.ksa, classification=other, sub_classification=sub)
+        confirm_import(self._pv(), _auto('John Smith'), championship_id=meet.id)
+        meet.refresh_from_db()
+        self.assertEqual((meet.classification_id, meet.sub_classification_id), (other.id, sub.id))
+
     def test_unknown_excel_classification_is_created(self):
         from championships.models import Championship, Classification
         self._confirm(self._pv(classification='Regional League', sub=''), {})

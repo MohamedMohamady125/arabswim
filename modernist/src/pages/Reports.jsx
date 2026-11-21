@@ -77,13 +77,9 @@ function downloadCsv(filename, headers, rows) {
 // Hick's Law: each report shows the three or four filters most people change;
 // the rest (year, championship, classification…) open on request. Working
 // Memory: the closed button says how many of the hidden filters are switched on.
-function MoreFilters({ on = [], children }) {
-  const n = on.filter(Boolean).length
-  return (
-    <ShowMore label={n ? `More filters (${n} on)` : 'More filters'} lessLabel="Fewer filters" defaultOpen={n > 0}>
-      {children}
-    </ShowMore>
-  )
+// every filter is on screen (asked 2026-11-21 — no "More filters" button)
+function MoreFilters({ children }) {
+  return children
 }
 
 function CountrySelect({ countries, value, onChange, label = 'All countries', byId = false }) {

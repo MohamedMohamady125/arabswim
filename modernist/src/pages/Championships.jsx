@@ -210,7 +210,6 @@ export default function Championships() {
           value={pool}
           onChange={setPool}
         />
-        <ShowMore label="More filters" lessLabel="Fewer filters" defaultOpen={!!(country || classification)}>
           <select className="select" aria-label="Country" style={{ width: 190, minWidth: 126 }} value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">All countries</option>
             {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -221,7 +220,6 @@ export default function Championships() {
               {classifications.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-        </ShowMore>
       </FilterBar>
       </div>
 

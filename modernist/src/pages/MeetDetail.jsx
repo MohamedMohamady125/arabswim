@@ -3578,9 +3578,7 @@ export default function MeetDetail() {
                   }}>
                   {meet.is_published ? 'Unpublish' : 'Publish'}
                 </button>
-                {/* Hick's Law: the everyday actions stay visible; rare and
-                    destructive ones wait behind "More actions" (Delete last) */}
-                <ShowMore label="More actions" lessLabel="Fewer actions">
+                {/* every action is on screen (asked 2026-11-21); Delete stays last */}
                 {meet.classification_name === 'National' && meet.country_detail?.code === 'TUN' && !meet.b_final_no_medals && (
                   <button type="button" className="btn btn-secondary" onClick={async () => {
                     if (!window.confirm('Apply TC rules?\n\n• No medals for Final B (only Final A)\n• Open podium across all categories (fastest 3 overall)\n• Relays unaffected\n\nMedals will be recomputed.')) return
@@ -3632,7 +3630,6 @@ export default function MeetDetail() {
                 }}>
                   Delete meet
                 </button>
-                </ShowMore>
               </>
             )}
           </div>

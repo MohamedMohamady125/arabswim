@@ -211,8 +211,9 @@ export default function Medals() {
     const withData = classifications.filter((c) => meetCount[c.name] || c.name === category)
     const empty = classifications.filter((c) => !meetCount[c.name] && c.name !== category)
     return {
-      classificationTabs: (moreCats ? [...withData, ...empty] : withData).map(opt),
-      hiddenCats: empty.length,
+      // every category is a tab (asked 2026-11-21 — no "More categories" button)
+      classificationTabs: [...withData, ...empty].map(opt),
+      hiddenCats: 0,
     }
   }, [classifications, allMeets, meetCount, category, moreCats])
 

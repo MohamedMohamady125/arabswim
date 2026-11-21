@@ -835,9 +835,7 @@ export default function Import() {
                   <div className="content-methods">{METHODS.map(tile)}</div>
                   {/* Hick's Law / Pareto: the two rare import types stay out of the way */}
                   <div style={{ marginTop: 14 }}>
-                    <ShowMore label="Special imports (2)" lessLabel="Hide special imports">
-                      <div className="content-methods" style={{ marginBottom: 10 }}>{SPECIAL.map(tile)}</div>
-                    </ShowMore>
+                    <div className="content-methods" style={{ marginBottom: 10 }}>{SPECIAL.map(tile)}</div>
                   </div>
                 </div>
               )

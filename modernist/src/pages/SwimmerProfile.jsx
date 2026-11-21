@@ -1316,8 +1316,6 @@ const TABS = [
   { value: 'transfers', label: 'Representations' },
   { value: 'gallery', label: 'Gallery' },
 ]
-// Not shown in the tab bar (they were the old "More" menu)
-const OFF_BAR_TABS = ['qualifying', 'compare', 'transfers', 'gallery']
 
 /* ── Main page ─────────────────────────────────────────────────────────── */
 
@@ -1555,10 +1553,9 @@ export default function SwimmerProfile() {
     return visibleTabs.some((t) => t.value === activeTab) ? activeTab : 'overall'
   })()
 
-  // plain names only: no counts in the tabs and no More menu. The four tabs
-  // that used to sit behind More are off the bar (asked 2026-11-19); their
-  // pages still open from a direct ?tab= link.
-  const barTabs = visibleTabs.filter((t) => !OFF_BAR_TABS.includes(t.value))
+  // plain names only: no counts in the tabs and no More menu — every tab is
+  // in the bar (asked 2026-11-21: "show all buttons, no more +8")
+  const barTabs = visibleTabs
   const tabOption = (t) => (tabHidden(t.value)
     ? { ...t, label: <span style={{ opacity: 0.4 }} title="Hidden from visitors (admin visibility settings)">{t.label}</span> }
     : t)

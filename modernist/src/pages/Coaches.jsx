@@ -104,7 +104,7 @@ function CoachModal({ coach, countries, onClose, onSaved }) {
         <Fld label="City"><input className="input" style={{ width: '100%' }} value={form.city} onChange={set('city')} /></Fld>
         <Fld label="Current club"><input className="input" style={{ width: '100%' }} value={form.current_club} onChange={set('current_club')} /></Fld>
         <Fld label="Years of experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Fld>
-        <Fld label="Photo"><CropUpload kind="person" onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+        <Fld label="Photo"><CropUpload kind="person" current={coach?.photo} onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
       </div>
       <Fld label="Specializations (comma-separated)"><input className="input" style={{ width: '100%' }} placeholder="Sprints, Freestyle, Starts & turns" value={form.specializations} onChange={set('specializations')} /></Fld>
       <Fld label="Certifications (one per line)"><textarea className="input" rows={2} style={{ width: '100%', resize: 'vertical' }} value={form.certifications} onChange={set('certifications')} /></Fld>

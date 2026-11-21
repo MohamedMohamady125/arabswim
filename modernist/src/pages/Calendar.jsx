@@ -258,8 +258,8 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
           <input id="cal-f14" className="input" type="file" aria-label="Entry pack PDF" accept=".pdf,application/pdf" onChange={(e) => setPackFile(e.target.files?.[0] || null)} />
         </div>
         <div className="field">
-          <label>Meet photo{meet.meet_photo ? ' (uploaded, choose a file to replace)' : ''}</label>
-          <CropUpload kind="meet" onChange={setPhotoFile} />
+          <label>Meet photo</label>
+          <CropUpload kind="meet" current={meet.meet_photo} onChange={setPhotoFile} />
         </div>
         {error && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 13 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

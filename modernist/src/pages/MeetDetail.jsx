@@ -11,7 +11,7 @@ import { getCountries, getEvents, getFinaPointsPreview } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import { DragDropMeetProgramEditor } from '../components/DragDropProgramEditor'
-import ImageCropper from '../components/ImageCropper'
+import { CropUpload } from '../components/ImageCropper'
 import QuickStatsView from '../components/QuickStatsView'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
@@ -2424,7 +2424,6 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
     category_gender_map: meet.category_gender_map || {},
   })
   const [photo, setPhoto] = useState(null)
-  const [cropFile, setCropFile] = useState(null)
   const [countries, setCountries] = useState([])
   const [classifications, setClassifications] = useState([])
   const [subClassifications, setSubClassifications] = useState([])
@@ -2547,16 +2546,10 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
           <input id="meet-f31" className="input" type="url" value={form.registration_url} onChange={set('registration_url')} placeholder="https://…" />
         </div>
         <div className="field">
-          <label htmlFor="meet-f32">Meet photo {meet.meet_photo ? '(replace)' : ''}</label>
-          {/* value reset so picking the same file again reopens the crop tool */}
-          <input id="meet-f32" className="input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = '' }} />
+          <label>Meet photo</label>
+          <CropUpload kind="meet" current={meet.meet_photo} onChange={setPhoto} />
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Photo ready — press Save changes to upload it</div>}
         </div>
-        {cropFile && (
-          <ImageCropper file={cropFile} kind="meet"
-            onDone={(f) => { setPhoto(f); setCropFile(null) }}
-            onCancel={() => setCropFile(null)} />
-        )}
         <div className="field" style={{ gridColumn: '1 / -1' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input

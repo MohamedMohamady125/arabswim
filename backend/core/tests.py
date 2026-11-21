@@ -300,6 +300,30 @@ class PortraitCutoutTests(TestCase):
             images.normalize_on_save(Coach, c)
             self.assertEqual(cut.call_count, 1)
 
+    def test_a_cutout_reframed_by_hand_is_not_cut_out_again(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+        import io
+        from core import images
+        from core.cutout import is_marked
+        from swimmers.models import Swimmer
+        cut_png = io.BytesIO(); Image.new('RGBA', (40, 50), (16, 46, 86, 0)).save(cut_png, 'PNG')
+        flat = io.BytesIO(); Image.new('RGB', (40, 50), (10, 90, 200)).save(flat, 'PNG')
+        with override_settings(PORTRAIT_CUTOUT=True), \
+                mock.patch('core.cutout.isolate_upload', return_value=None) as cut:
+            # the saved cut-out, cropped again in the crop tool: framing kept
+            s = Swimmer(name='A B', photo=SimpleUploadedFile('ali-cut-0a1b2c3d4e.png', cut_png.getvalue(), 'image/png'))
+            images.normalize_on_save(Swimmer, s)
+            self.assertEqual(cut.call_count, 0)
+            self.assertTrue(is_marked(s.photo.name))
+            self.assertTrue(s.photo.name.startswith('ali-cut-'))
+            # a marked NAME on an ordinary photo is not enough to skip the cut-out
+            t = Swimmer(name='C D', photo=SimpleUploadedFile('x-cut.png', flat.getvalue(), 'image/png'))
+            images.normalize_on_save(Swimmer, t)
+            self.assertEqual(cut.call_count, 1)
+
     def test_failed_cutout_keeps_the_upload(self):
         from unittest import mock
         from django.core.files.uploadedfile import SimpleUploadedFile

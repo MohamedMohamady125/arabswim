@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
+import { Crop } from 'lucide-react'
 import Cropper from 'react-easy-crop'
 import smartcrop from 'smartcrop'
 import { Modal, notify } from './ui'
 import { IMAGE_KINDS } from './Pic'
+import { mediaUrl } from '../utils'
 
 // Content-aware auto-framing: smartcrop.js scores edges/skin/saturation to
 // find the best crop of the given aspect; when the browser ships the native
@@ -38,7 +40,7 @@ async function suggestCrop(img, aspect) {
 // uploads light; the server caps and re-encodes again on save.
 const MAX_SIDE = 1600
 
-// Crop (and optionally rotate) the image on a canvas and return a Blob.
+// Crop the image on a canvas and return a Blob.
 // PNG sources stay PNG so logo transparency survives; everything else → JPEG.
 // The crop frame may reach past the picture (zoomed out to fit the whole
 // image): the empty part is transparent for PNG and white for JPEG.
@@ -89,7 +91,9 @@ const ASPECTS = [
 ]
 
 /**
- * Instagram-style image crop / position / adjust modal.
+ * Instagram-style image crop / position / zoom modal (drag to move, pinch,
+ * scroll or use the slider to zoom). There is no rotate control: photos are
+ * turned upright automatically from their EXIF data on the server.
  * Props:
  *   file        — the File selected by the user
  *   kind        — key of IMAGE_KINDS (components/Pic.jsx): sets the frame, whether it
@@ -110,7 +114,6 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
   const [aspectKey, setAspectKey] = useState(aspect)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
-  const [rotation, setRotation] = useState(0)
   const [croppedArea, setCroppedArea] = useState(null)
   const [saving, setSaving] = useState(false)
   // smart mode: hold the cropper until the suggested frame is known, then
@@ -162,7 +165,7 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
     try {
       const isPng = file.type === 'image/png'
       const mime = isPng ? 'image/png' : 'image/jpeg'
-      const blob = await getCroppedBlob(imageSrc, croppedArea, rotation, mime, spec?.maxSide || MAX_SIDE)
+      const blob = await getCroppedBlob(imageSrc, croppedArea, 0, mime, spec?.maxSide || MAX_SIDE)
       const cropped = new File([blob], file.name.replace(/\.\w+$/, isPng ? '.png' : '.jpg'), { type: mime })
       onDone(cropped)
     } catch {
@@ -186,7 +189,7 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
 
   return (
     <Modal title={title} onClose={onCancel} width={520}>
-      <div style={{ position: 'relative', width: '100%', height: 340, background: '#111', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: '100%', height: 340, background: kind === 'person' ? 'var(--asw-portrait-bg)' : '#111', borderRadius: 8, overflow: 'hidden' }}>
         {smartPending ? (
           <div role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em' }}>
             Framing the subject…
@@ -196,7 +199,6 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
             image={imageSrc}
             crop={crop}
             zoom={zoom}
-            rotation={rotation}
             aspect={activeAspect}
             minZoom={MIN_ZOOM}
             maxZoom={4}
@@ -204,7 +206,6 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
             initialCroppedAreaPixels={smartArea || undefined}
             onCropChange={setCrop}
             onZoomChange={setZoom}
-            onRotationChange={setRotation}
             onCropComplete={onCropComplete}
           />
         )}
@@ -247,19 +248,6 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
           Fit all
         </button>
       </div>
-      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="micro" style={{ flex: 'none', width: 42 }}>Rotate</span>
-        <input
-          type="range" aria-label="Rotate" min={-45} max={45} step={1} value={rotation > 180 ? rotation - 360 : rotation}
-          onChange={(e) => setRotation(Number(e.target.value))}
-          style={{ flex: 1 }}
-        />
-        <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }}
-          aria-label="Rotate 90 degrees" title="Rotate 90 degrees"
-          onClick={() => setRotation((r) => (r + 90) % 360)}>
-          90°
-        </button>
-      </div>
 
       {/* Serial Position: Cancel first, the one solid action last */}
       <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -275,28 +263,116 @@ export default function ImageCropper({ file, kind, aspect: aspectProp = 1, lockA
   )
 }
 
+/** A stored upload (URL or media path) as a File, so it can be opened in the
+ *  crop tool without the person choosing it from their device again. */
+export async function fileFromUrl(url) {
+  const full = mediaUrl(url)
+  const res = await fetch(full)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const blob = await res.blob()
+  const name = decodeURIComponent(full.split('?')[0].split('/').pop() || 'photo.jpg')
+  return new File([blob], name, { type: blob.type || 'image/jpeg' })
+}
+
 /**
- * Drop-in file input that always routes image picks through the crop/adjust
- * modal before handing the final File to the caller. Use anywhere an admin
- * uploads a photo.
- * Props: onChange(file), kind (preferred) or aspect + lockAspect, accept, className, style
+ * "Crop and zoom" for a photo that is already on the site (album photo,
+ * partner logo…): opens the saved picture in the tool and hands the re-framed
+ * File to onDone, which saves it. Nothing is chosen from the device.
+ * Props: src (saved image), kind, onDone(file) (may be async), label, iconOnly
  */
-export function CropUpload({ onChange, kind, note, aspect = 1, lockAspect = false, smart = false, accept = 'image/jpeg,image/png,image/webp', className = 'input', style, ariaLabel = 'Choose an image' }) {
-  const [cropFile, setCropFile] = useState(null)
+export function EditPhotoButton({ src, kind, onDone, label = 'Crop and zoom', iconOnly = false, className = 'btn btn-secondary', style }) {
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const open = async () => {
+    setBusy(true)
+    try {
+      setFile(await fileFromUrl(src))
+    } catch {
+      notify('The saved photo could not be opened. Upload it again to change it.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const done = async (f) => {
+    setFile(null)
+    setBusy(true)
+    try { await onDone(f) } finally { setBusy(false) }
+  }
+  if (!src) return null
   return (
     <>
-      <input
-        className={className} style={style} type="file" accept={accept} aria-label={ariaLabel}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = '' }}
-      />
-      {cropFile && (
-        <ImageCropper
-          file={cropFile} kind={kind} note={note} aspect={aspect} lockAspect={lockAspect} smart={smart}
-          onDone={(f) => { onChange(f); setCropFile(null) }}
-          onCancel={() => setCropFile(null)}
-        />
-      )}
+      <button type="button" className={className} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...style }}
+        onClick={open} disabled={busy} aria-busy={busy} aria-label={label} title={label}>
+        <Crop size={13} aria-hidden="true" />{!iconOnly && (busy ? 'Working…' : label)}
+      </button>
+      {file && <ImageCropper file={file} kind={kind} applyLabel="Save" onDone={done} onCancel={() => setFile(null)} />}
     </>
+  )
+}
+
+/**
+ * Drop-in photo control: every pick goes through the crop / zoom modal before
+ * the final File reaches the caller.
+ *
+ * With `current` (the photo already saved) or once a file has been picked it
+ * also shows the photo and a "Crop and zoom" button that reopens the tool on
+ * it — nobody has to upload a photo again just to re-frame it.
+ * Props: onChange(file), kind (preferred) or aspect + lockAspect, current,
+ *        accept, className, style
+ */
+export function CropUpload({ onChange, kind, note, current, aspect = 1, lockAspect = false, smart = false, accept = 'image/jpeg,image/png,image/webp', className = 'input', style, ariaLabel = 'Choose an image' }) {
+  const [cropFile, setCropFile] = useState(null)   // open in the tool right now
+  const [source, setSource] = useState(null)       // the picture being framed (picked, or the saved one)
+  const [preview, setPreview] = useState(null)     // the framed result, not saved yet
+  const [busy, setBusy] = useState(false)
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+  const [missing, setMissing] = useState(false)   // the saved file is gone: nothing to show or re-frame
+  const shown = preview || (current && !missing ? mediaUrl(current) : null)
+  const contain = !!(kind && IMAGE_KINDS[kind]?.fit === 'contain')
+
+  const adjust = async () => {
+    if (source) { setCropFile(source); return }
+    setBusy(true)   // Doherty Threshold: the button answers at once while the photo loads
+    try {
+      const f = await fileFromUrl(current)
+      setSource(f)
+      setCropFile(f)
+    } catch {
+      notify('The saved photo could not be opened. Choose the file again to change it.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const input = (
+    <input
+      className={className} style={style} type="file" accept={accept} aria-label={shown ? 'Replace with another image' : ariaLabel}
+      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setSource(f); setCropFile(f) } e.target.value = '' }}
+    />
+  )
+  const tool = cropFile && (
+    <ImageCropper
+      file={cropFile} kind={kind} note={note} aspect={aspect} lockAspect={lockAspect} smart={smart}
+      onDone={(f) => { setPreview(URL.createObjectURL(f)); onChange(f); setCropFile(null) }}
+      onCancel={() => setCropFile(null)}
+    />
+  )
+  if (!shown) return <>{input}{tool}</>
+  return (
+    <div className="cropup">
+      {/* Proximity: the photo, the way to re-frame it and the way to replace it sit together */}
+      <div className="cropup-now">
+        <img className={`cropup-thumb${kind === 'person' ? ' is-person' : ''}${contain ? ' is-contain' : ''}`} src={shown} alt="" onError={() => { if (!preview) setMissing(true) }} />
+        <div className="cropup-acts">
+          <button type="button" className="btn btn-secondary" onClick={adjust} disabled={busy} aria-busy={busy}>
+            <Crop size={14} aria-hidden="true" /> {busy ? 'Opening…' : 'Crop and zoom'}
+          </button>
+          <span className="cropup-hint">{preview ? 'Ready. Save to keep it.' : 'Or choose another below.'}</span>
+        </div>
+      </div>
+      {input}
+      {tool}
+    </div>
   )
 }
 

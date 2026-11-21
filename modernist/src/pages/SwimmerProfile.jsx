@@ -25,7 +25,7 @@ import { useFeatures } from '../context/FeaturesContext'
 import Flag from '../components/Flag'
 import { Loading, notify, Empty, Seg, Modal, BackLink } from '../components/ui'
 import LoadFailed from '../components/swimmer/LoadFailed'
-import ImageCropper from '../components/ImageCropper'
+import { CropUpload } from '../components/ImageCropper'
 import { formatDate, mediaUrl, nameInitials } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
 import CompareTab from '../components/swimmer/CompareTab'
@@ -110,7 +110,6 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
     x_url: swimmer.x_url || '',
   })
   const [photo, setPhoto] = useState(null)
-  const [cropFile, setCropFile] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -157,20 +156,14 @@ function EditMyProfileModal({ swimmer, onClose, onSaved }) {
             Photo submitted for review — it will appear once approved by an admin.
           </div>
         )}
-        <label style={{ display: 'block' }}>
+        <div>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
           <div className="micro" style={{ marginBottom: 4, color: 'var(--color-neutral-700)', textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
             Photo changes require admin approval
           </div>
-          <input className="input" type="file" accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          <CropUpload kind="person" note={SWIMMER_PHOTO_NOTE} current={swimmer.photo} onChange={setPhoto} />
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready — will be sent for review</div>}
-        </label>
-        {cropFile && (
-          <ImageCropper file={cropFile} kind="person" note={SWIMMER_PHOTO_NOTE}
-            onDone={(f) => { setPhoto(f); setCropFile(null) }}
-            onCancel={() => setCropFile(null)} />
-        )}
+        </div>
         {field('Email', 'email', 'email')}
         {field('Phone', 'phone', 'tel')}
         {field('Instagram URL', 'instagram_url', 'url')}
@@ -206,7 +199,6 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
   })
   const [countries, setCountries] = useState([])
   const [photo, setPhoto] = useState(null)
-  const [cropFile, setCropFile] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -310,11 +302,10 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
         </div>
         {field('X (Twitter) URL', 'x_url', 'url')}
         {field('Nicknames (comma-separated)', 'nicknames', 'text', { placeholder: 'e.g. Hamada, Mido' })}
-        <label style={{ display: 'block' }}>
+        <div>
           <div className="card-kicker" style={{ marginBottom: 4 }}>Profile photo</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input className="input" type="file" accept="image/jpeg,image/png,image/webp" style={{ flex: 1 }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f) }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+            <CropUpload kind="person" note={SWIMMER_PHOTO_NOTE} current={swimmer.photo} onChange={setPhoto} />
             {swimmer.photo && (
               <button type="button" className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)', fontSize: 12, whiteSpace: 'nowrap' }}
                 onClick={async () => {
@@ -329,12 +320,7 @@ function AdminEditSwimmerModal({ swimmer, onClose, onSaved }) {
             )}
           </div>
           {photo && <div className="micro" style={{ marginTop: 4, color: 'var(--asw-fast)' }}>Cropped photo ready</div>}
-        </label>
-        {cropFile && (
-          <ImageCropper file={cropFile} kind="person" note={SWIMMER_PHOTO_NOTE}
-            onDone={(f) => { setPhoto(f); setCropFile(null) }}
-            onCancel={() => setCropFile(null)} />
-        )}
+        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
           <input type="checkbox" checked={form.is_retired}
             onChange={(e) => setForm({ ...form, is_retired: e.target.checked })} />

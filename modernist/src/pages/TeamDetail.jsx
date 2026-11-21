@@ -183,11 +183,11 @@ function EditClubModal({ team, countries, onClose, onSaved }) {
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Logo">
-          <CropUpload kind="logo" style={{ width: '100%' }} onChange={setLogo} />
+          <CropUpload kind="logo" current={team.logo} style={{ width: '100%' }} onChange={setLogo} />
           {logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}
         </Field>
         <Field label="Cover photo (top of your page)">
-          <CropUpload kind="cover" style={{ width: '100%' }} onChange={setBanner} />
+          <CropUpload kind="cover" current={team.banner} style={{ width: '100%' }} onChange={setBanner} />
           {banner && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}
         </Field>
       </div>
@@ -286,7 +286,7 @@ function CoachModal({ coach, team, countries, onClose, onSaved }) {
         </Field>
         <Field label="Country"><CountrySelect value={form.nationality} onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} countries={countries} /></Field>
         <Field label="Years experience"><input className="input" style={{ width: '100%' }} type="number" inputMode="numeric" min="0" value={form.years_experience} onChange={set('years_experience')} /></Field>
-        <Field label="Photo"><CropUpload kind="person" onChange={setPhoto} className="" /></Field>
+        <Field label="Photo"><CropUpload kind="person" current={coach?.photo} onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>
@@ -339,7 +339,7 @@ function BoardModal({ member, team, onClose, onSaved }) {
       <Field label="Name"><input className="input" style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Role"><input className="input" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Field>
-        <Field label="Photo"><CropUpload kind="person" onChange={setPhoto} className="" /></Field>
+        <Field label="Photo"><CropUpload kind="person" current={member?.photo} onChange={setPhoto} className="" /></Field>
         <Field label="Email"><input className="input" style={{ width: '100%' }} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')} /></Field>
         <Field label="Phone"><input className="input" style={{ width: '100%' }} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
       </div>

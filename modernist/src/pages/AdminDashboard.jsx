@@ -9,7 +9,7 @@ import { getTeams } from '../api/teams'
 import { getAcademies } from '../api/academies'
 import { PageHead, SectHead, Loading, notify, Empty, Seg, Done } from '../components/ui'
 import { mediaUrl } from '../utils'
-import { CropUpload } from '../components/ImageCropper'
+import { CropUpload, EditPhotoButton } from '../components/ImageCropper'
 import Pic from '../components/Pic'
 import InviteLinks from '../components/admin/InviteLinks'
 import ClubKind from '../components/admin/ClubKind'
@@ -563,6 +563,16 @@ function PartnersManager() {
                 <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12, ...(p.is_active ? {} : { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }) }} aria-label={`${p.is_active ? 'Hide' : 'Show'} ${p.name}`} disabled={busyId === p.id} onClick={() => toggleActive(p)}>
                   {p.is_active ? 'Hide' : 'Show'}
                 </button>
+                <EditPhotoButton src={p.logo} kind="sponsor" label="Crop logo" style={{ height: 30, fontSize: 12 }}
+                  onDone={async (f) => {
+                    try {
+                      const fd = new FormData()
+                      fd.append('logo', f)
+                      const res = await updateSponsor(p.id, fd)
+                      setPartners((list) => list.map((x) => (x.id === p.id ? { ...x, logo: res.data.logo } : x)))
+                      notify(`${p.name} logo updated.`)
+                    } catch { notify('The logo could not be saved. Try again.', 'error') }
+                  }} />
                 <button type="button" className="btn btn-secondary" style={{ height: 30, fontSize: 12 }} aria-label={`Delete ${p.name}`} disabled={busyId === p.id} onClick={() => remove(p)}>Delete</button>
               </div>
             </div>

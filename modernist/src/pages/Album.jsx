@@ -10,7 +10,7 @@ import { formatDate, mediaUrl } from '../utils'
 import Pic from '../components/Pic'
 import { useAuth } from '../context/AuthContext'
 import { usePrelaunch } from '../prelaunch'
-import { CropQueue } from '../components/ImageCropper'
+import { CropQueue, EditPhotoButton } from '../components/ImageCropper'
 
 // Instagram-style display crops, stored per item on the backend
 export const SIZE_OPTIONS = [
@@ -129,6 +129,19 @@ export default function Album() {
       setItems((prev) => prev.filter((i) => i.id !== item.id))
     } catch {
       notify('Failed to delete item')
+    }
+  }
+
+  // "Crop and zoom" on a photo already in the album: the re-framed picture replaces it
+  const reframe = async (item, file) => {
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await updateMediaItem(item.id, fd)
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, image: res.data.image } : i)))
+      notify('Photo updated')
+    } catch {
+      notify('The photo could not be saved. Try again.', 'error')
     }
   }
 
@@ -269,6 +282,9 @@ export default function Album() {
                       >
                         {SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
+                    )}
+                    {!isVideo(it) && it.image && (
+                      <EditPhotoButton src={it.image} kind="gallery" iconOnly className="btn btn-ghost" onDone={(f) => reframe(it, f)} />
                     )}
                     <button
                       type="button"

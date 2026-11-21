@@ -119,6 +119,16 @@ def normalize_image_bytes(data, filename):
     return out, f'{_slug(stem)}-{digest}{ext}'
 
 
+def _is_cutout(data):
+    """True for a picture with a really transparent background."""
+    try:
+        img = _open(data)
+        img.load()
+        return _has_real_alpha(img)
+    except Exception:
+        return False
+
+
 def normalize_fieldfile(instance, field):
     """Normalise a not-yet-saved upload sitting on an ImageField (in place)."""
     from django.core.files.base import ContentFile
@@ -137,10 +147,17 @@ def normalize_fieldfile(instance, field):
     if (meta.app_label, meta.model_name, field.name) in PORTRAIT_FIELDS:
         from django.conf import settings
         if getattr(settings, 'PORTRAIT_CUTOUT', True):
-            from core.cutout import isolate_upload
-            cut = isolate_upload(data, name)
-            if cut:
-                data, name = cut
+            from core.cutout import isolate_upload, is_marked, marked_name
+            if is_marked(name) and _is_cutout(data):
+                # A portrait that has already been cut out, re-framed by hand
+                # in the crop tool ("Crop and zoom" on the saved photo): keep
+                # the person's framing — cutting it out again would re-centre
+                # it and soften the edge.
+                name = marked_name(name)
+            else:
+                cut = isolate_upload(data, name)
+                if cut:
+                    data, name = cut
     res = normalize_image_bytes(data, name)
     if not res:
         return

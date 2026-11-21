@@ -4,7 +4,7 @@ import {
   deleteMediaItem, updateMediaItem,
 } from '../../api/media'
 import { Loading, Empty } from '../ui'
-import { CropQueue } from '../ImageCropper'
+import { CropQueue, EditPhotoButton } from '../ImageCropper'
 import { SIZE_OPTIONS, SIZE_RATIOS } from '../../pages/Album'
 import Pic from '../Pic'
 
@@ -176,6 +176,18 @@ export default function MeetGallery({ meetId, isAdmin }) {
                   </button>
                 )}
               </div>
+              {isAdmin && item.media_type === 'PHOTO' && item.image && (
+                <EditPhotoButton src={item.image} kind="gallery" className="btn btn-ghost"
+                  style={{ width: '100%', justifyContent: 'center', minHeight: 36, fontSize: 12, borderTop: '1px solid var(--color-divider)' }}
+                  onDone={async (f) => {
+                    try {
+                      const fd = new FormData()
+                      fd.append('image', f)
+                      const res = await updateMediaItem(item.id, fd)
+                      setAlbum((a) => ({ ...a, items: (a.items || []).map((i) => (i.id === item.id ? { ...i, image: res.data.image } : i)) }))
+                    } catch { notify('The photo could not be saved. Try again.', 'error') }
+                  }} />
+              )}
               {isAdmin && item.media_type === 'PHOTO' && (
                 <select
                   className="select"

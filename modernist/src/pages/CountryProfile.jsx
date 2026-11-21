@@ -1960,7 +1960,7 @@ function FedBoardModal({ member, teamId, onClose, onSaved }) {
     <Modal title={member ? 'Edit board member' : 'Add board member'} onClose={onClose} width={440}>
       <Fld label="Name"><input className="input" autoComplete="off" required style={{ width: '100%' }} value={form.name} onChange={set('name')} /></Fld>
       <Fld label="Role"><input className="input" autoComplete="off" style={{ width: '100%' }} placeholder="e.g. President, Secretary General" value={form.role} onChange={set('role')} /></Fld>
-      <Fld label="Photo"><CropUpload kind="person" onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
+      <Fld label="Photo"><CropUpload kind="person" current={member?.photo} onChange={setPhoto} />{photo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Photo ready ✓</div>}</Fld>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>

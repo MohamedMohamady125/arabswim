@@ -79,7 +79,7 @@ export default function RosterGrid({ roster, years = [], year, onYear, isAdmin, 
                     <span>View Profile</span><span style={{ color: 'var(--color-accent-800)' }}>→</span>
                   </Link>
                   {canManage && (
-                    <SwimmerPhotoButton swimmer={s} hasPhoto={!!photo} onSaved={(url) => url && setFresh((m) => ({ ...m, [s.id]: url }))} />
+                    <SwimmerPhotoButton swimmer={s} hasPhoto={!!photo} photo={photo} onSaved={(url) => url && setFresh((m) => ({ ...m, [s.id]: url }))} />
                   )}
                   {isAdmin && (
                     <Link to={`/swimmers/${s.id}?edit=1`} className="btn btn-secondary" style={{ fontSize: 11, marginTop: 8, display: 'inline-block', textDecoration: 'none' }}>Edit</Link>

@@ -125,7 +125,7 @@ export function AcademyModal({ academy, countries = [], onClose, onSaved, ownerM
       </div>
       <Fld label="Address"><input className="input" style={{ width: '100%' }} value={form.address} onChange={set('address')} /></Fld>
       <Fld label="Description"><textarea className="input" rows={3} style={{ width: '100%', resize: 'vertical' }} value={form.description} onChange={set('description')} /></Fld>
-      <Fld label="Logo"><CropUpload kind="logo" onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
+      <Fld label="Logo"><CropUpload kind="logo" current={academy?.logo} onChange={setLogo} />{logo && <div style={{ fontSize: 12, color: 'var(--asw-fast)', marginTop: 4 }}>Logo ready ✓</div>}</Fld>
       {err && <div role="alert" style={{ color: 'var(--asw-slow)', fontSize: 12, marginTop: 6 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
         {academy && !ownerMode ? (

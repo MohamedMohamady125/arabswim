@@ -5,7 +5,6 @@ import { getCountryProfile, getEvents, getCountries, updateCountry, ensureNation
 import SocialLinks, { SocialFields } from '../components/SocialLinks'
 import OwnerWelcome from '../components/OwnerWelcome'
 import { getArticles } from '../api/news'
-import { getRankings } from '../api/rankings'
 import { getQualifyingStandards, getQualifyingStandard, getQualifiedSwimmers } from '../api/qualifyingTimes'
 import { getPredictions } from '../api/predictions'
 import { getAlbums } from '../api/media'
@@ -158,7 +157,6 @@ const TABS = [
   { value: 'statistics', label: 'Statistics' },
   { value: 'progression', label: 'Progression' },
   { value: 'records', label: 'Records' },
-  { value: 'ranking', label: 'Ranking' },
   { value: 'medals', label: 'Medals' },
   { value: 'qualifying', label: 'Qualifying' },
   { value: 'clubs', label: 'Clubs' },
@@ -170,7 +168,7 @@ const TABS = [
 
 // Hick's Law: the tabs most visitors open sit in the bar; the rest wait behind
 // "More" (the open tab always shows, wherever it lives).
-const PRIMARY_TABS = ['overview', 'records', 'ranking', 'medals', 'statistics', 'team', 'clubs']
+const PRIMARY_TABS = ['overview', 'records', 'medals', 'statistics', 'team', 'clubs']
 
 export function SubTabs({ options, value, onChange }) {
   const base = { padding: '8px 22px', border: '2px solid var(--color-accent-800)', borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', minHeight: 36 }
@@ -243,109 +241,6 @@ function NewsTab({ countryId, countryName }) {
             </Link>
           ))}
         </div>
-      )}
-    </div>
-  )
-}
-
-/* ===== RANKING TAB ===== */
-function RankingTab({ countryId }) {
-  const [events, setEvents] = useState([])
-  const [event, setEvent] = useState('')
-  const [gender, setGender] = useState('M')
-  const [pool, setPool] = useState('LCM')
-  const [ageGroup, setAgeGroup] = useState('OPEN')
-  const [rows, setRows] = useState([])
-  const [count, setCount] = useState(0)
-  const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const load = useRetry()
-
-  useEffect(() => {
-    let alive = true
-    getEvents({ has_results: true }).then((r) => {
-      if (!alive) return
-      const all = (Array.isArray(r.data) ? r.data : r.data?.results || []).filter((e) => e.stroke !== 'Open Water' && !/4\s*x/i.test(e.name))
-      setEvents(all)
-      const first = all.find((e) => /^50m Freestyle$/i.test(e.name)) || all[0]
-      if (first) setEvent(String(first.id))
-      // no events at all → nothing to rank; stop the spinner instead of loading forever
-      else setLoading(false)
-    }).catch(() => { if (alive) { setEvents([]); setLoading(false); load.fail() } })
-    return () => { alive = false }
-  }, [load.tryKey])
-
-  useEffect(() => {
-    if (!event) return
-    let alive = true; setLoading(true)
-    getRankings({
-      // no countryId (pan-Arab page) → the Arab-wide ranking
-      ...(countryId ? { scope: 'national', country: countryId } : { scope: 'arab' }),
-      gender, pool, event, age_group: ageGroup, limit: 20, page,
-    })
-      .then((r) => {
-        if (!alive) return
-        setRows(r.data?.results || (Array.isArray(r.data) ? r.data : []))
-        setCount(r.data?.count ?? 0)
-      })
-      .catch(() => { if (alive) { setRows([]); setCount(0); load.fail() } })
-      .finally(() => alive && setLoading(false))
-    return () => { alive = false }
-  }, [countryId, event, gender, pool, ageGroup, page, load.tryKey])
-
-  // New filter selection restarts from page 1
-  useEffect(() => { setPage(1) }, [event, gender, pool, ageGroup])
-
-  const grouped = useMemo(() => {
-    const g = {}
-    events.forEach((e) => { (g[e.stroke] = g[e.stroke] || []).push(e) })
-    return Object.entries(g)
-  }, [events])
-
-  return (
-    <div className="pad-lg">
-      <TabHeading title={countryId ? 'National Ranking' : 'Arab Ranking'} />
-      {/* Common Region: the four filters share one bar with the result count */}
-      <FilterBar
-        count={loading || load.failed ? null : (count || rows.length)} noun={(count || rows.length) === 1 ? 'swimmer' : 'swimmers'}
-        active={gender !== 'M' || pool !== 'LCM' || ageGroup !== 'OPEN'}
-        onClear={() => { setGender('M'); setPool('LCM'); setAgeGroup('OPEN') }}
-      >
-        <select className="select" aria-label="Event" style={{ width: 'auto', minWidth: 180 }} value={event} onChange={(e) => setEvent(e.target.value)}>
-          {grouped.map(([stroke, evs]) => (
-            <optgroup key={stroke} label={stroke}>
-              {evs.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-            </optgroup>
-          ))}
-        </select>
-        <Seg options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]} value={gender} onChange={setGender} />
-        <Seg options={POOL_OPTIONS} value={pool} onChange={setPool} />
-        <select className="select" aria-label="Age group" style={{ width: 'auto' }} value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-          <option value="OPEN">All ages (Open)</option>
-          {['U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17'].map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-      </FilterBar>
-      <div style={{ height: 16 }} />
-      {load.failed ? <LoadFailed what="the ranking" onRetry={load.retry} /> : loading ? <Loading label="Loading ranking" /> : rows.length === 0 ? <Empty label="No results for this event" hint="Try another event, gender, pool length or age group." /> : (
-        <>
-        {/* phone: 8 columns can't share 390px — drop FINA/Championship/Location
-            there (the essentials stay) instead of wrapping every cell to 3 lines */}
-        <div className="table-scroll"><table className="table"><thead><tr><th style={{ width: 40 }}>#</th><th>Swimmer</th><th className="num">Age</th><th className="time">Time</th><th className="num hide-mobile">FINA</th><th className="hide-mobile">Championship</th><th className="hide-mobile">Location</th><th>Date</th></tr></thead><tbody>
-          {rows.map((r) => (
-            <tr key={r.result_id ?? `rec-${r.record_id}`}>
-              <td><span className="asw-num" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: 'var(--color-accent-800)', color: '#fff', fontWeight: 800, fontSize: 12 }}>{r.rank}</span></td>
-              <td><SwimmerLink id={r.swimmer_id} name={r.swimmer_name} /></td>
-              <td className="num asw-num">{r.age_at_competition || '—'}</td>
-              <td className="time asw-time" style={{ fontWeight: 800 }}>{r.time}</td>
-              <td className="num asw-num hide-mobile">{r.fina_points ?? '—'}</td>
-              <td className="text-muted hide-mobile">{r.championship_name}</td>
-              <td className="text-muted hide-mobile">{r.championship_country || (r.championship_location || '').split(',').pop().trim() || '—'}</td>
-              <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-            </tr>
-          ))}
-        </tbody></table></div>
-        <Pager page={page} pageSize={20} count={count} onPage={setPage} />
-        </>
       )}
     </div>
   )
@@ -2806,7 +2701,6 @@ export default function CountryProfile({ arabFed = false }) {
 
       {/* ===== DATA TABS ===== */}
       {tab === 'news' && <NewsTab countryId={arabFed ? null : id} countryName={country.name} />}
-      {tab === 'ranking' && <RankingTab countryId={arabFed ? null : id} />}
       {tab === 'pools' && <PoolsTab hosted={hosted} countryName={country.name} />}
       {tab === 'prediction' && <PredictionTab countryName={country.name} />}
       {tab === 'multimedia' && <MultimediaTab champIds={new Set([...hosted, ...participated].map((c) => c.id))} champNames={[...hosted, ...participated].map((c) => c.name)} countryName={country.name} />}

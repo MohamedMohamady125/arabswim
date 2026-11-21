@@ -2008,7 +2008,6 @@ export default function CountryProfile({ arabFed = false }) {
   const [fedModal, setFedModal] = useState(null) // 'info' | {type:'board', member}
   const [reloadKey, setReloadKey] = useState(0)
   const [boardKey, setBoardKey] = useState(0)
-  const [moreTabs, setMoreTabs] = useState(false) // Hick's Law: secondary tabs stay folded until asked for
   const [loadFailed, setLoadFailed] = useState(false) // the profile request failed (≠ federation not found)
   const [fedNotice, setFedNotice] = useState(null) // Peak-End Rule: { where: 'info' | 'board', text } shown after a save
   // New seed each page open → highlight cards shuffle per visit
@@ -2226,13 +2225,12 @@ export default function CountryProfile({ arabFed = false }) {
         onAction={() => setFedModal('info')}
       />
 
-      {/* Tab bar. Hick's Law: the most-used tabs first, the rest behind "More".
-          The open tab is always in the bar, so deep links keep working. */}
+      {/* Tab bar: every section is on screen (asked 2026-11-21 — no "More"
+          button). Serial Position: the most-used tabs still come first. */}
       {(() => {
         const primary = PRIMARY_TABS.map((v) => visibleTabs.find((t) => t.value === v)).filter(Boolean)
         const rest = visibleTabs.filter((t) => !PRIMARY_TABS.includes(t.value))
-        const shownTabs = moreTabs ? [...primary, ...rest] : [...primary, ...rest.filter((t) => t.value === tab)]
-        const hidden = visibleTabs.length - shownTabs.length
+        const shownTabs = [...primary, ...rest]
         const tabBtn = { minHeight: 48, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontSize: 13, whiteSpace: 'nowrap', flex: 'none' }
         return (
           <div className="rule-b prof-tabs">
@@ -2246,12 +2244,6 @@ export default function CountryProfile({ arabFed = false }) {
               </button>
             ))}
             </div>
-            {rest.length > 0 && (moreTabs || hidden > 0) && (
-              <button type="button" aria-expanded={moreTabs} onClick={() => setMoreTabs((o) => !o)}
-                className="btn btn-ghost" style={{ flex: 'none' }}>
-                {moreTabs ? 'Less ↑' : `More (${hidden}) ↓`}
-              </button>
-            )}
           </div>
         )
       })()}

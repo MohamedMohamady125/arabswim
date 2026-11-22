@@ -4,10 +4,10 @@ import {
   getPolls, createPoll, updatePoll, deletePoll, announcePoll,
   createNominee, deleteNominee,
 } from '../../api/fame'
-import { searchSwimmers } from '../../api/swimmers'
+import { searchSwimmers, createSwimmer, uploadSwimmerPhoto } from '../../api/swimmers'
 import { getCountries } from '../../api/core'
 import { CropUpload } from '../ImageCropper'
-import { notify, Modal } from '../ui'
+import { notify, Modal, Seg } from '../ui'
 import Flag from '../Flag'
 import Pic from '../Pic'
 
@@ -151,11 +151,13 @@ export default function AwardVotes({ onAnnounced }) {
 }
 
 function NomineeModal({ poll, onClose, onSaved }) {
+  const [mode, setMode] = useState('existing') // existing swimmer | new swimmer
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [searched, setSearched] = useState(false)
   const [swimmer, setSwimmer] = useState(null)
   const [countries, setCountries] = useState([])
-  const [country, setCountry] = useState('')
+  const [fresh, setFresh] = useState({ name: '', sex: 'M', nationality: '', birth_year: '' })
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -165,27 +167,45 @@ function NomineeModal({ poll, onClose, onSaved }) {
     getCountries().then((r) => setCountries(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {})
   }, [])
   useEffect(() => {
+    setSearched(false)
     if (!query.trim() || swimmer) { setResults([]); return }
     const t = setTimeout(() => {
-      searchSwimmers(query.trim()).then((r) => setResults(Array.isArray(r.data) ? r.data : [])).catch(() => setResults([]))
+      searchSwimmers(query.trim())
+        .then((r) => setResults(Array.isArray(r.data) ? r.data : []))
+        .catch(() => setResults([]))
+        .finally(() => setSearched(true))
     }, 300)
     return () => clearTimeout(t)
   }, [query, swimmer])
 
-  const name = swimmer ? swimmer.name : query.trim()
+  // Tesler's Law: a name that is not on the site carries over into the new-swimmer form
+  const startNew = () => { setFresh((f) => ({ ...f, name: query.trim() })); setMode('new'); setError('') }
+
+  const ready = mode === 'existing' ? !!swimmer : !!(fresh.name.trim() && fresh.nationality)
   const save = async (e) => {
     e.preventDefault()
-    if (!name || saving) return
-    if (!swimmer && !country) { setError('Choose the country.'); return }
+    if (!ready || saving) return
     setSaving(true); setError('')
     try {
+      let who = swimmer
+      if (mode === 'new') {
+        const payload = { name: fresh.name.trim(), sex: fresh.sex, nationality: fresh.nationality }
+        if (fresh.birth_year) payload.birth_year = Number(fresh.birth_year)
+        who = (await createSwimmer(payload)).data
+        // the photo becomes the new swimmer's profile photo, which the vote then shows
+        if (photo) {
+          const pf = new FormData()
+          pf.append('photo', photo)
+          await uploadSwimmerPhoto(who.id, pf)
+        }
+      }
       const fd = new FormData()
       fd.append('poll', poll.id)
-      fd.append('name', name)
-      if (swimmer) fd.append('swimmer', swimmer.id)
-      fd.append('country', swimmer ? swimmer.nationality : country)
+      fd.append('name', who.name)
+      fd.append('swimmer', who.id)
+      fd.append('country', who.nationality)
       if (note.trim()) fd.append('note', note.trim())
-      if (photo) fd.append('photo', photo)
+      if (mode === 'existing' && photo) fd.append('photo', photo)
       await createNominee(fd)
       onSaved()
     } catch (e2) { setError(errText(e2, 'Could not add the nominee.')) }
@@ -195,43 +215,75 @@ function NomineeModal({ poll, onClose, onSaved }) {
   return (
     <Modal title={`Add a nominee — ${poll.title}`} onClose={onClose} width={480}>
       <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <label className="awv-field" style={{ position: 'relative' }}>
-          <span>Name — search a swimmer, or type any name</span>
-          <input className="input" autoFocus value={swimmer ? swimmer.name : query}
-            onChange={(e) => { setSwimmer(null); setQuery(e.target.value) }} />
-          {results.length > 0 && !swimmer && (
-            <div className="awv-results">
-              {results.map((s) => (
-                <button type="button" key={s.id} onClick={() => { setSwimmer(s); setResults([]) }}>
-                  <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} /> {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </label>
-        {swimmer ? (
-          <p className="awv-hint" style={{ margin: 0 }}>Linked to the swimmer's profile: their country and photo are used. Upload a photo below only to use another one.</p>
+        <Seg options={[{ value: 'existing', label: 'Swimmer on the site' }, { value: 'new', label: 'New swimmer' }]}
+          value={mode} onChange={(v) => { setMode(v); setError(''); setPhoto(null) }} />
+
+        {mode === 'existing' ? (
+          <>
+            <label className="awv-field" style={{ position: 'relative' }}>
+              <span>Search the swimmer by name</span>
+              <input className="input" type="search" autoFocus value={swimmer ? swimmer.name : query}
+                onChange={(e) => { setSwimmer(null); setQuery(e.target.value) }} />
+              {results.length > 0 && !swimmer && (
+                <div className="awv-results">
+                  {results.map((s) => (
+                    <button type="button" key={s.id} onClick={() => { setSwimmer(s); setResults([]) }}>
+                      <Flag code={s.nationality_detail?.code} name={s.nationality_detail?.name} /> {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </label>
+            {swimmer ? (
+              <p className="awv-hint" style={{ margin: 0 }}>Their country and profile photo are used. Upload a photo below only to show another one in this vote.</p>
+            ) : searched && query.trim() && results.length === 0 ? (
+              <p className="awv-hint" style={{ margin: 0 }}>
+                Nobody on the site is called "{query.trim()}".{' '}
+                <button type="button" className="btn btn-ghost" onClick={startNew}>Create this swimmer</button>
+              </p>
+            ) : null}
+          </>
         ) : (
-          <label className="awv-field">
-            <span>Country</span>
-            <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="">Select country…</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
+          <>
+            <label className="awv-field">
+              <span>Full name</span>
+              <input className="input" autoFocus value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="awv-field">
+                <span>Gender</span>
+                <Seg options={[{ value: 'M', label: 'Male' }, { value: 'F', label: 'Female' }]} value={fresh.sex} onChange={(v) => setFresh({ ...fresh, sex: v })} />
+              </div>
+              <label className="awv-field">
+                <span>Birth year (optional)</span>
+                <input className="input" type="number" inputMode="numeric" value={fresh.birth_year} onChange={(e) => setFresh({ ...fresh, birth_year: e.target.value })} />
+              </label>
+            </div>
+            <label className="awv-field">
+              <span>Country</span>
+              <select className="select" value={fresh.nationality} onChange={(e) => setFresh({ ...fresh, nationality: e.target.value })}>
+                <option value="">Select country…</option>
+                {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <p className="awv-hint" style={{ margin: 0 }}>This creates the swimmer's profile on the site and nominates them.</p>
+          </>
         )}
+
         <label className="awv-field">
           <span>Why they are nominated (optional, one line)</span>
           <input className="input" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
         <div className="awv-field">
-          <span>Photo{swimmer ? ' (optional)' : ''}</span>
-          <CropUpload kind="person" onChange={setPhoto} />
+          <span>{mode === 'new' ? 'Profile photo (optional)' : 'Photo for this vote (optional)'}</span>
+          <CropUpload key={mode} kind="person" onChange={setPhoto} />
         </div>
         {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={!name || saving}>{saving ? 'Adding…' : 'Add nominee'}</button>
+          <button type="submit" className="btn btn-primary" disabled={!ready || saving}>
+            {saving ? 'Adding…' : mode === 'new' ? 'Create swimmer and nominate' : 'Add nominee'}
+          </button>
         </div>
       </form>
     </Modal>

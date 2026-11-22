@@ -67,6 +67,7 @@ COUNTRY_CODE_ALIASES = {
     'ZMB': 'ZAM',               # ISO Zambia -> IOC (DB code)
     # Egypt
     'UAR': 'EGY',               # historic (United Arab Republic)
+    'YAR': 'YEM', 'YMD': 'YEM',  # historic North / South Yemen -> Yemen
     # Legacy / special Olympic codes
     'SIN': 'SGP',               # old IOC Singapore
     'ROT': 'EOR',               # Refugee Olympic Team (2016 code)

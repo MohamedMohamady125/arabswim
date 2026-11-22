@@ -125,8 +125,7 @@ NEUTRAL_TEAMS = [
 # for codes outside the flag-icons set). Note: 'UAR' results still resolve
 # to Egypt at import time (COUNTRY_CODE_ALIASES) so UAR-era Egyptian
 # swimmers merge with their later EGY careers; this row exists for manual
-# assignment. North/South Yemen are Arab-region so they appear in the
-# Arab filter lists.
+# assignment. North/South Yemen results resolve to Yemen (one federation).
 HISTORICAL_COUNTRIES = [
     {'name': 'Soviet Union', 'code': 'URS', 'region': 'OTHER'},
     {'name': 'Yugoslavia', 'code': 'YUG', 'region': 'OTHER'},
@@ -134,11 +133,10 @@ HISTORICAL_COUNTRIES = [
     {'name': 'Czechoslovakia', 'code': 'TCH', 'region': 'OTHER'},
     {'name': 'East Germany', 'code': 'GDR', 'region': 'OTHER'},
     {'name': 'West Germany', 'code': 'FRG', 'region': 'OTHER'},
-    {'name': 'United Arab Republic', 'code': 'UAR', 'region': 'ARAB'},
+    # not a federation: kept for old results only, out of the Arab lists
+    {'name': 'United Arab Republic', 'code': 'UAR', 'region': 'OTHER'},
     {'name': 'Rhodesia', 'code': 'RHO', 'region': 'OTHER'},
     {'name': 'South Vietnam', 'code': 'VNM', 'region': 'OTHER'},
-    {'name': 'North Yemen', 'code': 'YAR', 'region': 'ARAB'},
-    {'name': 'South Yemen', 'code': 'YMD', 'region': 'ARAB'},
     {'name': 'Netherlands Antilles', 'code': 'AHO', 'region': 'OTHER'},
     {'name': 'West Indies Federation', 'code': 'WIN', 'region': 'OTHER'},
     {'name': 'Saar', 'code': 'SAA', 'region': 'OTHER'},
@@ -228,6 +226,9 @@ LEGACY_CODE_RENAMES = {
     'KUW': 'KWT',  # Kuwait
     'LBA': 'LBY',  # Libya
     'LIB': 'LBN',  # Lebanon
+    # North and South Yemen are one federation on the site: Yemen
+    'YAR': 'YEM',
+    'YMD': 'YEM',
 }
 
 

@@ -115,12 +115,14 @@ export default function HallOfFame() {
           {sorted.map((p) => {
             const photo = p.photo || p.swimmer_detail?.photo
             return (
-              <article key={p.id} className="hair-b" style={{ paddingBottom: 28, borderLeft: `2px solid ${GOLD}`, paddingLeft: 18 }}>
+              <article key={p.id} className="hair-b" style={{ paddingBottom: 28, borderLeft: `2px solid ${GOLD}`, paddingLeft: 18, display: 'flex', alignItems: 'flex-start', gap: 18 }}>
+                {/* the portrait's own 4:5 shape, shown whole beside the text — never stretched into a wide banner */}
                 {photo && (
-                  <div className="grayscale" style={{ width: '100%', height: 320, overflow: 'hidden', marginBottom: 16 }}>
-                    <Pic kind="person" w={640} src={photo} alt={p.name} />
+                  <div style={{ width: 'clamp(96px, 28vw, 168px)', aspectRatio: '4 / 5', flex: 'none', overflow: 'hidden', background: 'var(--asw-portrait-bg)' }}>
+                    <Pic kind="person" w={320} src={photo} alt={p.name} />
                   </div>
                 )}
+                <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                   {p.inducted_year && <span className="tag tag-dark">Class of {p.inducted_year}</span>}
                   {p.era && <span className="micro">{p.era}</span>}
@@ -157,6 +159,7 @@ export default function HallOfFame() {
                   )}
                 </div>
                 )}
+                </div>
               </article>
             )
           })}

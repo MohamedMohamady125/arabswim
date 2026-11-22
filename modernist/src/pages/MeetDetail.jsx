@@ -1777,7 +1777,7 @@ function TopPerformancesTab({ stats, onRetry }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} sideBySide />
+      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} sideBySide stackOnPhone />
       {(
         <div style={{ marginBottom: 28, maxWidth: 760 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>

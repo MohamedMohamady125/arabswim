@@ -1420,3 +1420,65 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .cropup-acts { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
 .cropup-acts .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 13px; white-space: nowrap; padding-inline: 12px; }
 .cropup-hint { font-size: 12px; color: var(--color-neutral-700); }
+
+/* — Arabswim Awards: public vote page — */
+.vote { max-width: 960px; margin: 0 auto; padding: 28px 32px 40px; }
+.vote-head h1 { margin: 6px 0 8px; letter-spacing: -0.02em; }
+.vote-desc { margin: 0 0 12px; color: var(--color-neutral-800); font-size: 15px; line-height: 1.55; max-width: 640px; }
+.vote-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 6px 12px; background: var(--color-accent-100); color: var(--color-accent-800); }
+.vote-status.is-done { background: var(--asw-fast); color: #fff; }
+.vote-how { margin: 12px 0 0; font-size: 14px; color: var(--color-neutral-700); }
+.vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; margin-top: 22px; }
+.vote-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 14px; text-align: left; font: inherit; color: inherit; background: var(--color-surface); border: 2px solid var(--color-divider); border-radius: 0; cursor: pointer; min-width: 0; }
+.vote-card.is-static { cursor: default; }
+.vote-card:not(.is-static):hover { border-color: var(--color-accent-800); }
+.vote-card.is-on { border-color: var(--color-accent-800); background: var(--color-accent-100); }
+.vote-card.is-winner { border-color: var(--asw-gold); }
+.vote-photo { position: relative; display: block; aspect-ratio: 4 / 5; overflow: hidden; background: var(--asw-portrait-bg); }
+.vote-initials { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 800; font-size: 40px; color: rgba(255,255,255,0.55); }
+.vote-badge { position: absolute; left: 0; bottom: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: var(--asw-fast); color: #fff; }
+.vote-badge.is-winner { background: var(--asw-gold); }
+.vote-name { font-family: var(--font-heading); font-weight: 800; font-size: 17px; line-height: 1.25; color: var(--color-accent-800); margin-top: 4px; overflow-wrap: anywhere; }
+.vote-country { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-neutral-700); }
+.vote-note { font-size: 13px; line-height: 1.45; color: var(--color-neutral-800); }
+.vote-result { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--color-accent-800); }
+.vote-bar { display: block; height: 6px; background: var(--color-accent-100); }
+.vote-card.is-on .vote-bar { background: var(--color-surface); }
+.vote-bar > span { display: block; height: 100%; background: var(--color-accent-800); }
+.vote-error { margin-top: 16px; padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--asw-slow); border: 1px solid var(--asw-slow); }
+.vote-bar-bottom { position: sticky; bottom: 0; margin-top: 22px; padding: 12px 0; background: var(--color-bg); border-top: 1px solid var(--color-divider); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.vote-submit { min-height: 48px; padding: 0 28px; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.vote-total { font-size: 13px; color: var(--color-neutral-700); }
+@media (max-width: 900px) {
+  .vote { padding: 20px 16px 28px; }
+  .vote-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .vote-name { font-size: 15px; }
+  .vote-submit { width: 100%; }
+}
+
+/* — Arabswim Awards: admin voting panel — */
+.awv { padding: 16px 32px 20px; }
+.awv-new { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.awv-poll { margin-top: 16px; padding: 16px; border: 1px solid var(--color-divider); background: var(--color-neutral-100); display: flex; flex-direction: column; gap: 12px; }
+.awv-poll-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.awv-poll-head h3 { margin: 0; font-size: 18px; }
+.awv-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.awv-link { flex: 1 1 240px; min-width: 0; font-size: 13px; }
+.awv-ic { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.awv-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: var(--color-neutral-700); min-width: 0; }
+.awv-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; min-height: 40px; }
+.awv-hint { margin: -4px 0 0; font-size: 12px; color: var(--color-neutral-700); }
+.awv-count { font-size: 13px; font-weight: 700; color: var(--color-accent-800); }
+.awv-noms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.awv-noms li { display: flex; align-items: center; gap: 12px; padding: 6px 8px; background: var(--color-surface); border: 1px solid var(--color-divider); }
+.awv-noms li.is-winner { border-color: var(--asw-gold); }
+.awv-thumb { width: 36px; aspect-ratio: 4 / 5; flex: none; overflow: hidden; background: var(--asw-portrait-bg); }
+.awv-nom-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.awv-nom-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.awv-nom-votes { flex: none; font-size: 13px; font-weight: 800; }
+.awv-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; background: var(--color-surface); border: 1px solid var(--color-divider); max-height: 220px; overflow-y: auto; }
+.awv-results button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 8px 12px; border: 0; background: transparent; font: inherit; font-weight: 400; color: inherit; text-align: left; cursor: pointer; }
+.awv-results button:hover { background: var(--color-accent-100); }
+.award-open { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 32px; background: var(--color-accent-100); border-bottom: 1px solid var(--color-divider); font-size: 14px; }
+.award-open strong { color: var(--color-accent-800); }
+@media (max-width: 900px) { .awv { padding: 14px 16px 18px; } .award-open { padding: 12px 16px; } }

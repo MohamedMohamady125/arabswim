@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, Plus } from 'lucide-react'
-import { getInductees, createInductee, deleteInductee } from '../api/fame'
+import { Trash2, Plus, Pencil } from 'lucide-react'
+import { getInductees, createInductee, updateInductee, deleteInductee, getOpenPolls } from '../api/fame'
 import { searchSwimmers } from '../api/swimmers'
 import Flag from '../components/Flag'
-import { PageHead, notify, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
+import { PageHead, notify, Empty, Seg, FilterBar, Skeleton, Modal } from '../components/ui'
+import { CropUpload } from '../components/ImageCropper'
+import AwardVotes from '../components/admin/AwardVotes'
 import { mediaUrl } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import Pic from '../components/Pic'
@@ -16,7 +18,7 @@ const fold = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 const CATEGORIES = [
   { value: 'LEGEND', label: 'Legends' },
   { value: 'OLYMPIAN', label: 'Olympians' },
-  { value: 'ARAB_WINNER', label: 'Arab Swim Winners' },
+  { value: 'ARAB_WINNER', label: 'Arabswim Awards' },
 ]
 
 export default function HallOfFame() {
@@ -26,6 +28,9 @@ export default function HallOfFame() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  const [year, setYear] = useState('') // Arabswim Awards: one year at a time
+  const [openPolls, setOpenPolls] = useState([])
+  const [editing, setEditing] = useState(null)
 
   // The whole hall loads once; search then filters in the browser, so results
   // follow every keystroke (Doherty Threshold) with no request per letter
@@ -40,6 +45,7 @@ export default function HallOfFame() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+  useEffect(() => { getOpenPolls().then((r) => setOpenPolls(Array.isArray(r.data) ? r.data : [])).catch(() => {}) }, [])
 
   const q = fold(search)
   const matches = useMemo(
@@ -53,11 +59,21 @@ export default function HallOfFame() {
   const category = picked && (!q || countOf(picked) > 0) ? picked : firstFilled
   const setCategory = setPicked
 
+  const isAwards = category === 'ARAB_WINNER'
+  const inCategory = useMemo(() => matches.filter((p) => (p.category || 'LEGEND') === category), [matches, category])
+  // the years that have an award, newest first
+  const years = useMemo(
+    () => [...new Set(inCategory.map((p) => p.inducted_year).filter(Boolean))].sort((a, b) => b - a),
+    [inCategory]
+  )
+  const activeYear = isAwards && years.includes(Number(year)) ? Number(year) : null
   const sorted = useMemo(
-    () => matches
-      .filter((p) => (p.category || 'LEGEND') === category)
-      .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999)),
-    [matches, category]
+    () => inCategory
+      .filter((p) => !activeYear || p.inducted_year === activeYear)
+      // awards read newest year first; the other halls keep their set order
+      .sort((a, b) => (isAwards ? (b.inducted_year || 0) - (a.inducted_year || 0) : 0)
+        || (a.display_order ?? 999) - (b.display_order ?? 999) || String(a.name).localeCompare(String(b.name))),
+    [inCategory, activeYear, isAwards]
   )
 
   const handleDelete = async (p) => {
@@ -82,6 +98,12 @@ export default function HallOfFame() {
           opens an empty one to find out. */}
       <FilterBar count={loading ? null : sorted.length} noun={sorted.length === 1 ? 'inductee' : 'inductees'} active={!!q} onClear={() => setSearch('')}>
         <Seg options={CATEGORIES.map((c) => ({ value: c.value, label: loading ? c.label : `${c.label} (${countOf(c.value)})` }))} value={category} onChange={setCategory} tabs />
+        {isAwards && years.length > 1 && (
+          <select className="select" aria-label="Year" value={activeYear || ''} onChange={(e) => setYear(e.target.value)} style={{ flex: '0 0 auto', width: 'auto' }}>
+            <option value="">All years</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        )}
         {(inductees.length > 6 || q) && (
           <input
             className="input"
@@ -95,7 +117,16 @@ export default function HallOfFame() {
         )}
       </FilterBar>
 
+      {/* Von Restorff: an open vote is the one thing that asks for action here */}
+      {isAwards && openPolls.map((p) => (
+        <div key={p.slug} className="award-open">
+          <span><strong>Voting is open:</strong> {p.title} {p.year}</span>
+          <Link to={`/vote/${p.slug}`} className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>Vote now →</Link>
+        </div>
+      ))}
+
       {isAdmin && <AddInductee category={category} onAdded={load} />}
+      {isAdmin && isAwards && <AwardVotes onAnnounced={load} />}
 
       {loading ? (
         <div className="pad"><Skeleton rows={3} height={90} /></div>
@@ -148,6 +179,11 @@ export default function HallOfFame() {
                   )}
                   <span style={{ flex: 1 }} />
                   {isAdmin && (
+                    <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => setEditing(p)}>
+                      <Pencil size={13} /> Edit
+                    </button>
+                  )}
+                  {isAdmin && (
                     <button
                       type="button"
                       className="btn btn-ghost"
@@ -165,7 +201,56 @@ export default function HallOfFame() {
           })}
         </div>
       )}
+      {editing && <EditInductee inductee={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
     </div>
+  )
+}
+
+// Admin-only: change the year, the text and the photo of someone already in the hall.
+function EditInductee({ inductee, onClose, onSaved }) {
+  const [year, setYear] = useState(inductee.inducted_year || '')
+  const [era, setEra] = useState(inductee.era || '')
+  const [achievements, setAchievements] = useState(inductee.achievements || '')
+  const [photo, setPhoto] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const save = async (e) => {
+    e.preventDefault()
+    if (saving) return
+    setSaving(true); setError('')
+    try {
+      const fd = new FormData()
+      fd.append('inducted_year', year || '')
+      fd.append('era', era.trim())
+      fd.append('achievements', achievements.trim())
+      if (photo) fd.append('photo', photo)
+      await updateInductee(inductee.id, fd)
+      onSaved()
+    } catch {
+      setError('Could not save. Check the year and try again.')
+    } finally { setSaving(false) }
+  }
+  const lbl = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--color-neutral-700)' }
+  return (
+    <Modal title={`Edit ${inductee.name}`} onClose={onClose} width={480}>
+      <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label style={lbl}><span>Year</span>
+            <input className="input" type="number" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} /></label>
+          <label style={lbl}><span>Era (optional)</span>
+            <input className="input" placeholder="e.g. 1990s" value={era} onChange={(e) => setEra(e.target.value)} /></label>
+        </div>
+        <label style={lbl}><span>Award or achievements</span>
+          <textarea className="input" rows={3} style={{ height: 'auto', padding: '8px 12px' }} value={achievements} onChange={(e) => setAchievements(e.target.value)} /></label>
+        <div style={lbl}><span>Photo</span>
+          <CropUpload kind="person" current={inductee.photo || inductee.swimmer_detail?.photo} onChange={setPhoto} /></div>
+        {error && <div role="alert" style={{ fontSize: 13, color: 'var(--asw-slow)' }}>{error}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -176,6 +261,8 @@ function AddInductee({ category, onAdded }) {
   const [picked, setPicked] = useState(null)
   const [achievements, setAchievements] = useState('')
   const [year, setYear] = useState('')
+  const [photo, setPhoto] = useState(null)
+  const [photoKey, setPhotoKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [added, setAdded] = useState('')
@@ -203,9 +290,10 @@ function AddInductee({ category, onAdded }) {
         category,
         achievements: achievements.trim(),
         ...(year ? { inducted_year: year } : {}),
+        ...(photo ? { photo } : {}),
       })
       setAdded(`${picked.name} added to ${catLabel}`) // Peak-End Rule: confirm the save
-      setPicked(null); setQuery(''); setAchievements(''); setYear('')
+      setPicked(null); setQuery(''); setAchievements(''); setYear(''); setPhoto(null); setPhotoKey((k) => k + 1)
       onAdded()
     } catch {
       setError('Could not add this swimmer. They may already be in the Hall of Fame.')
@@ -254,8 +342,12 @@ function AddInductee({ category, onAdded }) {
         <input className="input" type="number" inputMode="numeric" aria-label="Year inducted" style={{ flex: '0 1 110px', minWidth: 0 }}
           placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} />
         <input className="input" aria-label="Achievements (optional)" style={{ flex: '2 1 240px', minWidth: 0 }}
-          placeholder="Achievements (optional)" value={achievements}
+          placeholder={category === 'ARAB_WINNER' ? 'Award name, e.g. Male Swimmer of the Year' : 'Achievements (optional)'} value={achievements}
           onChange={(e) => setAchievements(e.target.value)} />
+        {/* the swimmer's profile photo is used unless another one is chosen here */}
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <CropUpload key={photoKey} kind="person" ariaLabel="Photo (optional)" onChange={setPhoto} />
+        </div>
         <button className="btn btn-primary" type="submit" disabled={!picked || saving}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Plus size={14} /> {saving ? 'Adding…' : `Add to ${catLabel}`}

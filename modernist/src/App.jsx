@@ -6,6 +6,7 @@ import { useFeatures } from './context/FeaturesContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Join from './pages/Join'
+import Vote from './pages/Vote'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminAnalytics from './pages/AdminAnalytics'
 import NameMatch from './pages/NameMatch'
@@ -97,6 +98,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<Login />} />
+        <Route path="/vote/:slug" element={<Vote />} />
         <Route path="/register" element={<Register />} />
         <Route path="/join/:token" element={<Join />} />
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />

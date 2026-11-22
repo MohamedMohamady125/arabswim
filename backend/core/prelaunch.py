@@ -19,13 +19,16 @@ KEY = 'prelaunch'
 _CACHE_KEY = 'core.prelaunch.on'
 
 # What a visitor who is not signed in may still reach: signing in, opening an
-# invite link, and reading the flags that tell the website it is locked.
+# invite link, reading the flags that tell the website it is locked, and
+# voting in the Arabswim Awards.
 OPEN_PATHS = (
     '/api/v1/auth/login/',
     '/api/v1/auth/refresh/',
     '/api/v1/auth/invites/open/',
     '/api/v1/features/',
     '/api/v1/analytics/track/',
+    # Arabswim Awards: a vote link is shared publicly before launch
+    '/api/v1/awards/vote/',
 )
 
 

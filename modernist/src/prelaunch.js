@@ -34,7 +34,8 @@ export function usePrelaunch() {
  * reached from it (those pages send an owner away when the item is not theirs).
  */
 export function pathAllowed(pathname, ownPath, isAuthed) {
-  if (pathname === '/login' || pathname.startsWith('/join/')) return true
+  // an Arabswim Awards vote link is shared publicly before launch
+  if (pathname === '/login' || pathname.startsWith('/join/') || pathname.startsWith('/vote/')) return true
   if (!isAuthed || !ownPath) return false
   if (pathname === ownPath || pathname.startsWith(`${ownPath}/`)) return true
   return /^\/news\/\d+$/.test(pathname) || /^\/media\/albums\/\d+$/.test(pathname)

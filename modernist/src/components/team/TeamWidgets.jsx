@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Flag from '../Flag'
 import { Loading, Empty, Seg, MedalIcon } from '../ui'
-import { formatDate, formatTime, mediaUrl, imgUrl, recordEventLabel } from '../../utils'
+import { nameTie, formatDate, formatTime, mediaUrl, imgUrl, recordEventLabel } from '../../utils'
 import Pic from '../Pic'
 
 const INK = 'var(--color-accent-800)'
@@ -231,7 +231,7 @@ export function DepthTab({ id, kind = 'club' }) {
     rows.forEach((e) => { cell[`${strokeKey(e.stroke)}|${e.distance}`] = e })
     const programme = Object.entries(VALID).flatMap(([s, ds]) => ds.map((d) => `${s}|${d}`))
     const covered = programme.filter((k) => cell[k]).length
-    const deepest = [...rows].sort((a, b) => b.swimmer_count - a.swimmer_count)[0]
+    const deepest = [...rows].sort((a, b) => b.swimmer_count - a.swimmer_count || nameTie(a, b))[0]
     const thin = rows.filter((e) => e.swimmer_count <= 1).length + (programme.length - covered)
     const avg = rows.length ? rows.reduce((n, e) => n + e.swimmer_count, 0) / rows.length : 0
     const max = Math.max(1, ...rows.map((e) => e.swimmer_count))

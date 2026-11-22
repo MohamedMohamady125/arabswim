@@ -212,3 +212,11 @@ export function resultsByCategory(rows, only = '') {
   return groups
 }
 
+
+// Fully tied rows (same medals, points, time…) are listed alphabetically by name
+export const nameOf = (x) => {
+  const v = x?.name ?? x?.swimmer_name ?? x?.swimmer__name ?? x?.team_name ?? x?.result__team
+    ?? x?.team ?? x?.nationality__name ?? x?.rec?.swimmer ?? x?.swimmer ?? ''
+  return typeof v === 'string' ? v : ''
+}
+export const nameTie = (a, b) => nameOf(a).localeCompare(nameOf(b))

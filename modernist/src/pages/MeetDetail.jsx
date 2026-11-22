@@ -20,7 +20,7 @@ import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 import Pic from '../components/Pic'
 
@@ -1397,7 +1397,7 @@ function EntityAthleteMedals({ medals, isNational }) {
     g.bronze = g.medals.filter((m) => m.medal_type === 'BRONZE').length
     g.medals.sort((a, b) => (order[a.medal_type] ?? 3) - (order[b.medal_type] ?? 3))
   })
-  groups.sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze)
+  groups.sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || nameTie(a, b))
   if (groups.length === 0) {
     return <div className="micro" style={{ padding: '16px 16px' }}>No athlete medals recorded</div>
   }

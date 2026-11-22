@@ -1012,7 +1012,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                         'previous_best': format_centiseconds(prev) if prev else None,
                         'improvement_cs': (prev - result.time_centiseconds) if prev else None,
                     })
-        personal_bests.sort(key=lambda x: -(x['fina_points'] or 0))
+        personal_bests.sort(key=lambda x: (-(x['fina_points'] or 0), x['swimmer_name'] or ''))
 
         # Records broken at this meet
         from records.models import Record
@@ -1159,7 +1159,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 silver=Count('id', filter=Q(medal_type='SILVER')),
                 bronze=Count('id', filter=Q(medal_type='BRONZE')),
                 total=Count('id'),
-            ).order_by('-gold', '-silver', '-bronze')
+            ).order_by('-gold', '-silver', '-bronze', 'result__team')
             # Merge club-name variants (same canonical key as medals club-summary)
             merged = {}
             for row in club_rows:
@@ -1178,7 +1178,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'gold': e['gold'], 'silver': e['silver'],
                 'bronze': e['bronze'], 'total': e['total'],
             } for e in sorted(merged.values(),
-                              key=lambda r: (-r['gold'], -r['silver'], -r['bronze']))]
+                              key=lambda r: (-r['gold'], -r['silver'], -r['bronze'], r['name'].casefold()))]
         else:
             medal_qs = MedalViewSet._relay_counts_once(
                 Medal.objects.filter(championship=champ, nationality__isnull=False))
@@ -1189,7 +1189,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 silver=Count('id', filter=Q(medal_type='SILVER')),
                 bronze=Count('id', filter=Q(medal_type='BRONZE')),
                 total=Count('id'),
-            ).order_by('-gold', '-silver', '-bronze'))
+            ).order_by('-gold', '-silver', '-bronze', 'nationality__name'))
             medal_table = [{
                 'name': r['nationality__name'], 'code': r['nationality__code'],
                 'flag_url': r['nationality__flag_url'],
@@ -1523,7 +1523,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         # Improved swimmers first (sorted by biggest improvement), then new entries
         improved = [x for x in improvements if not x.get('is_new_entry')]
         new_entries = [x for x in improvements if x.get('is_new_entry')]
-        improved.sort(key=lambda x: -x['improvement_cs'])
+        improved.sort(key=lambda x: (-x['improvement_cs'], x.get('swimmer_name') or ''))
         return Response(improved[:30] + new_entries[:20])
 
     @action(detail=True, methods=['get'], url_path='compare')

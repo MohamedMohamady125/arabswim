@@ -606,7 +606,7 @@ class CountryViewSet(viewsets.ModelViewSet):
                 }
             battle_counts[key]['count'] += 1
         country_battle = sorted(
-            battle_counts.values(), key=lambda x: -x['count'])
+            battle_counts.values(), key=lambda x: (-x['count'], x['name']))
 
         stats = {
             'swimmers': swimmer_counts['total'],
@@ -684,7 +684,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             })
             if len(top_swimmers) >= 12:
                 break
-        top_swimmers.sort(key=lambda s: -(s['best_fina'] or 0))
+        top_swimmers.sort(key=lambda s: (-(s['best_fina'] or 0), s['name'] or ''))
 
         # Best Season Performance: the top FINA swim of the CURRENT season
         # (calendar year), never an all-time swim from years back. If the
@@ -802,7 +802,7 @@ class CountryViewSet(viewsets.ModelViewSet):
                           silver=Count('id', filter=Q(medal_type='SILVER')),
                           bronze=Count('id', filter=Q(medal_type='BRONZE')),
                           total=Count('id'))
-                .order_by('-gold', '-silver', '-bronze')[:limit]
+                .order_by('-gold', '-silver', '-bronze', 'swimmer__name')[:limit]
             )
             for m in rows:
                 m['id'] = m.pop('swimmer_id')
@@ -824,7 +824,7 @@ class CountryViewSet(viewsets.ModelViewSet):
             'id': c.id, 'name': c.name, 'date': c.date, 'pool': c.pool,
             'location': c.location,
             'classification': c.classification.name if c.classification else None,
-        } for c in hosted_qs.select_related('classification').all()[:25]]
+        } for c in hosted_qs.select_related('classification').all()[:300]]
 
         # Championships participated: every championship where this country has results
         from championships.models import Championship

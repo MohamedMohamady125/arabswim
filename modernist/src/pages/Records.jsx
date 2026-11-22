@@ -208,7 +208,10 @@ export function Section({ label, pool, rows, last, grouped = false, detail = fal
   )
 }
 
-const DEFAULTS = { scope: 'arab', pool: 'LCM', gender: 'M', age: 'OPEN', country: '' }
+const THIS_YEAR = new Date().getFullYear()
+const FIRST_YEAR = 1970
+const YEARS = Array.from({ length: THIS_YEAR - FIRST_YEAR + 1 }, (_, i) => String(THIS_YEAR - i))
+const DEFAULTS = { scope: 'arab', pool: 'LCM', gender: 'M', age: 'OPEN', country: '', year: String(THIS_YEAR) }
 
 export default function Records() {
   // Working Memory: the chosen book lives in the address bar, so returning
@@ -220,6 +223,8 @@ export default function Records() {
   const gender = param('gender') === 'F' ? 'F' : 'M'
   const ageGroup = AGE_GROUPS.includes(param('age')) ? param('age') : DEFAULTS.age
   const country = param('country')
+  // the book as it stood at the end of the chosen year; this year = today's book
+  const year = YEARS.includes(param('year')) ? param('year') : DEFAULTS.year
   const update = (patch) => setSp((prev) => {
     const next = new URLSearchParams(prev)
     Object.entries(patch).forEach(([k, v]) => {
@@ -233,6 +238,7 @@ export default function Records() {
   const setGender = (v) => update({ gender: v })
   const setAgeGroup = (v) => update({ age: v })
   const setCountry = (v) => update({ country: v })
+  const setYear = (v) => update({ year: v })
   const [countries, setCountries] = useState([])
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -258,6 +264,7 @@ export default function Records() {
       const params = { scope, pool, age_group: ageGroup }
       if (needsCountry) params.country = country
       if (gender) params.gender = gender
+      if (year !== DEFAULTS.year) params.as_of = year
       req = getComputedRecords(params)
     } else {
       const params = { record_type: scope, pool, page_size: 500 }
@@ -274,7 +281,7 @@ export default function Records() {
       .catch(() => { if (alive) setRows([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [scope, pool, gender, ageGroup, country, isComputed, needsCountry])
+  }, [scope, pool, gender, ageGroup, country, year, isComputed, needsCountry])
 
   const bySection = useMemo(() => {
     const sorted = [...rows].sort(sortByEvent)
@@ -344,6 +351,14 @@ export default function Records() {
                 </select>
               </label>
             )}
+            {isComputed && (
+              <label className="recfilters-group">
+                <span className="recfilters-label">Year</span>
+                <select className="select" value={year} onChange={(e) => setYear(e.target.value)}>
+                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </label>
+            )}
             {needsCountry && (
               <label className="recfilters-group recfilters-country">
                 <span className="recfilters-label">Country</span>
@@ -374,7 +389,7 @@ export default function Records() {
           {sections.map((s, i) => (
             <Section
               key={s.label}
-              label={`${bookName} · ${s.label}${isComputed && ageGroup !== 'OPEN' ? ` · ${ageGroup}` : ''}`}
+              label={`${bookName} · ${s.label}${isComputed && ageGroup !== 'OPEN' ? ` · ${ageGroup}` : ''}${isComputed && year !== DEFAULTS.year ? ` · End of ${year}` : ''}`}
               pool={pool}
               rows={s.rows}
               grouped

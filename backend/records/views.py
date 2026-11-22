@@ -624,6 +624,8 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
           pool            – LCM or SCM (default: LCM)
           gender          – M or F (omit for both)
           age_group       – e.g. U10..U17, OPEN (default: OPEN)
+          year            – only swims of that year
+          as_of           – the book as it stood at the end of that year
         """
         from championships.models import Result, Championship
         from core.models import Event
@@ -638,6 +640,10 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
         age_group = request.query_params.get('age_group')
         year = request.query_params.get('year')
         championship = request.query_params.get('championship')
+        try:
+            as_of = int(request.query_params.get('as_of') or 0) or None
+        except (ValueError, TypeError):
+            as_of = None
 
         # Build base queryset: valid timed results from championships
         qs = Result.objects.filter(
@@ -684,6 +690,8 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
                 pass
         if championship:
             qs = qs.filter(championship_id=championship)
+        if as_of:
+            qs = qs.filter(championship__date__year__lte=as_of)
         if gender:
             from django.db.models import Q
             qs = qs.filter(Q(swimmer__sex=gender) | Q(swimmer__sex='X'))
@@ -817,6 +825,8 @@ class RecordViewSet(AuditLogMixin, viewsets.ModelViewSet):
             ).select_related('swimmer', 'swimmer__nationality', 'event', 'country')
             if country:
                 mqs = mqs.filter(country_id=country)
+            if as_of:
+                mqs = mqs.filter(result_date__year__lte=as_of)
             if gender:
                 mqs = mqs.filter(swimmer__sex=gender)
             by_key = {(r['event_id'], r['gender']): r for r in records}

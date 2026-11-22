@@ -168,7 +168,11 @@ class RankingView(APIView):
                 best[sid] = (r.time_cs, 'record')
         merged = [{'swimmer_id': sid, 'best_time': t, 'from_split': kind == 'split',
                    'from_record': kind == 'record'} for sid, (t, kind) in best.items()]
-        merged.sort(key=lambda r: (r['best_time'], r['swimmer_id']))
+        # equal times: alphabetical by name
+        from swimmers.models import Swimmer
+        _names = dict(Swimmer.objects.filter(id__in=[r['swimmer_id'] for r in merged])
+                      .values_list('id', 'name'))
+        merged.sort(key=lambda r: (r['best_time'], (_names.get(r['swimmer_id']) or '').casefold(), r['swimmer_id']))
 
         paginator = RankingPagination()
         page = paginator.paginate_queryset(merged, request)

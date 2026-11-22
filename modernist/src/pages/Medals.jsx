@@ -6,7 +6,7 @@ import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Empty, Seg, FilterBar, Skeleton } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
-import { mediaUrl, nameInitials } from '../utils'
+import { nameTie, mediaUrl, nameInitials } from '../utils'
 import Pic from '../components/Pic'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -94,10 +94,9 @@ export default function Medals() {
   const regionCountries = useMemo(() => {
     const codes = CATEGORY_COUNTRIES[category]
     if (!codes) return countries
-    const order = new Map(codes.map((c, i) => [c, i]))
-    return countries
-      .filter((c) => order.has(c.code))
-      .sort((a, b) => order.get(a.code) - order.get(b.code))
+    // keep the list's own order (alphabetical), never the order of the code table
+    const allowed = new Set(codes)
+    return countries.filter((c) => allowed.has(c.code))
   }, [countries, category])
 
   // Default view per category: club tally for National, country tally otherwise.
@@ -173,7 +172,7 @@ export default function Medals() {
       swimmer__nationality__flag_url: c.flag_url,
       gold: 0, silver: 0, bronze: 0, total: 0,
     })
-    merged.sort((a, b) => (b.gold - a.gold) || (b.silver - a.silver) || (b.bronze - a.bronze))
+    merged.sort((a, b) => (b.gold - a.gold) || (b.silver - a.silver) || (b.bronze - a.bronze) || nameTie(a, b))
     // Nothing won for this selection → show the empty state, not an all-zero table
     if (!merged.some((r) => (r.gold || 0) + (r.silver || 0) + (r.bronze || 0) > 0)) return []
     return merged

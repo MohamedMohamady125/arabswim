@@ -103,7 +103,7 @@ class MedalViewSet(viewsets.ModelViewSet):
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
-        ).order_by('-gold', '-silver', '-bronze')
+        ).order_by('-gold', '-silver', '-bronze', 'nationality__name')
         # Attribution is per-medal (nationality at the time of the swim), but
         # keep the historical response keys every frontend already reads.
         data = list(summary)
@@ -131,7 +131,7 @@ class MedalViewSet(viewsets.ModelViewSet):
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
-        ).order_by('-gold', '-silver', '-bronze')
+        ).order_by('-gold', '-silver', '-bronze', 'swimmer__name')
         limit = request.query_params.get('limit', '10')
         if limit != 'all':
             try:
@@ -161,7 +161,7 @@ class MedalViewSet(viewsets.ModelViewSet):
             silver=Count('id', filter=Q(medal_type='SILVER')),
             bronze=Count('id', filter=Q(medal_type='BRONZE')),
             total=Count('id'),
-        ).order_by('-gold', '-silver', '-bronze')
+        ).order_by('-gold', '-silver', '-bronze', 'result__team')
         # Merge club-name variants ('MC ALGER' / 'Mc Alger' / 'MC ALGER 2')
         # into one row via the canonical team key
         from teams.utils import normalize_team_key, strip_squad_number
@@ -185,7 +185,7 @@ class MedalViewSet(viewsets.ModelViewSet):
                     'bronze': row['bronze'], 'total': row['total'],
                 }
         out = sorted(merged.values(),
-                     key=lambda r: (-r['gold'], -r['silver'], -r['bronze']))
+                     key=lambda r: (-r['gold'], -r['silver'], -r['bronze'], (r['result__team'] or '').casefold()))
         # Attach club logos (matched via the same canonical team key)
         from teams.models import Team
         team_by_key = {}

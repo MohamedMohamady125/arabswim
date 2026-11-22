@@ -12,7 +12,7 @@ import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
-import { formatDate, formatDateRange, formatTime, parseTime, mediaUrl } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatTime, parseTime, mediaUrl } from '../utils'
 import Pic from '../components/Pic'
 
 // Mental Model: pools in swimmers' words
@@ -703,7 +703,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         }
       }
     }
-    return [...map.values()].sort((a, b) => (b.p_medal - a.p_medal) || (b.eg - a.eg)).slice(0, 5)
+    return [...map.values()].sort((a, b) => (b.p_medal - a.p_medal) || (b.eg - a.eg) || nameTie(a, b)).slice(0, 5)
   }, [snap])
 
   const selectedCountry = table.find((r) => r.name === countryKey) || table[0]

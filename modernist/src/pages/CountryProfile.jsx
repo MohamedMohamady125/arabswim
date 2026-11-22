@@ -23,7 +23,7 @@ import FederationProgressionTab from '../components/FederationProgression'
 import MedalStandings from '../components/MedalStandings'
 import { Loading, notify, Empty, SectHead, Seg, Pager, Modal, FilterBar } from '../components/ui'
 import { MiniBars, MiniHBars, CHART_COLORS } from '../components/MiniCharts'
-import { formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2, recordEventLabel } from '../utils'
+import { nameTie, formatDate, formatNumber, formatTime, mediaUrl, flagAlpha2, recordEventLabel } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import Pic from '../components/Pic'
 
@@ -604,7 +604,7 @@ function PoolsTab({ hosted, countryName }) {
       if (c.date) map[loc].years.add(new Date(c.date).getFullYear())
       if (c.pool) map[loc].pools.add(c.pool)
     })
-    return Object.values(map).sort((a, b) => b.meets - a.meets)
+    return Object.values(map).sort((a, b) => b.meets - a.meets || nameTie(a, b))
   }, [hosted])
   return (
     <div className="pad-lg">
@@ -1185,7 +1185,7 @@ function CompareTab({ profile, country }) {
         // Arab top 100 (other than this one); the picker changes it.
         const rival = [...(profile.country_battle || [])]
           .filter((b) => b.country_id !== country.id && list.some((c) => c.id === b.country_id))
-          .sort((a, b) => (b.count || 0) - (a.count || 0))[0]
+          .sort((a, b) => (b.count || 0) - (a.count || 0) || nameTie(a, b))[0]
         if (rival) setOtherId((cur) => cur || String(rival.country_id))
       })
       .catch(() => alive && setCountries([]))
@@ -1333,8 +1333,8 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
     if (!recBySwimmer[k]) recBySwimmer[k] = { id: r.swimmer_id, name: r.swimmer, sex: r.sex, count: 0 }
     recBySwimmer[k].count++
   })
-  const topMaleRec = Object.values(recBySwimmer).filter((r) => r.sex === 'M').sort((a, b) => b.count - a.count)[0]
-  const topFemaleRec = Object.values(recBySwimmer).filter((r) => r.sex === 'F').sort((a, b) => b.count - a.count)[0]
+  const topMaleRec = Object.values(recBySwimmer).filter((r) => r.sex === 'M').sort((a, b) => b.count - a.count || nameTie(a, b))[0]
+  const topFemaleRec = Object.values(recBySwimmer).filter((r) => r.sex === 'F').sort((a, b) => b.count - a.count || nameTie(a, b))[0]
 
   const perfTiers = [
     { label: 'World-Class', range: '900+', min: 900, max: Infinity },
@@ -1738,7 +1738,7 @@ function StatisticsTab({ profile, country, topSwimmers, topMedalists, records, m
         const trend = years.map((y) => ({ label: `'${y.slice(2)}`, value: byYear[y] }))
         const campaigns = intl
           .filter((c) => (c.swimmers_count || 0) > 0)
-          .sort((a, b) => (b.swimmers_count || 0) - (a.swimmers_count || 0))
+          .sort((a, b) => (b.swimmers_count || 0) - (a.swimmers_count || 0) || nameTie(a, b))
           .slice(0, 6)
           .map((c) => ({ label: c.name, value: c.swimmers_count, sub: `${c.swimmers_count}` }))
         if (!trend.length && !campaigns.length) return null
@@ -1984,6 +1984,9 @@ export default function CountryProfile({ arabFed = false }) {
     : (profile.records || [])
   const hosted = profile.championships_hosted || []
   const participated = profile.championships_participated || []
+  // a country always hosts its own national meets — only international ones count as hosting
+  const isIntl = (name) => !/^(national|other)$/i.test(name || 'Other')
+  const hostedIntl = hosted.filter((c) => isIntl(c.classification))
   const teams = profile.teams || []
   const newRecords = records.filter((r) => r.is_new)
   const currentRecords = records.filter((r) => !r.is_new)
@@ -2156,7 +2159,7 @@ export default function CountryProfile({ arabFed = false }) {
         const seasonBest = profile.season_best
         // "Most decorated" = most medals in total (the API list is ordered by
         // gold first, so its first row is not always the biggest collector)
-        const topMedalist = [...topMedalists].sort((a, b) => (b.total || 0) - (a.total || 0))[0]
+        const topMedalist = [...(profile.top_medalists_international || [])].sort((a, b) => (b.total || 0) - (a.total || 0) || nameTie(a, b))[0]
         const recsByDate = [...records].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
         const newestRecord = recsByDate[0]
         // 5 distinct holders (dedupe duplicate DB swimmers by normalized name),
@@ -2252,6 +2255,7 @@ export default function CountryProfile({ arabFed = false }) {
                   const upcoming = evs.find((e) => e.date > todayISO) || null
                   const daysUntil = upcoming ? Math.round((new Date(upcoming.date) - new Date(todayISO)) / 86400000) : 0
                   const dayNum = current ? Math.round((new Date(todayISO) - new Date(current.date)) / 86400000) + 1 : 0
+                  const both = !!(current && upcoming)
                   const range = (e) => e.end_date && e.end_date !== e.date ? `${usDate(e.date)} – ${usDate(e.end_date)}` : usDate(e.date)
                   const evCard = { borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, position: 'relative' }
                   const evKick = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)' }
@@ -2269,24 +2273,25 @@ export default function CountryProfile({ arabFed = false }) {
                   )
                   return (
                     <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: current && upcoming ? '1fr 1fr' : '1fr', gap: 16, marginTop: 14 }}>
-                      {current && (
-                        <div style={evCard}>
-                          <div style={evKick}>Current Event</div>
-                          {badge('var(--asw-fast)', `LIVE · DAY ${dayNum}`)}
-                          <div style={evTitle}>{current.championship ? <Link to={`/meets/${current.championship}`} style={{ color: 'inherit' }}>{current.title}</Link> : current.title}</div>
-                          <div style={hSub}>{range(current)}</div>
-                          {current.description && <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{current.description}</div>}
+                      {[current && { e: current, kick: 'Current Event', badge: badge('var(--asw-fast)', `LIVE · DAY ${dayNum}`) },
+                        upcoming && { e: upcoming, kick: 'Upcoming Event', badge: badge('var(--color-accent-800)', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`) }]
+                        .filter(Boolean).map(({ e, kick, badge: b }) => (
+                        // Law of Similarity: photo beside the text when the card is alone (like the news rows), above it when two share the row
+                        <div key={kick} className={both ? undefined : 'm-col1'} style={{ ...evCard, padding: 0, gap: 0, display: 'grid', gridTemplateColumns: e.meet_photo && !both ? '260px 1fr' : '1fr', alignContent: 'start' }}>
+                          {e.meet_photo && (
+                            <div style={{ aspectRatio: '16 / 9', background: 'var(--color-accent-800)', overflow: 'hidden' }}>
+                              <Pic kind="meet" w={640} src={e.meet_photo} alt={e.title} style={{ width: '100%', height: '100%' }} />
+                            </div>
+                          )}
+                          <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                            <div style={evKick}>{kick}</div>
+                            {b}
+                            <div style={evTitle}>{e.championship ? <Link to={`/meets/${e.championship}`} style={{ color: 'inherit', textDecoration: 'none' }}>{e.title}</Link> : e.title}</div>
+                            <div style={hSub}>{range(e)}</div>
+                            {e.description && <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{e.description}</div>}
+                          </div>
                         </div>
-                      )}
-                      {upcoming && (
-                        <div style={evCard}>
-                          <div style={evKick}>Upcoming Event</div>
-                          {badge('var(--color-accent-800)', daysUntil === 1 ? 'TOMORROW' : `IN ${daysUntil} DAYS`)}
-                          <div style={evTitle}>{upcoming.championship ? <Link to={`/meets/${upcoming.championship}`} style={{ color: 'inherit' }}>{upcoming.title}</Link> : upcoming.title}</div>
-                          <div style={hSub}>{range(upcoming)}</div>
-                          {upcoming.description && <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{upcoming.description}</div>}
-                        </div>
-                      )}
+                      ))}
                     </div>
                   )
                 })()}
@@ -2296,14 +2301,14 @@ export default function CountryProfile({ arabFed = false }) {
                   const panel = { borderRadius: 0, background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', padding: '16px 20px', display: 'flex', flexDirection: 'column' }
                   const kick = { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-accent-800)', marginBottom: 8 }
                   const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', fontSize: 14, borderBottom: '1px solid var(--color-accent-100)' }
-                  const tally = (medalBoxes || []).filter((m) => (m.total || 0) > 0).slice(0, 6)
-                  const deco = [...(topMedalists || [])]
-                    .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)).slice(0, 6)
+                  const tally = (medalBoxes || []).filter((m) => (m.total || 0) > 0 && isIntl(m.name)).slice(0, 6)
+                  const deco = [...(profile.top_medalists_international || [])]
+                    .sort((a, b) => (b.total ?? 0) - (a.total ?? 0) || nameTie(a, b)).slice(0, 6)
                   return (
                     <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14 }}>
                       <div style={panel}>
                         <div style={{ ...kick, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <span>Medal Tally by Competition</span>
+                          <span>International Medal Tally</span>
                           {/* Law of Similarity: the summary leads to its detail, like every other card */}
                           {tally.length > 0 && visibleTabs.some((t) => t.value === 'medals') && (
                             <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 32, textTransform: 'none', letterSpacing: 0 }} onClick={() => setTab('medals')}>All medals →</button>
@@ -2317,7 +2322,7 @@ export default function CountryProfile({ arabFed = false }) {
                         ))}
                       </div>
                       <div style={panel}>
-                        <div style={kick}>Most Decorated Swimmers</div>
+                        <div style={kick}>Most Decorated · International</div>
                         {deco.length === 0 ? <div style={hSub}>Swimmers will appear here</div> : deco.map((s, i) => (
                           <div key={`${s.name}-${i}`} style={row}>
                             <span style={{ fontWeight: 700, color: 'var(--color-accent-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{s.id ? <SwimmerLink id={s.id} name={s.name} /> : s.name}</span>
@@ -2339,7 +2344,7 @@ export default function CountryProfile({ arabFed = false }) {
                       {photo ? <Pic kind="person" w={160} src={photo} /> : emoji}
                     </div>
                     <div style={hBody}>
-                      <div style={hTitle}>{title}</div>
+                      <div className="hl-title" style={hTitle}>{title}</div>
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
                       {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
@@ -2351,28 +2356,28 @@ export default function CountryProfile({ arabFed = false }) {
                 )
                 const t = profile.trending
                 const trendUp = t && (t.is_new || t.is_hot || (t.delta ?? 0) > 0)
-                const goldKing = [...topMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0))[0]
+                const goldKing = [...topMedalists].sort((a, b) => (b.gold || 0) - (a.gold || 0) || nameTie(a, b))[0]
                 const leadingWoman = topSwimmers.find((s) => s.sex === 'F')
                 const recCount = {}
                 for (const r of records) {
                   const k = nameKey(r.swimmer)
                   if (k) recCount[k] = recCount[k] ? { n: recCount[k].n + 1, rec: recCount[k].rec } : { n: 1, rec: r }
                 }
-                const collector = Object.values(recCount).sort((a, b) => b.n - a.n)[0]
+                const collector = Object.values(recCount).sort((a, b) => b.n - a.n || nameTie(a, b))[0]
                 const oldestRecord = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
                 const gsb = medalBoxes.reduce((acc, m) => ({ g: acc.g + (m.gold || 0), s: acc.s + (m.silver || 0), b: acc.b + (m.bronze || 0) }), { g: 0, s: 0, b: 0 })
-                const lastHosted = [...hosted].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+                const lastHosted = [...hostedIntl].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
                 const pool = [
-                  { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: <>Best Season<br />Performance</>, big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
-                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated<br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
+                  { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: <>Best Season <br />Performance</>, big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
+                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated <br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
                   { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>NEW</span> }) },
-                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending<br />Swimmer</>, big: (<span style={{ color: trendUp ? 'var(--asw-fast)' : 'var(--asw-slow)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 16, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? <TrendingUp size={22} aria-hidden="true" /> : <TrendingDown size={22} aria-hidden="true" />}</span> }) },
-                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>Most Gold<br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
-                  { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: <>Leading<br />Woman</>, big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
-                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Most<br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
-                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing<br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
-                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total<br />Medals</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
-                  { key: 'host', valid: hosted.length > 0, render: () => hl({ emoji: <Landmark size={22} aria-hidden="true" />, title: <>Championship<br />Host</>, big: hosted.length, sub: `Championship${hosted.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
+                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending <br />Swimmer</>, big: (<span style={{ color: trendUp ? 'var(--asw-fast)' : 'var(--asw-slow)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 16, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? <TrendingUp size={22} aria-hidden="true" /> : <TrendingDown size={22} aria-hidden="true" />}</span> }) },
+                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>Most Gold <br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
+                  { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: <>Leading <br />Woman</>, big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
+                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Most <br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
+                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing <br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
+                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total <br />Medals</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
+                  { key: 'host', valid: hostedIntl.length > 0, render: () => hl({ emoji: <Landmark size={22} aria-hidden="true" />, title: <>Championship <br />Host</>, big: hostedIntl.length, sub: `International Championship${hostedIntl.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
                   { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
                 ]
                 const picked = pickHighlights(pool, mulberry32(hlSeed), 5)
@@ -2563,9 +2568,9 @@ export default function CountryProfile({ arabFed = false }) {
           {/* Hosted */}
           {champSub === 'hosted' && (
           <div className="pad-lg">
-            <SectHead title={`Hosted · ${hosted.length}`} />
-            {hosted.length === 0 ? <Empty label="No championships hosted" /> : (
-              <div>{hosted.map((c) => (
+            <SectHead title={`Hosted · ${hostedIntl.length}`} />
+            {hostedIntl.length === 0 ? <Empty label="No international championships hosted" /> : (
+              <div>{hostedIntl.map((c) => (
                 <Link key={c.id} to={`/meets/${c.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', color: 'inherit', textDecoration: 'none' }}>
                   <span style={{ minWidth: 0 }}><span style={{ fontWeight: 600, display: 'block' }}>{c.name}</span><span className="text-muted" style={{ fontSize: 12 }}>{c.location}</span></span>
                   <span className="text-muted asw-num" style={{ fontSize: 12, textAlign: 'right', flex: 'none' }}>{formatDate(c.date)}<br />{c.pool}</span>

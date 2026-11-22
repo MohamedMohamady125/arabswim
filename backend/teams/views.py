@@ -494,7 +494,7 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         out = []
         for ev in events.values():
-            ev['swimmers'].sort(key=lambda s: s['time_cs'])
+            ev['swimmers'].sort(key=lambda s: (s['time_cs'], s['name'] or ''))
             out.append({
                 'event_id': ev['event_id'], 'event_name': ev['event_name'],
                 'stroke': ev['stroke'], 'distance': ev['distance'],

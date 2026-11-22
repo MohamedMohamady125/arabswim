@@ -460,6 +460,9 @@ figure { margin: 0; }
 /* — mobile — */
 @media (max-width: 900px) {
   .hide-mobile { display: none !important; }
+  /* highlight card names stay on one line on phone */
+  .hl-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-title br { display: none; }
   .show-mobile-inline { display: inline !important; }
   /* generic grid collapses for inline-styled desktop grids */
   .m-col1 { grid-template-columns: 1fr !important; }

@@ -20,7 +20,7 @@ import SocialLinks, { SocialFields } from '../components/SocialLinks'
 import OwnerWelcome from '../components/OwnerWelcome'
 import { CropUpload } from '../components/ImageCropper'
 import TrainingCalendar from '../components/TrainingCalendar'
-import { formatDate, formatNumber, formatTime, mediaUrl, recordEventLabel } from '../utils'
+import { nameTie, formatDate, formatNumber, formatTime, mediaUrl, recordEventLabel } from '../utils'
 import { mulberry32, pickHighlights } from '../utils/highlightShuffle'
 import { ClubLogo, SwimmerMedalsByMeet, DepthTab, RecordsTab } from '../components/team/TeamWidgets'
 import Pic from '../components/Pic'
@@ -659,7 +659,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       if (!t.swimmer_id) return
       if (!by[t.swimmer_id] || (t.fina_points || 0) > (by[t.swimmer_id].fina_points || 0)) by[t.swimmer_id] = t
     })
-    return Object.values(by).sort((a, b) => (b.fina_points || 0) - (a.fina_points || 0))
+    return Object.values(by).sort((a, b) => (b.fina_points || 0) - (a.fina_points || 0) || nameTie(a, b))
   }, [times])
   const maleTop = bestBySwimmer.filter((t) => t.swimmer_sex === 'M').slice(0, 5)
   const femaleTop = bestBySwimmer.filter((t) => t.swimmer_sex === 'F').slice(0, 5)
@@ -675,7 +675,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
     })
     // "Most Decorated" cards and the medalists podium headline the TOTAL,
     // so rank by total first (gold as tiebreak), matching their captions
-    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver)
+    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver || nameTie(a, b))
   }, [medals])
   const maleMedalists = medalists.filter((m) => sexById[m.id] === 'M').slice(0, 5)
   const femaleMedalists = medalists.filter((m) => sexById[m.id] === 'F').slice(0, 5)
@@ -688,7 +688,7 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       if (!by[r.swimmer_id]) by[r.swimmer_id] = { id: r.swimmer_id, name: r.swimmer_name, count: 0 }
       by[r.swimmer_id].count++
     })
-    return Object.values(by).sort((a, b) => b.count - a.count)
+    return Object.values(by).sort((a, b) => b.count - a.count || nameTie(a, b))
   }, [records])
   const topRecordman = recBySwimmer[0]
 
@@ -872,11 +872,11 @@ function StatisticsTab({ team, times, medals, records, stats, ranking, medalBoxe
       <div className="m-col2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
         {(() => {
           const fmtT = (t) => (typeof t === 'number' ? formatTime(t) : t) || '—'
-          const goldTouch = [...medalists].sort((a, b) => b.gold - a.gold)[0]
+          const goldTouch = [...medalists].sort((a, b) => b.gold - a.gold || nameTie(a, b))[0]
           const bestM = maleTop[0]
           const bestF = femaleTop[0]
-          const topMedM = maleMedalists.slice().sort((a, b) => b.total - a.total)[0]
-          const topMedF = femaleMedalists.slice().sort((a, b) => b.total - a.total)[0]
+          const topMedM = maleMedalists.slice().sort((a, b) => b.total - a.total || nameTie(a, b))[0]
+          const topMedF = femaleMedalists.slice().sort((a, b) => b.total - a.total || nameTie(a, b))[0]
           const oldestRec = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
           const pool = [
             { key: 'latest-rec', person: latestRecord?.swimmer_id, valid: !!latestRecord, render: () => recCard('Latest Record', `Most Recent ${team.name} Record`, recBody(photoById[latestRecord.swimmer_id], latestRecord.swimmer_name, latestRecord.swimmer_id, latestRecord.event_name, fmtT(latestRecord.time), formatDate(latestRecord.date))) },
@@ -1201,7 +1201,7 @@ export default function TeamDetail() {
   const trophies = team?.trophies || []
   const medalBoxes = useMemo(() => (profile?.classification_breakdown || [])
     .map((c) => ({ name: c.name, gold: c.GOLD || 0, silver: c.SILVER || 0, bronze: c.BRONZE || 0, total: (c.GOLD || 0) + (c.SILVER || 0) + (c.BRONZE || 0) }))
-    .sort((a, b) => b.total - a.total), [profile])
+    .sort((a, b) => b.total - a.total || nameTie(a, b)), [profile])
   const medalists = useMemo(() => {
     const by = {}
     medals.forEach((m) => {
@@ -1211,14 +1211,14 @@ export default function TeamDetail() {
       by[m.swimmer_id][k]++; by[m.swimmer_id].total++
     })
     // Total-first (gold tiebreak) — the Medals-tab podium headlines the total
-    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver)
+    return Object.values(by).sort((a, b) => b.total - a.total || b.gold - a.gold || b.silver - a.silver || nameTie(a, b))
   }, [medals])
   // Club ranking: drop clubs with no medals at all (they aren't "ranked by
   // medals won" — keep this club itself so the page never hides its host),
   // and order by total so the podium's headline numbers read 1st ≥ 2nd ≥ 3rd
   const rankingRows = useMemo(() => ranking
     .filter((r) => (r.total || 0) > 0 || r.team_id === Number(id))
-    .sort((a, b) => (b.total || 0) - (a.total || 0) || (b.gold || 0) - (a.gold || 0) || (b.silver || 0) - (a.silver || 0)),
+    .sort((a, b) => (b.total || 0) - (a.total || 0) || (b.gold || 0) - (a.gold || 0) || (b.silver || 0) - (a.silver || 0) || nameTie(a, b)),
   [ranking, id])
 
   if (loading) return <Loading label="Loading profile" />
@@ -1592,7 +1592,7 @@ export default function TeamDetail() {
                       ? <div style={hPhoto}><Pic kind="person" w={160} src={photo} /></div>
                       : <div style={hIcon} aria-hidden="true">{emoji}</div>}
                     <div style={hBody}>
-                      <div style={hTitle}>{title}</div>
+                      <div className="hl-title" style={hTitle}>{title}</div>
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
                       {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
@@ -1603,8 +1603,8 @@ export default function TeamDetail() {
                   </div>
                 )
                 const fmtRec = (r) => (typeof r.time === 'number' ? formatTime(r.time) : r.time) || '—'
-                const decorated = [...medalists].sort((a, b) => b.total - a.total)[0]
-                const goldKing = [...medalists].sort((a, b) => b.gold - a.gold)[0]
+                const decorated = [...medalists].sort((a, b) => b.total - a.total || nameTie(a, b))[0]
+                const goldKing = [...medalists].sort((a, b) => b.gold - a.gold || nameTie(a, b))[0]
                 const leadingWoman = (() => {
                   let best = null
                   times.forEach((t) => { if (sexById[t.swimmer_id] === 'F' && (!best || (t.fina_points || 0) > (best.fina_points || 0))) best = t })
@@ -1615,21 +1615,21 @@ export default function TeamDetail() {
                   if (!r.swimmer_id) return
                   recCount[r.swimmer_id] = recCount[r.swimmer_id] ? { n: recCount[r.swimmer_id].n + 1, rec: recCount[r.swimmer_id].rec } : { n: 1, rec: r }
                 })
-                const collector = Object.values(recCount).sort((a, b) => b.n - a.n)[0]
+                const collector = Object.values(recCount).sort((a, b) => b.n - a.n || nameTie(a, b))[0]
                 const oldestRecord = records.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0]
                 const g = stats?.medals?.gold || 0, s = stats?.medals?.silver || 0, b = stats?.medals?.bronze || 0
                 const youngest = [...roster].filter((r) => r.birth_year).sort((a, b) => b.birth_year - a.birth_year)[0]
                 const latestTrophy = [...trophies].sort((a, b) => (b.year || 0) - (a.year || 0))[0]
                 const pool = [
-                  { key: 'best-perf', person: bestPerf?.swimmer_id, valid: !!bestPerf, render: () => hl({ photo: photoById[bestPerf.swimmer_id], title: <>Best<br />Performance</>, big: bestPerf.time || '—', sub: bestPerf.event_name || '', name: bestPerf.swimmer_name, extra: bestPerf.fina_points ? `${bestPerf.fina_points} FINA pts` : null }) },
-                  { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated<br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
+                  { key: 'best-perf', person: bestPerf?.swimmer_id, valid: !!bestPerf, render: () => hl({ photo: photoById[bestPerf.swimmer_id], title: <>Best <br />Performance</>, big: bestPerf.time || '—', sub: bestPerf.event_name || '', name: bestPerf.swimmer_name, extra: bestPerf.fina_points ? `${bestPerf.fina_points} FINA pts` : null }) },
+                  { key: 'decorated', person: decorated?.id, valid: !!decorated, render: () => hl({ photo: photoById[decorated.id], title: <>Most Decorated <br />Swimmer</>, big: decorated.total || 0, sub: 'Total Medals', name: decorated.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
                   { key: 'new-record', person: newestRecord?.swimmer_id, valid: !!newestRecord, render: () => hl({ photo: photoById[newestRecord.swimmer_id], title: 'New Record', big: fmtRec(newestRecord), sub: newestRecord.event_name || '', name: newestRecord.swimmer_name, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>NEW</span> }) },
-                  { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>Most Gold<br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
-                  { key: 'leading-woman', person: leadingWoman?.swimmer_id, valid: !!leadingWoman, render: () => hl({ photo: photoById[leadingWoman.swimmer_id], title: <>Leading<br />Woman</>, big: leadingWoman.time || '—', sub: leadingWoman.event_name || '', name: leadingWoman.swimmer_name, extra: leadingWoman.fina_points ? `${leadingWoman.fina_points} FINA pts` : null }) },
-                  { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Most<br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
-                  { key: 'oldest-record', person: oldestRecord?.swimmer_id, valid: !!oldestRecord, render: () => hl({ photo: photoById[oldestRecord.swimmer_id], title: <>Longest-Standing<br />Record</>, big: fmtRec(oldestRecord), sub: `${oldestRecord.event_name || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
-                  { key: 'podium', valid: g + s + b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total<br />Medals</>, big: formatNumber(g + s + b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{b}B</span></span> }) },
-                  { key: 'rising-star', person: youngest?.id, valid: !!youngest, render: () => hl({ photo: youngest.photo, title: <>Youngest<br />Swimmer</>, big: youngest.age != null ? `${youngest.age} yrs` : youngest.birth_year, sub: 'Youngest Squad Member', name: youngest.name, extra: youngest.age != null ? `Born ${youngest.birth_year}` : null, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Star size={20} aria-hidden="true" /></span> }) },
+                  { key: 'golden', person: goldKing?.id, valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: photoById[goldKing.id], title: <>Most Gold <br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
+                  { key: 'leading-woman', person: leadingWoman?.swimmer_id, valid: !!leadingWoman, render: () => hl({ photo: photoById[leadingWoman.swimmer_id], title: <>Leading <br />Woman</>, big: leadingWoman.time || '—', sub: leadingWoman.event_name || '', name: leadingWoman.swimmer_name, extra: leadingWoman.fina_points ? `${leadingWoman.fina_points} FINA pts` : null }) },
+                  { key: 'collector', person: collector?.rec.swimmer_id, valid: !!(collector && collector.n > 1), render: () => hl({ photo: photoById[collector.rec.swimmer_id], title: <>Most <br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
+                  { key: 'oldest-record', person: oldestRecord?.swimmer_id, valid: !!oldestRecord, render: () => hl({ photo: photoById[oldestRecord.swimmer_id], title: <>Longest-Standing <br />Record</>, big: fmtRec(oldestRecord), sub: `${oldestRecord.event_name || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer_name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
+                  { key: 'podium', valid: g + s + b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total <br />Medals</>, big: formatNumber(g + s + b), sub: 'Medals Across All Competitions', name: <span className="asw-num"><span style={{ color: 'var(--asw-gold)' }}>{g}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{s}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{b}B</span></span> }) },
+                  { key: 'rising-star', person: youngest?.id, valid: !!youngest, render: () => hl({ photo: youngest.photo, title: <>Youngest <br />Swimmer</>, big: youngest.age != null ? `${youngest.age} yrs` : youngest.birth_year, sub: 'Youngest Squad Member', name: youngest.name, extra: youngest.age != null ? `Born ${youngest.birth_year}` : null, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Star size={20} aria-hidden="true" /></span> }) },
                   { key: 'trophies', valid: trophies.length > 0, render: () => hl({ emoji: <Trophy size={22} aria-hidden="true" />, title: <>Trophies</>, big: trophies.length, sub: `Troph${trophies.length === 1 ? 'y' : 'ies'} Won`, name: latestTrophy?.name, extra: latestTrophy?.year ? `Latest · ${latestTrophy.year}` : null }) },
                   { key: 'quick-stats', valid: true, render: () => hl({ title: 'Quick Stats', big: formatNumber(roster.length), sub: 'Total Swimmers', name: `${formatNumber(stats?.medals?.total ?? medals.length)} Medals · ${formatNumber(records.length)} Records` }) },
                 ]

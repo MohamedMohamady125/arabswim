@@ -5129,3 +5129,42 @@ class AgeCategoryMeaningTests(TestCase):
         self.assertTrue(bands_conflict('13-14', '19 and above'))
         self.assertTrue(bands_conflict("Boy's 13-14", '15 to 16'))
         self.assertFalse(bands_conflict("Women's Open", '13-14'))
+
+
+class ExcelNotesSheetTests(SimpleTestCase):
+    """A notes sheet written in sentences is not a results sheet, even when
+    a sentence contains "noms" and "résultats"."""
+
+    def test_notes_sheet_ignored(self):
+        import tempfile
+        import pandas as pd
+        from importer.parsers.detector import _parse_excel
+        tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        data = pd.DataFrame({
+            'Events': ['50 M Freestyle', '50 M Freestyle'],
+            'Swimmer Name': ['Omar KAMAL', 'Ali HASSAN'],
+            'Time': ['25.43', '26.10'],
+            'Gender': ['M', 'M'],
+            'Meet Name': ['Test Cup'] * 2,
+            'Date': ['12/05/2026'] * 2,
+        })
+        notes = pd.DataFrame([
+            ['TEST CUP 2026'],
+            ['Vingt noms ajoutés ; les résultats et les temps viennent du PDF '
+             'officiel, édition du 12/05/2026. ' + 'Texte long. ' * 20],
+            ['Noms : orthographe du PDF. Temps enregistrés en texte.'],
+        ])
+        from importer.parsers.detector import _fix_header
+        framed = notes.iloc[1:].reset_index(drop=True)
+        framed.columns = ['TEST CUP 2026']
+        self.assertEqual(list(_fix_header(framed).columns), ['TEST CUP 2026'])
+        with pd.ExcelWriter(tmp.name) as xl:
+            data.to_excel(xl, sheet_name='Individual', index=False)
+            notes.to_excel(xl, sheet_name='Bilan', index=False, header=False)
+        try:
+            meet = _parse_excel(tmp.name, 'test.xlsx')
+        finally:
+            os.unlink(tmp.name)
+        self.assertNotIsInstance(meet, list)
+        self.assertEqual(meet.meet_name, 'Test Cup')
+        self.assertEqual(sum(len(e.results) for e in meet.events), 2)

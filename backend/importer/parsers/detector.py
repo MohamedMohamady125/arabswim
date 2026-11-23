@@ -1118,7 +1118,9 @@ def _fix_header(df):
     15 rows for the row that does and re-frame the sheet below it.
     """
     def has_required(columns):
-        lower = [str(c).lower().strip() for c in columns]
+        # a column label is a few words; a sentence that happens to contain
+        # "nom" or "result" (a notes sheet) is not a header
+        lower = [c for c in (str(c).lower().strip() for c in columns) if len(c) <= 40]
         return (any(k in c for c in lower for k in NAME_CANDIDATES)
                 and any(k in c for c in lower for k in TIME_CANDIDATES))
 

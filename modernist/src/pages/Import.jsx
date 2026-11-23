@@ -132,6 +132,11 @@ export default function Import() {
   const [importMethod, setImportMethod] = useState(null) // null, 'pdf', 'excel', 'html', 'special', 'special_excel'
   const [batchResult, setBatchResult] = useState(null) // special-excel batch confirm summary
   const [specialSearch, setSpecialSearch] = useState('') // filter in "Upload Special" match step
+  // Doherty Threshold: a big federation meet has 8,000+ swimmers. Drawing a
+  // row with a dropdown for each froze the tab, so the list is drawn a page
+  // at a time.
+  const MATCH_PAGE = 200
+  const [matchLimit, setMatchLimit] = useState(MATCH_PAGE)
   const [step, setStep] = useState(0) // 0=method, 1=upload, 2=details+edit, 3=match, 4=done
   const [matchView, setMatchView] = useState('auto') // match step: auto | review | all
   const [loading, setLoading] = useState(false)
@@ -1396,7 +1401,18 @@ export default function Import() {
                   </div>
                 )}
 
-                {/* Matches table */}
+                {/* Matches table. Not drawn while the import runs: every progress
+                    update would redraw the whole list for nothing. */}
+                {loading ? (
+                  <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, margin: '8px 0 16px' }}>
+                    Importing {meet.matches.length.toLocaleString()} swimmers — you can leave this page open; it finishes on the server.
+                  </div>
+                ) : (() => {
+                  const shown = meet.matches
+                    .filter((m) => (special
+                      ? (!specialSearch || m.parsed_name.toLowerCase().includes(specialSearch.trim().toLowerCase()))
+                      : (effMatchView === 'all' || needsReview(m))))
+                  return (
                 <div style={{ border: '1px solid var(--color-divider)', marginBottom: 16 }}>
                   <div className="table-scroll" style={{ maxHeight: 500, overflowY: 'auto' }}>
                     <table className="table">
@@ -1410,11 +1426,7 @@ export default function Import() {
                         </tr>
                       </thead>
                       <tbody>
-                        {meet.matches
-                          .filter((m) => (special
-                            ? (!specialSearch || m.parsed_name.toLowerCase().includes(specialSearch.trim().toLowerCase()))
-                            : (effMatchView === 'all' || needsReview(m))))
-                          .map((m, i) => (
+                        {shown.slice(0, matchLimit).map((m, i) => (
                           <tr key={i}>
                             {special && (
                               <td style={{ textAlign: 'center' }}>
@@ -1479,7 +1491,19 @@ export default function Import() {
                       </tbody>
                     </table>
                   </div>
+                  {shown.length > matchLimit && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 12px', borderTop: '1px solid var(--color-divider)' }}>
+                      <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                        Showing {matchLimit.toLocaleString()} of {shown.length.toLocaleString()} — the rest are imported as decided automatically.
+                      </span>
+                      <button type="button" className="btn btn-secondary" onClick={() => setMatchLimit((n) => n + MATCH_PAGE)}>
+                        Show {Math.min(MATCH_PAGE, shown.length - matchLimit)} more
+                      </button>
+                    </div>
+                  )}
                 </div>
+                  )
+                })()}
                 </>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>

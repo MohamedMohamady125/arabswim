@@ -342,7 +342,6 @@ function DayProgram({ day, meetId, meet, board, gender = '', category = '' }) {
                 const row = (item, grouped, last) => (
                   <ProgramRow key={item.id} item={item} meetId={meetId} meet={meet} board={board} last={last} grouped={grouped} />
                 )
-                if (c.items.length === 1) return <div key={c.key} className={`live-cluster g-${c.gender}`}>{row(c.items[0], false, true)}</div>
                 const g = GENDER_STYLE[c.gender] || GENDER_STYLE.X
                 return (
                   <div key={c.key} className={`live-cluster g-${c.gender}`}>

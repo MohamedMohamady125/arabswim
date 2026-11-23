@@ -3842,6 +3842,142 @@ class ExcelDateCellTests(SimpleTestCase):
                          datetime.date(2018, 2, 2))
 
 
+class OpenListLeftoversTests(SimpleTestCase):
+    """The open list of a race repeats every age-group entry. None of it may
+    survive the import — not the lines without a time either."""
+
+    def _meet(self):
+        from importer.parsers.base import ParsedMeet, ParsedEvent, ParsedResult
+
+        def ev(name, group, rows):
+            e = ParsedEvent(event_name=name, distance=100, stroke='Freestyle',
+                            gender='F', age_group=group, round_type='Finals')
+            e.results = [ParsedResult(swimmer_name=n, time_text='', time_centiseconds=t,
+                                      club=c, status=st) for n, c, t, st in rows]
+            return e
+        m = ParsedMeet(meet_name='t')
+        m.events = [
+            ev('Event 1 Girls 15 Year Olds 100 LC Meter Freestyle', '15 Year Olds', [
+                ('Hager Ahmed', 'SMOHA', 6042, 'OK'), ('Jana Ahmed', 'Sporting', 0, 'NS'),
+                ('Ghena Mostafa', 'AHLY', 17558, 'OK')]),
+            ev('Event 1 Girls 20 & Over 100 LC Meter Freestyle', '20 & Over', [
+                ('Logain Abdallah', 'AHLY', 5805, 'OK'), ('Sara Mahmoud', 'Wadi Degla', 0, 'NS')]),
+            ev('Event 1O Women 15 & Over 100 LC Meter Freestyle', '15 & Over', [
+                ('Logain Abdallah', 'AHLY', 5805, 'OK'), ('Hager Ahmed', 'SMOHA', 6042, 'OK'),
+                ('Jana Ahmed', 'Sporting', 0, 'NS'), ('Sara Mahmoud', 'Wadi Degla', 0, 'NS'),
+                ('Ghena Mostafa', 'AHLY', 17958, 'OK'),      # another time typed on the open list
+                ('Only Open', 'ZMALK', 6100, 'OK')]),
+        ]
+        return m
+
+    def test_only_the_swim_unique_to_the_open_list_is_kept(self):
+        from importer.parsers.base import drop_open_classification_duplicates
+        m = drop_open_classification_duplicates(self._meet())
+        by = {e.age_group: [(r.swimmer_name, r.status, r.time_centiseconds) for r in e.results] for e in m.events}
+        self.assertEqual(by['15 & Over'], [('Only Open', 'OK', 6100)])
+        self.assertEqual(len(by['15 Year Olds']), 3)
+        self.assertIn(('Ghena Mostafa', 'OK', 17558), by['15 Year Olds'])
+        self.assertEqual(len(by['20 & Over']), 2)       # the oldest group keeps its own swimmers
+        self.assertTrue(m._has_open_results)
+
+    def test_same_name_at_another_club_is_another_swimmer(self):
+        from importer.parsers.base import drop_open_classification_duplicates
+        m = self._meet()
+        m.events[2].results[2].club = 'HELOP'            # a different Jana Ahmed
+        m = drop_open_classification_duplicates(m)
+        names = [r.swimmer_name for e in m.events if e.age_group == '15 & Over' for r in e.results]
+        self.assertIn('Jana Ahmed', names)
+
+    def test_one_age_categories_are_read(self):
+        from core.age_categories import category_key, age_range, same_category
+        self.assertEqual(category_key('15 Year Olds'), '15')
+        self.assertEqual(age_range('Girls 15 Year Olds'), (15, 15))
+        self.assertTrue(same_category('15 Year Olds', '15'))
+        self.assertEqual(category_key('20 & Over'), '20+')
+        self.assertEqual(category_key('13-14'), '13-14')
+
+
+class EgyptFieldCutMatcherTests(TestCase):
+    """A name cut by the federation's 20-character name field is matched as
+    "starts with" — only to one profile of the same club, sex and birth year."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country
+        cls.egy = Country.objects.create(name='Egypt', code='EGY')
+
+    def setUp(self):
+        import importer.matcher as matcher
+        matcher._country_cache = None
+        matcher.invalidate_norm_cache()
+
+    CUT = 'Marem Ahmad Abdelgafar Ahm'          # "Ahmad Abdelgafar Ahm" = 20
+
+    def _pr(self, name=None, birth_year=2008, club='SMOHA', gender='F'):
+        from importer.parsers.base import ParsedResult
+        return ParsedResult(swimmer_name=name or self.CUT, time_text='',
+                            birth_year=birth_year, nationality_code='EGY',
+                            club=club, gender=gender)
+
+    def _profile(self, name='Marem Ahmad Abdelgafar Ahmed Hassan', **kw):
+        d = dict(nationality=self.egy, club='SMOHA', sex='F', birth_year=2008)
+        d.update(kw)
+        return Swimmer.objects.create(name=name, **d)
+
+    def _match(self, pr):
+        from importer.matcher import find_matching_swimmer
+        return find_matching_swimmer(pr)[0]
+
+    def test_helpers(self):
+        from importer.egypt_names import is_field_cut, is_field_cut_extension
+        self.assertTrue(is_field_cut(self.CUT))
+        self.assertFalse(is_field_cut('Hala Amr'))
+        self.assertTrue(is_field_cut_extension(self.CUT, 'Marem Ahmad Abdelgafar Ahmed'))
+        self.assertFalse(is_field_cut_extension('Hala Amr', 'Hala Amro'))
+        # a 19-character tail was cut on a space: the name goes on with a NEW word
+        self.assertTrue(is_field_cut_extension('Sara Mohamed Ahmed Hasan', 'Sara Mohamed Ahmed Hasan Aly'))
+        self.assertFalse(is_field_cut_extension('Sara Mohamed Ahmed Hasan', 'Sara Mohamed Ahmed Hasanein'))
+
+    def test_cut_name_links_to_the_full_profile_and_keeps_the_full_name(self):
+        s = self._profile()
+        self.assertEqual(self._match(self._pr()), s)
+        s.refresh_from_db()
+        self.assertEqual(s.name, 'Marem AHMAD ABDELGAFAR AHMED HASSAN')
+        self.assertIn(self.CUT, list(s.nicknames.values_list('nickname', flat=True)))
+        self.assertEqual(Swimmer.objects.count(), 1)
+
+    def test_full_name_in_the_file_upgrades_a_cut_profile(self):
+        s = self._profile(name=self.CUT)
+        self.assertEqual(self._match(self._pr('Marem Ahmad Abdelgafar Ahmed Hassan')), s)
+        s.refresh_from_db()
+        self.assertEqual(s.name, 'Marem AHMAD ABDELGAFAR AHMED HASSAN')
+
+    def test_birth_year_one_year_off_still_fits_the_age(self):
+        s = self._profile(birth_year=2007)
+        self.assertEqual(self._match(self._pr()), s)
+
+    def test_two_candidates_is_no_match(self):
+        self._profile()
+        self._profile(name='Marem Ahmad Abdelgafar Ahmady')
+        self.assertIsNone(self._match(self._pr()))
+
+    def test_another_club_is_no_match(self):
+        self._profile(club='AHLY')
+        self.assertIsNone(self._match(self._pr()))
+
+    def test_another_sex_is_no_match(self):
+        self._profile(sex='M')
+        self.assertIsNone(self._match(self._pr()))
+
+    def test_birth_year_that_does_not_fit_is_no_match(self):
+        self._profile(birth_year=2005)
+        self.assertIsNone(self._match(self._pr()))
+
+    def test_profile_without_a_birth_year_is_no_match(self):
+        self._profile(birth_year=None)
+        self.assertIsNone(self._match(self._pr()))
+
+
 class ArabVariantMatcherTests(TestCase):
     """find_matching_swimmer resolves general Arab name variants (dropped
     middle names: federation Excel triple names vs Microplus given+family)
@@ -4226,7 +4362,8 @@ class OpenClassificationDedupTests(SimpleTestCase):
         self.assertEqual(len(m.events), 2)
         open_names = [r.swimmer_name for r in m.events[1].results]
         # duplicates gone, unique senior + DQ row kept
-        self.assertEqual(open_names, ['Senior Only Swi', 'DQ Girl'])
+        # the DQ line is the age-group entry again — it must not be left behind
+        self.assertEqual(open_names, ['Senior Only Swi'])
         # age-group event untouched
         self.assertEqual(len(m.events[0].results), 3)
 

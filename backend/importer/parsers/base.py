@@ -679,6 +679,7 @@ def drop_general_duplicate_results(meet):
 _OPEN_EVENT_RE = re.compile(
     r'(?:\bEvent\s+|#)\d+\s*O\b|\bOpen\b|&\s*O(?:ver)?\b', re.IGNORECASE)
 _OPEN_AGE_RE = re.compile(r'&\s*O(?:ver)?\b|^Open$', re.IGNORECASE)
+_TRUE_OPEN_RE = re.compile(r'(?:\bEvent\s+|#)\d+\s*O\b|\bOpen\b', re.IGNORECASE)
 
 
 def drop_open_classification_duplicates(meet):
@@ -692,14 +693,26 @@ def drop_open_classification_duplicates(meet):
 
     Within each (distance, stroke, gender, round), remove a result from an
     open-marked event when the exact same swim (name + time) also appears
-    in a non-open event. Swims unique to the open list (e.g. seniors with
-    no age-group race) are kept. Sets ``meet._has_open_results`` when open
+    in a non-open event — or when the same swimmer of the same club is
+    listed in a non-open event at all: nobody swims one race twice in one
+    round, so their line in the open list is the same entry again. That
+    covers the lines with no time (NS, DQ, DNF), which would otherwise be
+    left behind as an "& Over" category holding nothing but scratches and
+    disqualifications, and the rare line where the federation typed a
+    different time on the open list (the age-group line is kept). Swims
+    unique to the open list (e.g. seniors with no age-group race) are kept. Sets ``meet._has_open_results`` when open
     duplicates were dropped so the importer can flag the championship for
     open-podium medals.
     """
     def _is_open(ev):
         return bool(_OPEN_EVENT_RE.search(ev.event_name)
                     or _OPEN_AGE_RE.search(ev.age_group or ''))
+
+    def _relay(ev):
+        return bool(getattr(ev, 'is_relay', False) or re.search(r'relay|relais|\dx\d', ev.event_name or '', re.I))
+
+    def _person(r):
+        return (r.swimmer_name.upper(), re.sub(r'\W+', '', (r.club or '').upper()))
 
     groups = {}
     for ev in meet.events:
@@ -711,19 +724,33 @@ def drop_open_classification_duplicates(meet):
     emptied = set()
     for evs in groups.values():
         aged_keys = set()
+        aged_people = set()
         for ev in evs:
             if not _is_open(ev):
                 for r in ev.results:
+                    if not _relay(ev):
+                        aged_people.add(_person(r))
                     if r.time_centiseconds > 0:  # untimed (DQ/NT) rows are not identity
                         aged_keys.add((r.swimmer_name.upper(), r.time_centiseconds))
         # Some meets publish two open listings of the same race (e.g.
         # 'Women 13 & Over 200 LC Meter IM' and '#161A Girls 13&O 200 IM')
         # — dedupe across open events too, keeping the first copy.
         open_seen = set()
-        for ev in evs:
+        open_people = set()
+        # the oldest age group ("20 & Over") reads as open too; go through it
+        # before the real open list ("Event 1O …"), so its swimmers stay in
+        # their own group and only the repeat is dropped
+        for ev in sorted(evs, key=lambda e: bool(_TRUE_OPEN_RE.search(e.event_name))):
             if _is_open(ev) and ev.results:
                 kept = []
                 for r in ev.results:
+                    who = _person(r)
+                    # a club enters several relay teams under one name, so
+                    # the "same entry again" rule is for individual swims only
+                    if not _relay(ev):
+                        if who in aged_people or who in open_people:
+                            continue
+                        open_people.add(who)
                     if r.time_centiseconds <= 0:
                         kept.append(r)
                         continue

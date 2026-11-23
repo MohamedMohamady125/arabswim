@@ -45,6 +45,37 @@ def is_name_extension(short, long):
     return l.startswith(s + ' ')
 
 
+# The federation's meet database also cuts the name itself: everything after
+# the given name is one field of 20 characters ("Marem" + "Ahmad Abdelgafar
+# Ahm"), so the meet program, the heat sheets and the results all carry the
+# same cut name. A tail of 19 means the cut landed on a space.
+FIELD_LEN = 20
+
+
+def _tail(name):
+    parts = re.sub(r'\s+', ' ', (name or '').strip()).split(' ', 1)
+    return parts[1] if len(parts) == 2 else ''
+
+
+def is_field_cut(name):
+    """Could this name have been cut by the 20-character name field?"""
+    return len(_tail(name)) in (FIELD_LEN - 1, FIELD_LEN)
+
+
+def is_field_cut_extension(short, long):
+    """True when `long` starts with the field-cut name `short` and goes on:
+    mid-word when the field was full, with a new word when the cut landed
+    on a space."""
+    if not is_field_cut(short):
+        return False
+    s, l = norm_name(short), norm_name(long)
+    if not s or len(l) <= len(s):
+        return False
+    if len(_tail(short)) == FIELD_LEN:
+        return l.startswith(s)
+    return l.startswith(s + ' ')
+
+
 def is_subset_name(a, b):
     """True when the shorter name is a plausible subset of the longer one.
 

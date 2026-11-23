@@ -15,7 +15,8 @@ from difflib import SequenceMatcher
 from swimmers.models import Swimmer
 from core.models import Country
 
-from .egypt_names import names_equivalent, pick_fullest_name
+from .egypt_names import (names_equivalent, pick_fullest_name, is_subset_name,
+                          is_field_cut, is_field_cut_extension, norm_name)
 
 
 def _club_key(text):
@@ -561,9 +562,59 @@ def _egy_variant_match(parsed_result, category='', meet_date=None):
     toks = normalize_for_matching(name).split()
     if len(toks) < 2:
         return None
-    hits = [sid for sid, sname in _get_egy_cache().get(toks[0], [])
-            if names_equivalent(name, sname)]
+    pool = _get_egy_cache().get(toks[0], [])
+    swimmer = _field_cut_match(pool, parsed_result)
+    if swimmer:
+        return swimmer
+    # a pair that only agrees as "cut name + longer name" was just judged by
+    # the strict rule above — it must not slip through the looser one below
+    hits = [sid for sid, sname in pool
+            if names_equivalent(name, sname) and not _cut_pair(name, sname)]
     return _corroborate_variant_hits(hits, parsed_result, category, meet_date)
+
+
+def _cut_pair(a, b):
+    """True when two names agree ONLY because one is the other cut by the
+    federation's 20-character name field."""
+    if norm_name(a) == norm_name(b) or is_subset_name(a, b):
+        return False
+    return is_field_cut_extension(a, b) or is_field_cut_extension(b, a)
+
+
+def _field_cut_match(pool, parsed_result):
+    """A name cut by the 20-character field ("Marem Ahmad Abdelgafar Ahm")
+    is read as "starts with", not "equals" — in either direction: the file
+    has the cut name and the profile the full one, or the reverse.
+
+    A cut name says less than a full one, so every other fact must agree:
+    the same club, the same sex, and a birth year on the profile within a
+    year of the file's. Exactly one such profile is a match; two is a
+    guess, and a guess is no match. The profile keeps the full name.
+    """
+    name = parsed_result.swimmer_name
+    birth_year = parsed_result.birth_year
+    club = (getattr(parsed_result, 'club', '') or '').strip()
+    sex = (getattr(parsed_result, 'gender', '') or '').strip().upper()[:1]
+    if not birth_year or not club:
+        return None
+    ids = [sid for sid, sname in pool
+           if is_field_cut_extension(name, sname) or is_field_cut_extension(sname, name)]
+    if not ids:
+        return None
+    ok = []
+    for s in Swimmer.objects.filter(id__in=ids, is_relay_team=False):
+        year = _get_swimmer_birth_year(s)
+        if not year or abs(year - birth_year) > 1:
+            continue
+        if sex in ('M', 'F') and s.sex in ('M', 'F') and s.sex != sex:
+            continue
+        if not clubs_equivalent(s.club, club):
+            continue
+        ok.append(s)
+    if len(ok) != 1:
+        return None
+    _record_name_variant(ok[0], name)
+    return ok[0]
 
 
 def _corroborate_variant_hits(hits, parsed_result, category='', meet_date=None):

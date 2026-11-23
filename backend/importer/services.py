@@ -881,6 +881,8 @@ def match_swimmers_preview(preview_data, include_all=False):
             birth_year=s.get('birth_year', 0),
             nationality_code=s.get('nationality_code', ''),
             age=s.get('age', 0),
+            club=s.get('club', '') or '',
+            gender=s.get('gender', '') or '',
         )
 
         swimmer, confidence, match_type = find_matching_swimmer(pr, threshold=92)
@@ -1489,6 +1491,7 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                             nationality_code=result_data.get('nationality_code', ''),
                             age=result_data.get('age', 0),
                             club=result_data.get('club', ''),
+                            gender=result_data.get('gender', '') or '',
                         )
                         swimmer, conf, mtype = find_matching_swimmer(
                             pr, threshold=92, category=band,

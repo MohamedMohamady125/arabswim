@@ -136,11 +136,13 @@ function MedalStack({ rows, wide = false }) {
 
 /* ── Layout bits ────────────────────────────────────────────────────── */
 
-function Panel({ title, children, style }) {
+/* `center`: the content sits in the middle of the panel when a taller
+   neighbour in the row stretches it (a chart must not hang at the top). */
+function Panel({ title, children, style, center = false }) {
   return (
-    <div className="qs-panel" style={style}>
+    <div className="qs-panel" style={center ? { display: 'flex', flexDirection: 'column', ...style } : style}>
       {title && <div className="qs-panel-title">{title}</div>}
-      {children}
+      {center ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>{children}</div> : children}
     </div>
   )
 }
@@ -262,7 +264,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             <VBars data={participation.by_country.map((c) => ({ label: c.code, value: c.count }))} />
           </Panel>
         )}
-        <Panel title="Male vs Female">
+        <Panel title="Male vs Female" center>
           {participation.male === 0 || participation.female === 0 ? (
             /* single-sex meet: a 100%/0% donut says nothing — state it plainly */
             <div style={{ textAlign: 'center', padding: '26px 0' }}>
@@ -279,8 +281,10 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                   <div className="asw-num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-neutral-700)' }}>{participation.male}</div>
                 </div>
                 <Donut segments={[
-                  { label: 'Male', value: participation.male, color: NAVY },
+                  /* drawn clockwise from 12 o'clock: women first, so each arc
+                     sits on the side of its own figure (Proximity) */
                   { label: 'Female', value: participation.female, color: BLUE },
+                  { label: 'Male', value: participation.male, color: NAVY },
                 ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
                 <div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY_DARK }}>{femalePct}%</div>
@@ -366,17 +370,17 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           </div>
           <MedalStack rows={medals.table.slice(0, 10)} wide={medalsByClub} />
         </Panel>
-        <Panel title={`Medal Share by ${medalEntity}`}>
+        <Panel title={`Medal Share by ${medalEntity}`} center>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Donut segments={shareSegs} centerTop={medals.total} centerBot="TOTAL MEDALS" />
             <div style={{ display: 'grid', gap: 8 }}>
               {shareSegs.map((s) => (
-                <LegendDot key={s.label} color={s.color}>
-                  {s.label}
-                  <span className="asw-num" style={{ marginLeft: 8, fontWeight: 800, color: NAVY_DARK }}>
+                <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                  <LegendDot color={s.color}>{s.label}</LegendDot>
+                  <span className="asw-num" style={{ fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>
                     {Math.round((s.value / (medals.total || 1)) * 100)}%
                   </span>
-                </LegendDot>
+                </div>
               ))}
             </div>
           </div>

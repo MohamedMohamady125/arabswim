@@ -210,8 +210,16 @@ export const normCategory = (s) => {
   const r = low.match(CAT_RANGE)
   if (r && Number(r[1]) <= Number(r[2])) return `${Number(r[1])}-${Number(r[2])}`
   for (const rx of CAT_OVER) { const m = low.match(rx); if (m) return `${Number(m[1])}+` }
+  // one age per category: "15 Year Olds", "15 ans", "15"
+  const one = low.match(/^(\d{1,2})\s*(?:year|yr|an)s?(?:\s*olds?)?$|^(\d{1,2})$/)
+  if (one) return String(Number(one[1] || one[2]))
   return low.replace(/[\s_-]+/g, '')
 }
+
+// Age categories youngest first ("15 Year Olds" … "19 Year Olds", "20 & Over"),
+// names with no age in them after, alphabetically.
+const catAge = (s) => { const m = normCategory(s).match(/\d+/g); return m ? Number(m[0]) + (/\+$/.test(normCategory(s)) ? 0.5 : 0) : Infinity }
+export const byAgeCategory = (a, b) => (catAge(a) - catAge(b)) || String(a).localeCompare(String(b))
 
 // Split an event's results into one group per age category, in the order the
 // categories first appear (the order of the results file). `only` keeps a

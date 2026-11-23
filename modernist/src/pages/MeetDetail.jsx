@@ -20,7 +20,7 @@ import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
-import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials, normCategory } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials, normCategory, byAgeCategory } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 import Pic from '../components/Pic'
 
@@ -2607,7 +2607,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
           </select>
         </div>
         {form.gender_display === 'all' && (() => {
-          const allCats = (meet.categories || []).filter(Boolean).sort()
+          const allCats = (meet.categories || []).filter(Boolean).sort(byAgeCategory)
           if (!allCats.length) return null
           const map = form.category_gender_map || {}
           return (

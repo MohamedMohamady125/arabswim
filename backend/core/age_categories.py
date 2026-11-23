@@ -10,6 +10,7 @@ every spelling of the same group is understood the same way.
     category_key("19 and above") == category_key("19+") == category_key("19 & Over") == '19+'
     category_key("Men's 18/Under") == category_key("U18") == 'U18'
     category_key("Boy's 13-14") == category_key("13 - 14") == '13-14'
+    category_key("15 Year Olds") == category_key("15") == '15'
     category_key("Women's Open") == category_key("") == ''          (open)
 
 The frontend mirrors `category_key` in utils.js (`normCategory`); keep the
@@ -35,6 +36,8 @@ _UNDER = (re.compile(r'\b(?:u|under)\s*[-/]?\s*(\d{1,2})\b'),
 _OVER = (re.compile(r'\b(\d{1,2})\s*(?:\+|plus\b)'),
          re.compile(r'\b(\d{1,2})\s*(?:[/&-]|and|et)?\s*(?:over|above|older|up|o)\b'),
          re.compile(r'\b(?:over|above)\s*(\d{1,2})\b'))
+# one year of birth per category: "15 Year Olds", "15 ans", "15 yrs"
+_SINGLE = re.compile(r'^(\d{1,2})\s*(?:year|yr|an)s?(?:\s*olds?)?$|^(\d{1,2})$')
 _RANGE = re.compile(r'\b(\d{1,2})\s*(?:-|–|—|to|a|à|/)\s*(\d{1,2})\b')
 
 
@@ -66,6 +69,10 @@ def age_range(label):
         m = rx.search(low)
         if m:
             return int(m.group(1)), None
+    m = _SINGLE.match(low)
+    if m:
+        age = int(m.group(1) or m.group(2))
+        return age, age
     return None
 
 
@@ -85,6 +92,8 @@ def category_key(label):
         lo, hi = rng
         if hi is None:
             return f'{lo}+'
+        if lo == hi:
+            return str(lo)
         return f'U{hi}' if lo == 0 else f'{lo}-{hi}'
     return re.sub(r'[\s_\-]+', '', _plain(label))
 

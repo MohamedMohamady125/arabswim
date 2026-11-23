@@ -4868,3 +4868,127 @@ class ArabChampionshipImportLessonsTests(TestCase):
         self.assertIsNone(find_matching_swimmer(row('Mohammed S ALOTAIBI', 1999))[0])               # different middle name
         self.assertIsNone(find_matching_swimmer(row('Mohammed M ALOTAIBI', 1999, 'KWT'))[0])        # another country
         self.assertIsNone(find_matching_swimmer(row('Ali H ALBUSAEED', 2015))[0])                   # first name differs
+
+
+class ExcelKeepsTheFileWordingTests(TestCase):
+    """The Excel import stores age categories and status marks as the file
+    words them, and the backend still understands what they mean."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Country, Event
+        for name, code in (('Tunisia', 'TUN'), ('Morocco', 'MAR')):
+            Country.objects.create(name=name, code=code, region='ARAB')
+        Event.objects.create(name='50 M Freestyle', distance=50, stroke='Freestyle', is_relay=False)
+
+    def _file(self, rows, categories=None):
+        import tempfile
+        import pandas as pd
+        n = len(rows)
+        df = pd.DataFrame({
+            'Events': ['50 M Freestyle'] * n,
+            'Age Category': categories or [''] * n,
+            'Round': ['Final'] * n,
+            'Ranking': [r[0] for r in rows],
+            'Swimmer Name': [r[1] for r in rows],
+            'Time': [r[2] for r in rows],
+            'YoB': [2004] * n,
+            'Nationality': [r[3] for r in rows],
+            'Gender': ['Male'] * n,
+            'Meet Name': ['Wording Open'] * n,
+            'Date': ['26/09/2026'] * n,
+            'Status': [r[4] for r in rows],
+        })
+        tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        with pd.ExcelWriter(tmp.name) as xl:
+            df.to_excel(xl, sheet_name='Individual', index=False)
+        return tmp.name
+
+    def _import(self, path, **kw):
+        import os
+        from importer.services import parse_file, confirm_import
+        try:
+            prev = parse_file(file_path=path)
+            if isinstance(prev, list):
+                prev = prev[0]
+            res = confirm_import(prev, {}, **kw)
+        finally:
+            os.unlink(path)
+        from championships.models import Result
+        return Result.objects.filter(championship_id=res['championship_id']), res
+
+    def test_hc_and_status_rows_are_imported_as_the_file_has_them(self):
+        rows, _ = self._import(self._file([
+            (1, 'Adam FIRST', '24.10', 'TUN', None),
+            ('H.C.', 'Guest SWIMMER', '23.90', 'MAR', None),
+            ('N.C.', 'Forfeit NODECL', None, 'TUN', 'Frf n.d.'),
+            ('N.C.', 'Forfeit DECL', None, 'TUN', 'Frf dec.'),
+            ('N.C.', 'Dis QUALIFIED', None, 'TUN', 'Disqual.'),
+            ('N.C.', 'Gave UP', None, 'TUN', 'Abandon'),
+        ]))
+        got = {r.swimmer.name: (r.is_hc, r.hc_type, r.time_centiseconds) for r in rows}
+        self.assertEqual(len(got), 6, got)
+        self.assertEqual(got['Adam FIRST'], (False, '', 2410))
+        self.assertEqual(got['Guest SWIMMER'], (True, 'HC', 2390))      # keeps its time
+        self.assertEqual(got['Forfeit NODECL'], (True, 'Frf n.d.', 0))
+        self.assertEqual(got['Forfeit DECL'], (True, 'Frf dec.', 0))
+        self.assertEqual(got['Dis QUALIFIED'], (True, 'Disqual.', 0))
+        self.assertEqual(got['Gave UP'], (True, 'Abandon', 0))
+        # the faster H.C. guest never takes the medal
+        from medals.models import Medal
+        self.assertEqual(
+            set(Medal.objects.filter(championship=rows[0].championship).values_list('swimmer__name', 'medal_type')),
+            {('Adam FIRST', 'GOLD')})
+
+    def test_row_with_no_time_and_no_mark_is_still_skipped(self):
+        rows, _ = self._import(self._file([
+            (1, 'Adam FIRST', '24.10', 'TUN', None),
+            (None, 'Empty ROW', None, 'TUN', None),
+        ]))
+        self.assertEqual(set(rows.values_list('swimmer__name', flat=True)), {'Adam FIRST'})
+
+    def test_age_category_is_stored_exactly_as_the_file_names_it(self):
+        rows, _ = self._import(self._file([
+            (1, 'Adam FIRST', '24.10', 'TUN', None),
+            (1, 'Badr SECOND', '25.10', 'TUN', None),
+            (1, 'Cid THIRD', '26.10', 'TUN', None),
+            (1, 'Dan FOURTH', '27.10', 'TUN', None),
+        ], categories=['19 and above', "Men's 18/Under", '13 - 14', "Men's"]))
+        got = dict(rows.values_list('swimmer__name', 'category'))
+        self.assertEqual(got['Adam FIRST'], '19 and above')
+        self.assertEqual(got['Badr SECOND'], "Men's 18/Under")
+        self.assertEqual(got['Cid THIRD'], '13 - 14')
+        self.assertEqual(got['Dan FOURTH'], '')          # only the sex: not an age category
+
+    def test_reimport_with_another_spelling_updates_instead_of_duplicating(self):
+        rows, res = self._import(self._file(
+            [(1, 'Adam FIRST', '24.10', 'TUN', None)], categories=['19+']))
+        self.assertEqual(rows.get().category, '19+')
+        rows, _ = self._import(self._file(
+            [(1, 'Adam FIRST', '24.10', 'TUN', None)], categories=['19 and above']),
+            championship_id=res['championship_id'])
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.get().category, '19 and above')    # the file's wording wins
+
+
+class AgeCategoryMeaningTests(TestCase):
+    def test_every_spelling_of_a_group_has_one_key(self):
+        from core.age_categories import category_key, age_range, is_open
+        for label in ('19 and above', '19+', '19 & Over', '19/Over', 'Over 19', "Men's 19 and over"):
+            self.assertEqual(category_key(label), '19+', label)
+            self.assertEqual(age_range(label), (19, None), label)
+        for label in ("Men's 18/Under", 'U18', 'Under 18', '18 & Under', '18/U'):
+            self.assertEqual(category_key(label), 'U18', label)
+        for label in ('13-14', '13 – 14', '13 to 14', "Boy's 13-14", 'Girls 13-14'):
+            self.assertEqual(category_key(label), '13-14', label)
+        for label in ('', 'Open', "Women's Open", "Men's", 'TC', 'Cat. Générale'):
+            self.assertTrue(is_open(label), label)
+            self.assertEqual(category_key(label), '', label)
+        self.assertNotEqual(category_key('Cadets'), category_key('Minimes'))
+
+    def test_matcher_reads_the_same_ages_from_any_spelling(self):
+        from importer.matcher import bands_conflict
+        self.assertFalse(bands_conflict('19+', '19 and above'))
+        self.assertTrue(bands_conflict('13-14', '19 and above'))
+        self.assertTrue(bands_conflict("Boy's 13-14", '15 to 16'))
+        self.assertFalse(bands_conflict("Women's Open", '13-14'))

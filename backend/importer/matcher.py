@@ -312,27 +312,25 @@ _BROAD_CATEGORIES = {
 # per season).
 _FRENCH_BANDS = {'POUSSINS', 'BENJAMINS', 'MINIMES', 'CADETS', 'JUNIORS', 'SENIORS'}
 
-_AGE_RANGE_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
-_AGE_PLUS_RE = re.compile(r'(\d{1,2})\s*\+')
 
 
 def category_band(category):
     """The exclusive age-band label of a category, or '' when broad/absent."""
+    from core.age_categories import is_open
     c = (category or '').strip()
-    if c.upper() in _BROAD_CATEGORIES:
+    if c.upper() in _BROAD_CATEGORIES or is_open(c):
         return ''
     return c
 
 
 def _age_range(band):
-    """Numeric age range (lo, hi) implied by a band label, or None."""
-    m = _AGE_RANGE_RE.search(band)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    m = _AGE_PLUS_RE.search(band)
-    if m:
-        return int(m.group(1)), 99
-    return None
+    """Numeric age range (lo, hi) implied by a band label, or None — read by
+    core.age_categories, so "19 and above", "19+" and "19 & Over" agree."""
+    from core.age_categories import age_range
+    rng = age_range(band)
+    if not rng:
+        return None
+    return rng[0], 99 if rng[1] is None else rng[1]
 
 
 def bands_conflict(cat_a, cat_b):
@@ -347,6 +345,9 @@ def bands_conflict(cat_a, cat_b):
     a, b = category_band(cat_a), category_band(cat_b)
     if not a or not b or a.upper() == b.upper():
         return False
+    from core.age_categories import same_category
+    if same_category(a, b):
+        return False  # two spellings of one group
     tokens_a = {t.strip().upper() for t in a.split('/')}
     tokens_b = {t.strip().upper() for t in b.split('/')}
     if tokens_a & tokens_b:

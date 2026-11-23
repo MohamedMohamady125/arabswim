@@ -779,7 +779,7 @@ def _build_preview(parsed_meet):
             continue
         session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
         ag = event_data.get('age_group') or ''
-        if ag.upper() == 'OPEN':
+        if _is_open_category(ag):
             ag = ''
         key = (sd, sday, event_data['event_name'], event_data['gender'],
                session, ag)
@@ -1692,6 +1692,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         # Adopt the richer per-category label
                         existing.category = category
                         existing.save(update_fields=['category'])
+                    if not existing and category:
+                        existing = _same_group_twin(twin_qs, category)
                 if existing:
                     claimed_results.add(existing.id)
                     # Refresh leg swimmers on re-import: earlier parser
@@ -1788,6 +1790,8 @@ def confirm_import(preview_data, swimmer_decisions, championship_id=None, champi
                         # Adopt the richer per-category label
                         existing.category = category
                         existing.save(update_fields=['category'])
+                    if not existing and category:
+                        existing = _same_group_twin(twin_qs, category)
 
             if existing:
                 # A hand-edited result is the source of truth — never let a
@@ -2082,6 +2086,30 @@ def _maybe_record_nationality_change(swimmer, result_data, championship,
     # (the matcher creates/keeps one profile per nationality), so we never
     # rewrite an existing known nationality here.
     return False
+
+
+def _is_open_category(label):
+    """An open event has no category line of its own in the program."""
+    from core.age_categories import is_open
+    return is_open(label)
+
+
+def _same_group_twin(twin_qs, category):
+    """The already-imported result of the same swim whose age category is
+    the same group under another spelling ("19+" stored, "19 and above" in
+    the file being imported now). Without this, importing a meet again from
+    a file that words its categories differently would duplicate every
+    result. The file's wording is adopted, since the category is always
+    shown as the file names it — unless the result was edited by hand."""
+    from core.age_categories import category_key
+    key = category_key(category)
+    for row in twin_qs.exclude(category='').exclude(category=category)[:20]:
+        if category_key(row.category) == key:
+            if not row.manually_edited:
+                row.category = category
+                row.save(update_fields=['category'])
+            return row
+    return None
 
 
 def _create_relay_only_swimmers(championship):
@@ -2455,7 +2483,7 @@ def rebuild_program(championship, preview_data):
         session_day = event_data.get('session_day') or 0
         session = ROUND_TO_SESSION.get(event_data.get('round_type') or '', '')
         prog_ag = event_data.get('age_group') or ''
-        if prog_ag.upper() == 'OPEN':
+        if _is_open_category(prog_ag):
             prog_ag = ''
         prog_gender = event_data.get('gender') or 'X'
         # Key on the day-relevant fields (not the date) so an event that has a

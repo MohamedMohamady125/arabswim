@@ -20,7 +20,7 @@ import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
-import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials, normCategory } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 import Pic from '../components/Pic'
 
@@ -976,13 +976,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 the column; the medal→flag gap stays identical on every meet
                 and every phone */}
             <div className="rank-box">
-              {r.is_hc ? (
+              {r.is_hc && !r.time_centiseconds ? (
+                // no time: the reason is in the Time column, in the file's own
+                // words ("Frf n.d.", "Disqual.") — too long for this 18px box
+                '—'
+              ) : r.is_hc ? (
                 <span
                   className="tag tag-neutral"
-                  title={{
-                    TLD: 'Time limit exceeded', DQ: 'Disqualified',
-                    DNS: 'Did not start', DNF: 'Did not finish',
-                  }[r.hc_type] || 'Hors concours'}
+                  title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}
                 >{r.hc_type || 'HC'}</span>
               ) : medalOnRow ? (
                 <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
@@ -3114,7 +3115,7 @@ const sinkStatusRows = (arr) => [...arr.filter((r) => !isStatusRow(r)), ...arr.f
 
 // Keep only rows that belong to this program item's age category (labels can
 // differ in case/spacing between the programme and the results import)
-const normCat = (s) => (s || '').toString().toLowerCase().replace(/[\s_-]+/g, '')
+const normCat = normCategory
 const filterByCategory = (arr, ageCategory) => {
   const want = normCat(ageCategory)
   if (!want) {
@@ -3224,7 +3225,8 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           {data.map((r, i) => (
             <tr key={r.id}>
               <td className="asw-num" style={{ fontWeight: 800, width: 36, minWidth: 36 }}>
-                {r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
+                {r.is_hc && !r.time_centiseconds ? '—'
+                  : r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
                   : showMedals && i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
               </td>
               <td style={{ maxWidth: 0, width: '100%' }}>
@@ -3249,7 +3251,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               </td>
               <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
               {isNational && <td className="hide-mobile text-muted">{r.team || '—'}</td>}
-              <td className="time asw-time">{r.formatted_time}</td>
+              <td className="time asw-time">{r.time_centiseconds ? r.formatted_time : <span className="text-muted">{r.hc_type || '—'}</span>}</td>
               <td className="num asw-num">{r.fina_points || '—'}</td>
             </tr>
           ))}

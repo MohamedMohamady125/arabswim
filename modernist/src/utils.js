@@ -190,8 +190,28 @@ export const recordEventLabel = (eventName, pool) =>
   `${eventName || ''}${pool && pool !== 'OW' ? ` | ${pool}` : ''}`
 
 // ---- age categories in a meet's results -----------------------------------
-// Labels differ in case and spacing between the program and the results file
-export const normCategory = (s) => (s || '').toString().toLowerCase().replace(/[\s_-]+/g, '')
+// A category is shown exactly as the meet's file names it ("19 and above",
+// "19+", "Men's 18/Under"). To tell whether two names are the same group
+// (a program line and its results, a filter and a row) compare their keys:
+// every spelling of a group has one key, '' meaning open / no category.
+// Mirrors backend core/age_categories.py `category_key` — keep them in step.
+const CAT_GENDER = /\b(men|women|mens|womens|boys|girls|boy|girl|male|female|mixed|mixte|garcons|garçons|filles|messieurs|dames|hommes|femmes)(?:['‘’]s|s['‘’]|['‘’])?(?=[^\p{L}\p{N}_]|$)/giu
+const CAT_OPEN = new Set(['', 'open', 'tc', 'toutes categories', 'toutes catégories', 'cat generale', 'cat générale',
+  'generale', 'générale', 'categorie generale', 'catégorie générale', 'general', 'all ages', 'absolute'])
+const CAT_UNDER = [/\b(?:u|under)\s*[-/]?\s*(\d{1,2})\b/, /\b(\d{1,2})\s*(?:[/&-]|and|et)?\s*(?:under|below|younger|u|moins)\b/]
+const CAT_OVER = [/\b(\d{1,2})\s*(?:\+|plus\b)/, /\b(\d{1,2})\s*(?:[/&-]|and|et)?\s*(?:over|above|older|up|o)\b/, /\b(?:over|above)\s*(\d{1,2})\b/]
+const CAT_RANGE = /\b(\d{1,2})\s*(?:-|–|—|to|a|à|\/)\s*(\d{1,2})\b/
+export const normCategory = (s) => {
+  let low = (s || '').toString().replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim()
+  if (low.toLowerCase() === 'nan') return ''
+  low = low.replace(CAT_GENDER, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–—/&,.]+|[\s\-–—/&,.]+$/g, '').toLowerCase()
+  if (CAT_OPEN.has(low.replace(/[\s.-]+/g, ' ').trim())) return ''
+  for (const rx of CAT_UNDER) { const m = low.match(rx); if (m) return `U${Number(m[1])}` }
+  const r = low.match(CAT_RANGE)
+  if (r && Number(r[1]) <= Number(r[2])) return `${Number(r[1])}-${Number(r[2])}`
+  for (const rx of CAT_OVER) { const m = low.match(rx); if (m) return `${Number(m[1])}+` }
+  return low.replace(/[\s_-]+/g, '')
+}
 
 // Split an event's results into one group per age category, in the order the
 // categories first appear (the order of the results file). `only` keeps a

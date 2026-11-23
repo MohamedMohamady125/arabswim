@@ -928,6 +928,72 @@ def _cell_status(val):
     return _STATUS_ALIASES.get(s, '')
 
 
+# marks that leave the swim's time standing: it is shown, but never ranks,
+# medals or sets a record
+_TIMED_MARKS = {'HC': 'HC', 'EXH': 'HC', 'HORS CONCOURS': 'HC', 'NC': 'HC', 'TLD': 'TLD'}
+_DQ_WITH_TIME = re.compile(r'^(DQ|DSQ|DISQ)')
+
+
+def _mark_text(val):
+    """The letters in a Ranking or Status cell ("H.C.", "Frf n.d."), or ''
+    for an empty cell, a number or a medal word."""
+    text = re.sub(r'\s+', ' ', _safe_str(val)).strip()
+    if not text or text.lower() in ('nan', '-', '–', '—', 'ok'):
+        return ''
+    if _cell_rank(val) or not re.search(r'[A-Za-z]', text):
+        return ''
+    return text
+
+
+def _row_status(has_time, time_cell, rank_cell, status_cell):
+    """How a results row is marked, read from its Status and Ranking cells.
+
+    Federation sheets (Tunisia, Morocco, Algeria) carry swims that are not
+    ordinary ranked results: "H.C." (hors concours) swims with a time, and
+    rows with no time whose Status says why ("Frf n.d.", "Disqual.",
+    "Abandon"). Every one of them is imported — a row is only skipped when
+    it has neither a time nor any mark.
+
+    Returns 'OK', 'HC'/'TLD' (time kept), the status as the file words it
+    (at most 8 characters, the size of the field), or '' to skip the row.
+    """
+    status_txt = _mark_text(status_cell)
+    rank_txt = _mark_text(rank_cell)
+    norm = lambda t: t.upper().replace('.', '').strip()
+    if has_time:
+        for t in (status_txt, rank_txt):
+            if norm(t) in _TIMED_MARKS:
+                return _TIMED_MARKS[norm(t)]
+        if status_txt and _DQ_WITH_TIME.match(norm(status_txt)):
+            return _status_label(status_txt)
+        return 'OK'
+    label = status_txt or rank_txt
+    if label and norm(label) in ('NC', 'HC', 'EXH'):
+        # "not classified" with no time and no reason given
+        return 'NC' if norm(label) == 'NC' else 'DNS'
+    if label:
+        return _status_label(label)
+    return _cell_status(time_cell)
+
+
+def _status_label(text):
+    """A status as the file words it. Standard codes keep their standard
+    form ("dsq" → DQ); anything longer than the field is shortened to the
+    standard code it means."""
+    key = text.upper().replace('.', '').strip()
+    if key in _STATUS_ALIASES:
+        return _STATUS_ALIASES[key]
+    if len(text) <= 8:
+        return text
+    if key.startswith(('DISQ', 'DSQ')):
+        return 'DQ'
+    if key.startswith(('FORF', 'FRF', 'ABS', 'WITHD', 'SCRATCH', 'DID NOT START', 'NON PART')):
+        return 'DNS'
+    if key.startswith(('ABAND', 'DID NOT FINISH')):
+        return 'DNF'
+    return text[:8].strip()
+
+
 def _excel_round(raw):
     """Map a Round cell to the site's round types, preserving specific
     round names from the source: Final A → Finals, Final B → Consolation,
@@ -964,35 +1030,20 @@ def _excel_round(raw):
     return _safe_str(raw)
 
 
-_CATEGORY_GENDER_WORDS = re.compile(
-    r"\b(men|women|mens|womens|boys|girls|male|female|mixed|mixte|garcons|filles|"
-    r"messieurs|dames|hommes|femmes)(?:['\u2018\u2019\u0027]s|['\u2018\u2019\u0027])?\b", re.IGNORECASE)
-
-
 def _normalize_age_category(cat):
-    """Normalize age-category wording so variants group identically.
+    """The age category of an Excel row, exactly as the file names it.
 
-    "Men's 18/Under", "U18", "18/U", "18 & Under", "Under 18" -> "U18";
-    "Women's Open"/"Open" -> '' (open event); gender words are stripped
-    (the Gender column carries the sex). Range categories ("13-14") and
-    anything unrecognized pass through unchanged.
+    "19 and above" stays "19 and above" and "19+" stays "19+": the site shows
+    the meet's own wording. Only a cell that holds nothing but the sex
+    ("Men's") is left blank. What a name MEANS (which ages, open or not, the
+    same group as another spelling) is worked out by core.age_categories
+    wherever the backend needs it — never by rewriting the stored name.
     """
-    raw = _safe_str(cat).strip()
-    if not raw or raw.lower() == 'nan':
-        return ''
-    c = _CATEGORY_GENDER_WORDS.sub('', raw)
-    c = c.strip(" \t-–—/&,.").strip()
-    low = c.lower()
-    if not low or low == 'open':
-        return ''
-    m = (re.search(r'\b(?:u|under)\s*[-/]?\s*(\d{1,2})\b', low)
-         or re.search(r'\b(\d{1,2})\s*(?:[/&+-]|and)?\s*(?:under|u)\b', low))
-    if m:
-        return f'U{m.group(1)}'
-    m = re.search(r'\b(\d{1,2})\s*(?:[/&+-]|and)?\s*(?:over|o)\b', low)
-    if m:
-        return f'{m.group(1)}+'
-    return c
+    from core.age_categories import clean_label, _plain
+    label = clean_label(_safe_str(cat))
+    # "Men's" / "Women's" alone is the sex, which has its own column — it is
+    # not an age category (and on a mixed relay it would split one team in two)
+    return label if _plain(label) else ''
 
 
 def _excel_iso_date(raw, dayfirst):
@@ -1550,6 +1601,7 @@ def _parse_individual_sheet(df, meet, events_dict):
     nation_col = _find_column(cols, ['nationality', 'nation', 'nat', 'country', 'pays'])
     gender_col = _find_column(cols, ['gender', 'sex', 'sexe'])
     rank_col = _find_column(cols, ['rank', 'place', 'rg', 'rang', 'pos'])
+    status_col = _find_column(cols, ['status', 'statut'])
     points_col = _find_column(cols, ['points', 'pts', 'fina', 'len'])
     round_col = _find_column(cols, ['round', 'tour', 'phase'])
     category_col = _find_column(cols, ['category', 'catégorie', 'cat', 'age group', 'age_group'])
@@ -1651,13 +1703,16 @@ def _parse_individual_sheet(df, meet, events_dict):
 
         # ---- Parse result cells ----
         time_val = _cell_time_str(row[time_col])
-        status = 'OK'
+        # Marked rows are imported as the file has them: an H.C. swim keeps
+        # its time, a forfeit / disqualification / abandon keeps its wording.
+        # Only a row with neither a time nor a mark is skipped.
+        status = _row_status(
+            bool(time_val), row[time_col],
+            row[rank_col] if rank_col else None,
+            row[status_col] if status_col else None)
+        if not status:
+            continue
         if not time_val:
-            # DNS/DQ/DNF rows are kept as status results; anything else
-            # without a readable time is skipped.
-            status = _cell_status(row[time_col])
-            if not status:
-                continue
             time_cs = 0
         else:
             time_cs = parse_time_to_centiseconds(time_val)
@@ -1768,6 +1823,7 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
     round_col = cols_finder(rcols, ['round'])
     category_col = cols_finder(rcols, ['category'])
     rank_col = cols_finder(rcols, ['rank', 'place', 'medal', 'médaille'])
+    status_col = cols_finder(rcols, ['status', 'statut'])
     relay_kind_col = rcols.get('relay') or rcols.get('type')  # "Men's" / "Women's" / "Mixed"
     order_col = cols_finder(rcols, ['relay order', 'order', 'leg'])
     date_col = cols_finder(rcols, ['date', 'session date'])
@@ -1854,6 +1910,13 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
             if not team_name and not team_time_str:
                 continue  # nothing identifying a team on this row
             team_time_cs = parse_time_to_centiseconds(team_time_str)
+            # a relay marked H.C., disqualified or forfeited is imported too
+            team_status = _row_status(
+                team_time_cs > 0, row[team_time_col] if team_time_col else None,
+                row[rank_col] if rank_col else None,
+                row[status_col] if status_col else None)
+            if not team_status:
+                continue  # no time and no mark: nothing to import
             team_result = ParsedResult(
                 swimmer_name=team_name,
                 time_text=team_time_str,
@@ -1863,6 +1926,7 @@ def _parse_relay_sheet(relay_df, meet, cols_finder):
                 round_type=round_type,
                 age_group=category,
                 club=team_name,
+                status=team_status,
             )
             if nation_col:
                 nat = _safe_str(row[nation_col]).upper()

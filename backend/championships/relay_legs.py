@@ -59,14 +59,10 @@ def names_fit(leg_name, profile_name):
 
 
 def _age_range(category):
-    """(low, high) ages named by a category such as "Boy's 13-14" or "19+"."""
-    m = re.search(r'(\d{1,2})\s*[-–]\s*(\d{1,2})', category or '')
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    m = re.search(r'(\d{1,2})\s*\+', category or '')
-    if m:
-        return int(m.group(1)), None
-    return None
+    """(low, high) ages named by a category such as "Boy's 13-14", "19+" or
+    "19 and above" (high is None for an "and over" group)."""
+    from core.age_categories import age_range
+    return age_range(category)
 
 
 def _age_fits(swimmer, age_range, year, must_know=False):

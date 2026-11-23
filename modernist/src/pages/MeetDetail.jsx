@@ -596,6 +596,9 @@ function EditResultModal({ result, isRelay, onClose, onSaved }) {
 /* ─────────────────────────── Results tab ─────────────────────────── */
 
 function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDoublePodium, hostCode, bFinalNoMedals, heatsCategoryMedals, genderDisplayMode, categoryGenderMap, classificationName, onDataChanged }) {
+  // "TC" (toutes catégories) is the Tunisian federation's word for the
+  // all-ages ranking; every other country's meet calls it Open.
+  const openLabel = hostCode === 'TUN' ? 'TC' : 'Open'
   const navigate = useNavigate()
   const [initParams] = useSearchParams()
   // deep link from Records: ?event=&gender=&result= opens that exact swim
@@ -1177,7 +1180,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               onChange={(e) => { setSelectedCategory(e.target.value); setExpandedRow(null) }}
             >
               <option value="ALL">All categories</option>
-              {hasOpenPodium && <option value="OPEN">TC</option>}
+              {hasOpenPodium && <option value="OPEN">{openLabel}</option>}
               {categories.filter((c) => {
                 if (!c) return false
                 if (!isAllMode || !categoryGenderMap) return true
@@ -1277,7 +1280,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {isOpenView && gi === 0 && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>TC — all categories, ranked by time</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{openLabel} — all categories, ranked by time</td>
                     </tr>
                   )}
                   {selectedCategory === 'ALL' && hasCategories && (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampionshipStats, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
+import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampionshipResults, getMeetDocuments, uploadMeetDocument, deleteMeetDocument } from '../api/championships'
 import { useAuth } from '../context/AuthContext'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import { resultsByCategory, normCategory } from '../utils'
@@ -45,17 +45,6 @@ function LivePill({ small = false }) {
   )
 }
 
-/* Small medal trio — real medal icons instead of flat dots */
-function MedalDots({ size = 12, gap = 1 }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap }}>
-      <MedalIcon type="GOLD" size={size} />
-      <MedalIcon type="SILVER" size={size} />
-      <MedalIcon type="BRONZE" size={size} />
-    </span>
-  )
-}
-
 const SESSION_LABEL = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const GENDER_STYLE = {
   M: { label: 'Men', color: 'var(--color-accent)', bg: 'var(--color-accent-100)' },
@@ -63,170 +52,228 @@ const GENDER_STYLE = {
   X: { label: 'Mixed', color: 'var(--color-neutral-700)', bg: 'var(--color-neutral-200)' },
 }
 
-/* Inline result list inside an expanded program row — app style, no navigation */
-function InlineResults({ meetId, meet, item }) {
+/* ───────────────────────── the live board ─────────────────────────
+   The live endpoint says, per event / gender / age category / round, whether
+   results are in, and lists every decided podium. Each program line reads
+   its own state from it, so a final is never marked "Results" because the
+   heats of that event (or another age category's final) are in. */
+const PRELIM_ROUNDS = new Set(['Prelims', 'Heats'])
+const SEMI_ROUNDS = new Set(['Semifinals', 'Semis', 'Swim-off'])
+const roundKey = (rt) => (PRELIM_ROUNDS.has(rt) ? 'HEATS' : SEMI_ROUNDS.has(rt) ? 'SEMIS' : 'FINALS')
+const ROUND_ORDER = { HEATS: 0, SEMIS: 1, FINALS: 2 }
+
+function buildBoard(live) {
+  const status = new Map()
+  const podiums = new Map()
+  const put = (map, row) => {
+    const k = `${row.event}|${row.gender}`
+    if (!map.has(k)) map.set(k, [])
+    map.get(k).push(row)
+  }
+  for (const s of live?.status || []) put(status, s)
+  for (const p of live?.podiums || []) put(podiums, p)
+  return { status, podiums }
+}
+
+// rows of one age category; data with no categories at all belongs to every line
+const ofCategory = (rows, category) => {
+  const want = normCategory(category)
+  if (!want || !rows.some((r) => normCategory(r.category))) return rows
+  return rows.filter((r) => normCategory(r.category) === want)
+}
+
+/* What one program line has to show:
+     in        — its own round has results
+     waiting   — an earlier round is in, this one is still to come
+     scheduled — nothing yet */
+function lineState(board, item) {
+  const rows = ofCategory(board.status.get(`${item.event}|${item.gender}`) || [], item.age_category)
+  const of = (k) => rows.filter((r) => r.round === k)
+  const pack = (state, round, list) => ({
+    state, round,
+    count: list.reduce((n, r) => n + r.count, 0),
+    stamp: list.reduce((n, r) => Math.max(n, r.last), 0),
+  })
+  const want = item.session || ''
+  if (!want) {
+    const best = ['FINALS', 'SEMIS', 'HEATS'].find((k) => of(k).length)
+    return best ? pack('in', best, of(best)) : { state: 'scheduled' }
+  }
+  if (of(want).length) return pack('in', want, of(want))
+  const earlier = ['SEMIS', 'HEATS'].find((k) => ROUND_ORDER[k] < ROUND_ORDER[want] && of(k).length)
+  return earlier ? pack('waiting', earlier, of(earlier)) : { state: 'scheduled' }
+}
+
+const FINAL_BLOCKS = ['Finals', '', 'Junior Final', 'Consolation', 'Final C', 'Final D']
+const FINAL_LABEL = { Consolation: 'Final B', 'Junior Final': 'Junior final', 'Final C': 'Final C', 'Final D': 'Final D' }
+const hasTime = (r) => r.time_centiseconds > 0 && !(r.hc_type && r.hc_type !== 'HC' && r.hc_type !== 'TLD')
+
+/* The results of one program line, opened in place.
+   `round` is the round to show (the line's own, or the earlier one while the
+   final is still to come); `stamp` changes when new results arrive, so an
+   open list refreshes by itself. */
+function InlineResults({ meetId, meet, item, round, stamp, waiting }) {
   const [rows, setRows] = useState(null)
   const [athlete, setAthlete] = useState(null)
   const [failed, setFailed] = useState(false)
   const [retry, setRetry] = useState(0)
-  const isFinal = item.session === 'FINALS'
 
   useEffect(() => {
-    const params = { event: item.event, gender: item.gender }
-    if (item.session === 'HEATS') params.round_type = 'Prelims'
+    let alive = true
     setFailed(false)
-    getChampionshipResults(meetId, params)
-      .then((res) => setRows(Array.isArray(res.data) ? res.data : res.data?.results || []))
-      .catch(() => { setRows([]); setFailed(true) })
-  }, [meetId, item.event, item.gender, item.session, retry])
+    getChampionshipResults(meetId, { event: item.event, gender: item.gender, all_rounds: 1 })
+      .then((res) => { if (alive) setRows(Array.isArray(res.data) ? res.data : res.data?.results || []) })
+      .catch(() => { if (alive) { setRows((cur) => cur || []); setFailed(true) } })
+    return () => { alive = false }
+  }, [meetId, item.event, item.gender, stamp, retry])
 
-  if (rows === null) return <div style={{ padding: '6px 0' }}><Loading label="Loading results" /></div>
-  // a failed load is not "no results yet"
-  if (failed) {
+  const isNational = ['National', 'Other'].includes(meet?.classification_name)
+  const blocks = useMemo(() => {
+    if (!rows) return []
+    const mine = rows.filter((r) => roundKey(r.round_type) === round)
+    const out = []
+    resultsByCategory(mine, item.age_category).forEach((g) => {
+      // a category can hold an A final and a B final: each is its own ranking
+      const kinds = [...new Set(g.rows.map((r) => r.round_type || ''))]
+        .sort((a, b) => (FINAL_BLOCKS.indexOf(a) + 99) % 99 - (FINAL_BLOCKS.indexOf(b) + 99) % 99)
+      kinds.forEach((kind) => {
+        const list = g.rows.filter((r) => (r.round_type || '') === kind)
+        const timed = list.filter(hasTime).sort((a, b) => (a.original_rank || 9999) - (b.original_rank || 9999) || a.time_centiseconds - b.time_centiseconds)
+        const rest = list.filter((r) => !hasTime(r))
+        // medals follow the meet's rules: finals only, a B final only at national meets that award it
+        const medals = round === 'FINALS' && (kind !== 'Consolation' || (isNational && !meet?.b_final_no_medals))
+        const head = [
+          (kinds.length > 1 || FINAL_LABEL[kind]) && round === 'FINALS' ? (FINAL_LABEL[kind] || 'Final A') : '',
+          !item.age_category && g.category ? g.category : '',
+        ].filter(Boolean).join(' · ')
+        out.push({
+          key: `${g.key}-${kind}`, head, medals,
+          rows: [
+            ...timed.map((r) => ({ r, rank: r.original_rank || 1 + timed.filter((x) => x.time_centiseconds < r.time_centiseconds).length })),
+            ...rest.map((r) => ({ r, rank: null })),
+          ],
+        })
+      })
+    })
+    return out
+  }, [rows, round, item.age_category, isNational, meet?.b_final_no_medals])
+
+  if (rows === null) return <div className="lv-res"><Loading label="Loading results" /></div>
+  if (failed && rows.length === 0) {
     return (
-      <div role="alert" style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-neutral-700)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="lv-res lv-res-note" role="alert">
         These results could not be loaded.
         <button type="button" className="btn btn-secondary" onClick={() => { setRows(null); setRetry((n) => n + 1) }}>Try again</button>
       </div>
     )
   }
-  if (rows.length === 0) {
-    return <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-neutral-700)' }}>No results uploaded yet.</div>
-  }
-  // DQ / DNS rows go last inside their own category
-  const noTime = (r) => !r.time_centiseconds || (r.hc_type && r.hc_type !== 'HC' && r.hc_type !== 'TLD')
-  const groups = resultsByCategory(rows, item.age_category)
-    .map((g) => ({ ...g, rows: [...g.rows.filter((r) => !noTime(r)), ...g.rows.filter(noTime)] }))
+
   return (
-    <div className="live-fade-in" style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-neutral-200)' }}>
+    <div className="lv-res live-fade-in">
       {athlete && (
         <AthleteMeetCard swimmer={athlete} meet={{ id: meetId, name: meet?.name }} onClose={() => setAthlete(null)} />
       )}
-      <div style={{ maxHeight: 430, overflowY: 'auto' }}>
-        {/* Each age category is its own race with its own podium: a program
-            line shows only its category; a line with no category shows every
-            category as a separate block — never one mixed ranking. */}
-        {groups.length === 0 && (
-          <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-neutral-700)' }}>No results uploaded for this category yet.</div>
-        )}
-        {groups.map((g) => [
-          (groups.length > 1 || (!item.age_category && g.category)) && (
-            <div key={`h-${g.key}`} className="live-cat-head">{g.category || 'Open'}</div>
-          ),
-          ...g.rows.map((r, i) => {
-          const clickable = r.swimmer_detail && !r.swimmer_detail.is_relay_team
-          return (
-            <div
-              key={r.id}
-              role={clickable ? 'button' : undefined}
-              tabIndex={clickable ? 0 : undefined}
-              onClick={() => clickable && setAthlete(r.swimmer_detail)}
-              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && clickable) { e.preventDefault(); setAthlete(r.swimmer_detail) } }}
-              className={clickable ? 'live-result-row row-link' : undefined}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px',
-                borderBottom: '1px solid var(--color-neutral-200)', background: '#fff',
-                cursor: clickable ? 'pointer' : 'default',
-              }}
-            >
-              <span style={{ width: 24, flex: 'none', display: 'flex', justifyContent: 'center' }}>
-                {r.is_hc ? (
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-neutral-500)' }}>{r.hc_type || 'HC'}</span>
-                ) : isFinal && i <= 2 ? (
-                  <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][i]} size={18} style={{ display: 'block' }} />
-                ) : (
-                  <span className="asw-num" style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-neutral-500)' }}>
-                    {r.original_rank || i + 1}
-                  </span>
-                )}
-              </span>
-              <Flag code={r.nationality_detail?.code || r.swimmer_detail?.nationality_detail?.code} />
-              <span style={{
-                flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {r.swimmer_detail?.name}
-              </span>
-              {r.reaction_time && (
-                <span className="asw-num hide-mobile" style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-neutral-500)', flex: 'none' }}>
-                  RT {Number(r.reaction_time).toFixed(2)}
+      {waiting && (
+        <div className="lv-res-wait">The {SESSION_LABEL[item.session]?.toLowerCase() || 'final'} has not been swum yet. These are the {SESSION_LABEL[round].toLowerCase()}.</div>
+      )}
+      {blocks.length === 0 && <div className="lv-res-note">No results uploaded for this race yet.</div>}
+      <div className="lv-res-scroll">
+        {blocks.map((b) => [
+          b.head && <div key={`h-${b.key}`} className="live-cat-head">{b.head}</div>,
+          ...b.rows.map(({ r, rank }) => {
+            const team = r.swimmer_detail?.is_relay_team
+            const clickable = r.swimmer_detail && !team
+            const legs = team ? (r.relay_swimmers_detail || r.relay_swimmers || []) : []
+            const nat = r.nationality_detail || r.swimmer_detail?.nationality_detail
+            const medal = b.medals && !r.is_hc && rank && rank <= 3
+            return (
+              <div key={r.id} className={`lv-res-row${medal ? ' podium' : ''}${rank ? '' : ' out'}`}>
+                <span className="lv-res-rank">
+                  {medal ? <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][rank - 1]} size={18} style={{ display: 'block' }} />
+                    : r.is_hc && rank ? <span className="lv-res-code">{r.hc_type || 'HC'}</span>
+                    : <span className="asw-num">{rank || '–'}</span>}
                 </span>
-              )}
-              <span className="asw-time" style={{ fontWeight: 800, fontSize: 14, flex: 'none' }}>
-                {r.formatted_time}
-              </span>
-              <span className="asw-num hide-mobile" style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-500)', width: 34, textAlign: 'right', flex: 'none' }}>
-                {r.fina_points || '—'}
-              </span>
-            </div>
-          )
+                <Flag code={nat?.code} name={nat?.name} />
+                <span className="lv-res-who">
+                  {clickable ? (
+                    <button type="button" className="lv-res-name row-link" onClick={() => setAthlete(r.swimmer_detail)}>{r.swimmer_detail.name}</button>
+                  ) : (
+                    <span className="lv-res-name">{team ? (nat?.name || r.swimmer_detail?.name) : r.swimmer_detail?.name}</span>
+                  )}
+                  {legs.length > 0 && (
+                    <span className="lv-res-legs">
+                      {legs.map((leg, i) => {
+                        const name = typeof leg === 'string' ? leg : leg.name
+                        const id = typeof leg === 'string' ? null : leg.swimmer_id
+                        return id ? (
+                          <button key={i} type="button" className="row-link" onClick={() => setAthlete({ id, name, nationality_detail: nat })}>{name}</button>
+                        ) : <span key={i}>{name}</span>
+                      })}
+                    </span>
+                  )}
+                </span>
+                {r.reaction_time && hasTime(r) && (
+                  <span className="lv-res-rt asw-num hide-mobile">RT {Number(r.reaction_time).toFixed(2)}</span>
+                )}
+                {hasTime(r)
+                  ? <span className="lv-res-time asw-time">{r.formatted_time}</span>
+                  : <span className="lv-res-time lv-res-code">{r.hc_type || '—'}</span>}
+                <span className="lv-res-pts asw-num hide-mobile">{hasTime(r) && r.fina_points ? r.fina_points : ''}</span>
+              </div>
+            )
           }),
         ])}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px' }}>
-        <Link
-          to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}
-          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 /* Fitts's Law; strip stays the same height */, fontSize: 12, fontWeight: 800, textDecoration: 'none', color: 'var(--color-accent)' }}
-        >
-          Heats, splits & more ›
+      <div className="lv-res-foot">
+        <Link to={`/meets/${meetId}?tab=results&event=${item.event}&gender=${item.gender}&day=${item.day}&session=${item.session}`}>
+          Splits, heats and more ›
         </Link>
       </div>
     </div>
   )
 }
 
-/* One program entry — order no, event name, gender, chips. Official rows expand in place. */
-// `grouped`: the row sits under its event's heading and is named by its age category.
-// Von Restorff: a row is quiet by default — the round is a small label, only a
-// final carries the medal mark, and "Results" is a text cue, not a solid button.
-// Fitts's Law: the whole 48px row is the tap target.
-function ProgramRow({ item, meetId, meet, hasResults, last, grouped = false }) {
+/* One program line: the race and whether its results are in. Occam's Razor:
+   nothing else on the line — the results open in place.
+   Fitts's Law: the whole 48px row opens it. */
+function ProgramRow({ item, meetId, meet, board, last, grouped = false }) {
   const [open, setOpen] = useState(false)
-  const isFinal = item.session === 'FINALS'
+  const st = lineState(board, item)
   const g = GENDER_STYLE[item.gender] || GENDER_STYLE.X
-  const round = SESSION_LABEL[item.session] || ''
   const inner = (
-    <div className={`live-row${last ? ' last' : ''}`}>
-      <div className="live-row-main">
-        <span className="live-row-title">{grouped ? (item.age_category || 'Open') : item.event_name}</span>
-        {!grouped && <span className="live-row-gender" style={{ background: g.bg, color: g.color }}>{g.label}</span>}
-        {!grouped && item.age_category && <span className="live-row-cat">{item.age_category}</span>}
+    <div className={`lv-row is-${st.state}${last ? ' last' : ''}${open ? ' open' : ''}`}>
+      <div className="lv-row-main">
+        <span className="lv-row-title">{grouped ? (item.age_category || 'Open') : item.event_name}</span>
+        {!grouped && <span className="lv-row-gender" style={{ background: g.bg, color: g.color }}>{g.label}</span>}
+        {!grouped && item.age_category && <span className="lv-row-cat">{item.age_category}</span>}
+        {item.session && <span className="lv-row-round">{SESSION_LABEL[item.session]}</span>}
       </div>
-      {round && (
-        <span className={`live-round${isFinal ? ' final' : ''}`}>
-          {isFinal && <MedalDots size={12} gap={0} />}
-          {round}
-        </span>
-      )}
-      {hasResults ? (
-        <span className="live-status on">
-          Results <span className="live-chevron" aria-hidden="true" style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
-        </span>
-      ) : (
-        <span className="live-status">Scheduled</span>
-      )}
+      <span className="lv-row-status">
+        {st.state === 'in' && 'Results'}
+        {st.state === 'waiting' && `${SESSION_LABEL[st.round]} in`}
+        {st.state === 'scheduled' && 'Scheduled'}
+        {st.state !== 'scheduled' && <span className="live-chevron" aria-hidden="true" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>}
+      </span>
     </div>
   )
-  if (!hasResults) return inner
+  if (st.state === 'scheduled') return inner
   return (
     <div>
       <div
-        className="live-row-link row-link"
+        className="lv-row-link row-link"
         role="button"
         tabIndex={0}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v) } }}
-        style={{ cursor: 'pointer' }}
       >
         {inner}
       </div>
-      {open && <InlineResults meetId={meetId} meet={meet} item={item} />}
+      {open && <InlineResults meetId={meetId} meet={meet} item={item} round={st.round} stamp={st.stamp} waiting={st.state === 'waiting'} />}
     </div>
   )
 }
 
-const ROUND_ORDER = { HEATS: 0, SEMIS: 1, FINALS: 2 }
 // One cluster per event + gender, in program order; inside it the age
 // categories keep the order they first appear in, heats before finals.
 function clusterByEvent(items) {
@@ -249,10 +296,12 @@ function clusterByEvent(items) {
   return clusters
 }
 
+const doneCount = (board, items) => items.filter((i) => lineState(board, i).state === 'in').length
+
 /* Program for one day, grouped Morning / Evening as session cards */
-function DayProgram({ day, meetId, meet, resultKeys, gender = '', category = '' }) {
+function DayProgram({ day, meetId, meet, board, gender = '', category = '' }) {
   if (!day || (day.items || []).length === 0) {
-    return <Empty label="No program published for this day yet." hint="Pick another day in the Schedule tab, or check back later." />
+    return <Empty label="No program published for this day yet." hint="Pick another day above, or check back later." />
   }
   // Unnumbered items (order 0/null) go AFTER numbered ones — never a
   // leading "–" row before event 1.
@@ -267,79 +316,131 @@ function DayProgram({ day, meetId, meet, resultKeys, gender = '', category = '' 
   const morning = items.filter((i) => i.time_of_day === 'MORNING')
   const evening = items.filter((i) => i.time_of_day === 'EVENING')
   const rest = items.filter((i) => i.time_of_day !== 'MORNING' && i.time_of_day !== 'EVENING')
-  if (morning.length) groups.push(['Morning', 'Heats & semifinals', morning, false])
-  if (evening.length) groups.push(['Evening', 'Finals session', evening, true])
+  if (morning.length) groups.push(['Morning session', morning, false])
+  if (evening.length) groups.push(['Evening session', evening, true])
   if (rest.length) {
     const allFinals = rest.every((i) => i.session === 'FINALS')
-    // A day with no morning/evening split has no heading at all: the list
-    // opens on the first event name (a "Program · All events" bar only
-    // repeated the tab's own label).
-    groups.push([allFinals ? 'Finals' : '', allFinals ? 'Medal events' : '', rest, allFinals])
+    groups.push([groups.length ? 'Other races' : allFinals ? 'Finals' : 'Races', rest, allFinals])
   }
   return (
-    <div className="live-fade-in" style={{ display: 'grid', gap: 16 }}>
-      {groups.map(([label, sub, items, isFinals]) => (
-        <div key={label || 'all'} style={{
-          border: '1px solid var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden',
-          border: '1px solid var(--color-divider)',
-        }}>
-          {label && <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-            background: isFinals ? 'var(--color-accent-800)' : 'var(--color-surface)',
-            borderBottom: '1px solid var(--color-neutral-200)',
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13,
-              textTransform: 'uppercase', letterSpacing: '0.08em',
-              color: isFinals ? '#fff' : 'var(--color-accent-800)',
-            }}>
-              {label}
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-600)' }}>
-              {sub}
-            </span>
-            {isFinals && <span style={{ marginLeft: 'auto' }}><MedalDots size={13} /></span>}
-            <span style={{
-              marginLeft: isFinals ? 10 : 'auto', fontSize: 11, fontWeight: 700,
-              color: isFinals ? 'rgba(255,255,255,.65)' : 'var(--color-neutral-500)',
-            }}>
-              {items.length} {items.length === 1 ? 'event' : 'events'}
-            </span>
-          </div>}
-          {/* Proximity: an event swum by several age categories is named once,
-              with its categories under it in a fixed order (heats before
-              finals inside each category). On a laptop the blocks sit two
-              across, so an event's women and men are side by side. */}
-          <div className={`live-clusters${items.some((i) => i.gender === 'F') && items.some((i) => i.gender === 'M') ? ' by-gender' : ''}`}>
-            {clusterByEvent(items).map((c) => {
-              const row = (item, grouped, last) => (
-                <ProgramRow
-                  key={item.id}
-                  item={item}
-                  meetId={meetId}
-                  meet={meet}
-                  hasResults={resultKeys.has(`${item.event}|${item.gender}`)}
-                  last={last}
-                  grouped={grouped}
-                />
-              )
-              if (c.items.length === 1) return <div key={c.key} className={`live-cluster g-${c.gender}`}>{row(c.items[0], false, true)}</div>
-              const g = GENDER_STYLE[c.gender] || GENDER_STYLE.X
-              return (
-                <div key={c.key} className={`live-cluster g-${c.gender}`}>
-                  <div className="live-event-head">
-                    <span>{c.name}</span>
-                    <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
-                    <span className="live-event-count">{c.items.length} races</span>
+    <div className="live-fade-in lv-sessions">
+      {groups.map(([label, list, strong]) => {
+        const done = doneCount(board, list)
+        return (
+          <section key={label} className={`lv-session${strong ? ' strong' : ''}`}>
+            {/* Goal-Gradient: the bar under the name shows how far along the session is */}
+            <header className="lv-session-head">
+              <h3>{label}</h3>
+              <span className="lv-session-bar" role="img" aria-label={`${done} of ${list.length} races have results`}><i style={{ width: `${(done / list.length) * 100}%` }} /></span>
+            </header>
+            {/* Proximity: an event swum by several age categories is named once,
+                with its categories under it in a fixed order (heats before
+                finals inside each category). On a laptop the blocks sit two
+                across, so an event's women and men are side by side. */}
+            <div className={`live-clusters${list.some((i) => i.gender === 'F') && list.some((i) => i.gender === 'M') ? ' by-gender' : ''}`}>
+              {clusterByEvent(list).map((c) => {
+                const row = (item, grouped, last) => (
+                  <ProgramRow key={item.id} item={item} meetId={meetId} meet={meet} board={board} last={last} grouped={grouped} />
+                )
+                if (c.items.length === 1) return <div key={c.key} className={`live-cluster g-${c.gender}`}>{row(c.items[0], false, true)}</div>
+                const g = GENDER_STYLE[c.gender] || GENDER_STYLE.X
+                return (
+                  <div key={c.key} className={`live-cluster g-${c.gender}`}>
+                    <div className="live-event-head">
+                      <span>{c.name}</span>
+                      <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
+                    </div>
+                    {c.items.map((item, i) => row(item, true, i === c.items.length - 1))}
                   </div>
-                  {c.items.map((item, i) => row(item, true, i === c.items.length - 1))}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+                )
+              })}
+            </div>
+          </section>
+        )
+      })}
     </div>
+  )
+}
+
+/* Peak-End Rule: the podiums are the moments people come for, so the newest
+   ones sit beside the program (a strip to swipe on a phone). */
+function LatestPodiums({ podiums, meetId, meetName }) {
+  const [athlete, setAthlete] = useState(null)
+  const list = podiums.filter((p) => p.round === 'FINALS' && p.round_type !== 'Consolation').slice(0, 6)
+  if (list.length === 0) return null
+  return (
+    <section className="lv-card lv-latest" aria-label="Latest podiums">
+      {athlete && <AthleteMeetCard swimmer={athlete} meet={{ id: meetId, name: meetName }} onClose={() => setAthlete(null)} />}
+      <h3 className="lv-card-head">Latest podiums</h3>
+      <div className="lv-latest-list">
+        {list.map((p) => {
+          const g = GENDER_STYLE[p.gender] || GENDER_STYLE.X
+          return (
+            <article key={`${p.event}-${p.gender}-${p.category}-${p.round_type}`} className="lv-pod">
+              <Link className="lv-pod-head" to={`/meets/${meetId}?tab=results&event=${p.event}&gender=${p.gender}`}>
+                <span className="lv-pod-event">{p.event_name}</span>
+                <span className="lv-pod-meta">
+                  <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
+                  {p.category}
+                </span>
+              </Link>
+              {p.medals.map((m, i) => (
+                <div key={i} className="lv-pod-row">
+                  <MedalIcon type={m.type} size={15} style={{ flex: 'none' }} />
+                  <Flag code={m.code} />
+                  {m.swimmer_id ? (
+                    <button type="button" className="lv-pod-name row-link" onClick={() => setAthlete({ id: m.swimmer_id, name: m.name, nationality_detail: { code: m.code } })}>{m.name}</button>
+                  ) : <span className="lv-pod-name">{m.name}</span>}
+                  <span className="lv-pod-time asw-time">{m.time}</span>
+                </div>
+              ))}
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+/* The top of the medal table beside the program; the Medals tab has all of it */
+function MedalGlance({ rows, clubRows, isNational, onOpen }) {
+  const clubs = (isNational && (clubRows || []).length > 0) || (rows || []).length === 0
+  const list = (clubs ? clubRows : rows) || []
+  if (list.length === 0) return null
+  return (
+    <section className="lv-card lv-glance" aria-label="Medal table">
+      <h3 className="lv-card-head">Medal table</h3>
+      <table className="lv-glance-table">
+        <thead>
+          <tr>
+            <th scope="col"><span className="sr-only">Rank</span></th>
+            <th scope="col">{clubs ? 'Club' : 'Country'}</th>
+            {['GOLD', 'SILVER', 'BRONZE'].map((t) => <th key={t} scope="col" className="num"><MedalIcon type={t} size={14} /><span className="sr-only">{t.toLowerCase()}</span></th>)}
+            <th scope="col" className="num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {list.slice(0, 5).map((r, i) => (
+            <tr key={clubs ? (r.team_key || r.result__team) : r.swimmer__nationality__code}>
+              <td className="asw-num">{i + 1}</td>
+              <td>
+                <span className="lv-glance-who">
+                  {clubs ? null : <Flag code={r.swimmer__nationality__code} />}
+                  <span>{clubs ? r.result__team : (r.swimmer__nationality__name || r.swimmer__nationality__code)}</span>
+                </span>
+              </td>
+              <td className="num asw-num">{r.gold}</td>
+              <td className="num asw-num">{r.silver}</td>
+              <td className="num asw-num">{r.bronze}</td>
+              <td className="num asw-num"><strong>{r.total}</strong></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button type="button" className="btn btn-secondary lv-glance-more" onClick={onOpen}>
+        Full medal table{list.length > 5 ? ` (${list.length})` : ''}
+      </button>
+    </section>
   )
 }
 
@@ -560,7 +661,7 @@ function DocumentsPanel({ meetId, kind, docs, onChanged }) {
   )
 }
 
-/* Live hub for one selected meet: TODAY / SCHEDULE / MEDALS */
+/* Live hub for one meet: header with the meet's state, then Program / Medals / documents */
 function LiveHub({ meet }) {
   const { isAdmin } = useAuth()
   const [tab, setTab] = useState('program') // 'program' | 'medals' | 'startlist' | 'reports'
@@ -569,7 +670,6 @@ function LiveHub({ meet }) {
   const [fCat, setFCat] = useState('')
   const [program, setProgram] = useState(null)
   const [live, setLive] = useState(null)
-  const [stats, setStats] = useState(null)
   const [medals, setMedals] = useState(null)
   const [clubMedals, setClubMedals] = useState(null)
   const [swimmerMedals, setSwimmerMedals] = useState(null)
@@ -577,6 +677,7 @@ function LiveHub({ meet }) {
   const [docs, setDocs] = useState([])
   const [selectedDay, setSelectedDay] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
+  const [stale, setStale] = useState(false)
   const pollRef = useRef(null)
   const chipsRef = useRef(null)
 
@@ -589,30 +690,29 @@ function LiveHub({ meet }) {
     return () => clearTimeout(t)
   }, [tab, selectedDay, program])
 
+  const loadProgram = () => getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => setProgram((cur) => cur || { days: [] }))
   const refresh = () => {
-    getMeetLive(meet.id).then((r) => { setLive(r.data); setUpdatedAt(new Date()) }).catch(() => setLive((cur) => cur || {})) // a failed fetch must not leave "Loading" forever
-    getChampionshipStats(meet.id).then((r) => setStats(r.data)).catch(() => {})
-    getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals([]))
-    getMedalClubSummary({ championship: meet.id }).then((r) => setClubMedals(r.data)).catch(() => setClubMedals([]))
-    getMedalSwimmerSummary({ championship: meet.id, limit: 'all' }).then((r) => setSwimmerMedals(r.data)).catch(() => setSwimmerMedals([]))
-    getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => setDocs([]))
+    getMeetLive(meet.id)
+      .then((r) => { setLive(r.data); setUpdatedAt(new Date()); setStale(false) })
+      // a failed refresh keeps what is on screen and says it may be out of date
+      .catch(() => { setLive((cur) => cur || {}); setStale(true) })
+    getMedalSummary({ championship: meet.id }).then((r) => setMedals(r.data)).catch(() => setMedals((cur) => cur || []))
+    getMedalClubSummary({ championship: meet.id }).then((r) => setClubMedals(r.data)).catch(() => setClubMedals((cur) => cur || []))
+    getMedalSwimmerSummary({ championship: meet.id, limit: 'all' }).then((r) => setSwimmerMedals(r.data)).catch(() => setSwimmerMedals((cur) => cur || []))
+    getMeetDocuments(meet.id).then((r) => setDocs(Array.isArray(r.data) ? r.data : [])).catch(() => {})
   }
 
   useEffect(() => {
-    setProgram(null); setLive(null); setStats(null); setMedals(null); setClubMedals(null); setSwimmerMedals(null); setSelectedDay(null); setTab('program'); setFGender(''); setFCat(''); setEditProgram(false)
-    getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => setProgram({ days: [] }))
+    setProgram(null); setLive(null); setMedals(null); setClubMedals(null); setSwimmerMedals(null); setSelectedDay(null); setTab('program'); setFGender(''); setFCat(''); setEditProgram(false); setDocs([])
+    loadProgram()
     refresh()
-    pollRef.current = setInterval(refresh, POLL_MS)
+    // the program can change during a meet too (a final added, an order moved)
+    pollRef.current = setInterval(() => { refresh(); loadProgram() }, POLL_MS)
     return () => clearInterval(pollRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meet.id])
 
-  // events with results uploaded → "Official"
-  const resultKeys = useMemo(() => {
-    const s = new Set()
-    for (const e of stats?.events || []) s.add(`${e.event_id}|${e.gender}`)
-    return s
-  }, [stats])
+  const board = useMemo(() => buildBoard(live), [live])
 
   const days = program?.days || []
   const prog = dayProgress(meet)
@@ -622,22 +722,22 @@ function LiveHub({ meet }) {
     return prog ? prog.current : 1
   }, [live, prog])
   const scheduleDay = days.find((d) => d.day === (selectedDay ?? todayNum)) || days[0]
-
-  const finalsDays = useMemo(
-    () => new Set(days.filter((d) => (d.items || []).some((i) => i.session === 'FINALS')).map((d) => d.day)),
-    [days],
-  )
+  const today = days.find((d) => d.day === todayNum)
+  const todayItems = today?.items || []
 
   const loading = !program || !live
+  const isNational = ['National', 'Other'].includes(meet.classification_name)
 
-  // Hick's Law: "Today" and "Schedule" were the same list on two tabs — one
-  // Program tab now opens on today and offers the other days as chips.
+  // Hick's Law: a tab with nothing in it is not offered to the public
+  const docCount = (kind) => docs.filter((d) => d.kind === kind).length
   const TABS = [
     { value: 'program', label: 'Program' },
     { value: 'medals', label: 'Medals' },
-    { value: 'startlist', label: 'Start lists' },
-    { value: 'reports', label: 'Reports' },
-  ]
+    (isAdmin || docCount('STARTLIST') > 0) && { value: 'startlist', label: `Start lists${docCount('STARTLIST') ? ` (${docCount('STARTLIST')})` : ''}` },
+    (isAdmin || docCount('REPORT') > 0) && { value: 'reports', label: `Reports${docCount('REPORT') ? ` (${docCount('REPORT')})` : ''}` },
+  ].filter(Boolean)
+  const shownTab = TABS.some((t) => t.value === tab) ? tab : 'program'
+
   // filter choices come from the day being shown (genders) and the whole meet (categories)
   const dayItems = scheduleDay?.items || []
   const genderOptions = ['M', 'F', 'X'].filter((g) => dayItems.some((i) => i.gender === g))
@@ -659,173 +759,149 @@ function LiveHub({ meet }) {
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { weekday: 'short' })
   }
 
+  // Miller's Law: four numbers that answer "where is the meet now"
+  const STATS = [
+    { label: 'Results in', short: 'Results', value: formatNumber(live?.total_results ?? meet.results_count ?? 0) },
+    todayItems.length > 0 && { label: 'Races today', short: 'Today', value: `${doneCount(board, todayItems)}/${todayItems.length}` },
+    { label: 'Podiums decided', short: 'Podiums', value: formatNumber(live?.podiums_decided ?? 0) },
+    { label: isNational ? 'Clubs with medals' : 'Nations with medals', short: isNational ? 'Clubs' : 'Nations', value: formatNumber(isNational ? (clubMedals || []).length : (live?.medal_nations ?? 0)) },
+  ].filter(Boolean)
+
+  const hasRail = (live?.podiums || []).length > 0 || (medals || []).length > 0 || (clubMedals || []).length > 0
+
   return (
-    <div style={{ marginTop: 14 }}>
-      {/* ── hero card ── */}
-      <div style={{
-        borderRadius: 0, overflow: 'hidden', marginBottom: 18,
-        border: '1px solid var(--color-divider)',
-      }}>
-        <div style={{
-          background: 'var(--color-accent-800)',
-          color: '#fff', padding: '20px 22px 16px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <LivePill />
-            {prog && (
-              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,.7)', textTransform: 'uppercase' }}>
-                Day {prog.current} of {prog.total}
-              </span>
-            )}
-            {/* Doherty Threshold: say how fresh the page is, on phone too */}
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,.7)', fontWeight: 600, textAlign: 'right', lineHeight: 1.5 }}>
-              <span className="asw-num" style={{ fontWeight: 800, color: '#fff', fontSize: 14 }}>{formatNumber(live?.total_results ?? meet.results_count ?? 0)}</span>
-              {' '}results in
-              {updatedAt && (
-                <span style={{ display: 'block', fontSize: 11 }} aria-live="polite">
-                  Updated {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · refreshes by itself
-                </span>
-              )}
+    <div className="lv">
+      {/* ── header ── */}
+      <header className="lv-hero">
+        <div className="lv-hero-top">
+          <LivePill />
+          {prog && <span className="lv-hero-day">Day {prog.current} of {prog.total}</span>}
+          {/* Doherty Threshold: say how fresh the page is */}
+          {updatedAt && (
+            <span className={`lv-hero-fresh${stale ? ' stale' : ''}`} aria-live="polite">
+              {stale ? 'Could not refresh · showing ' : 'Updated '}
+              {updatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              <span className="hide-mobile"> · refreshes every minute</span>
             </span>
-          </div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(19px, 3.4vw, 26px)', marginTop: 10, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-            {meet.name}
-          </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontWeight: 600 }}>
-            {meet.country_detail && <Flag code={meet.country_detail.code} />}
-            {meet.location || meet.country_detail?.name}
-            <span style={{ opacity: 0.5 }}>·</span>
-            {formatDateRange(meet.date, meet.end_date)}
-          </div>
-          {/* day progress bar */}
-          {prog && prog.total > 1 && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 14 }}>
-              {Array.from({ length: prog.total }, (_, i) => (
-                <span key={i} style={{
-                  flex: 1, height: 4, borderRadius: 0,
-                  background: i + 1 < prog.current ? 'rgba(255,255,255,.85)'
-                    : i + 1 === prog.current ? LIVE_RED
-                    : 'rgba(255,255,255,.22)',
-                }} />
-              ))}
-            </div>
           )}
         </div>
-        {/* Jakob's Law: the same tab strip as every other page, on one line */}
-        <div className="live-tabrow">
-          <Seg tabs options={TABS} value={tab} onChange={setTab} />
+        <h2 className="lv-hero-title">{meet.name}</h2>
+        <div className="lv-hero-meta">
+          {meet.country_detail && <Flag code={meet.country_detail.code} name={meet.country_detail.name} />}
+          <span>{[meet.location, meet.country_detail?.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</span>
+          <span aria-hidden="true">·</span>
+          <span>{formatDateRange(meet.date, meet.end_date)}</span>
+          {meet.pool && <><span aria-hidden="true" className="hide-mobile">·</span><span className="hide-mobile">{meet.pool === 'LCM' ? '50 m pool' : meet.pool === 'SCM' ? '25 m pool' : meet.pool}</span></>}
+          <Link className="lv-hero-link" to={`/meets/${meet.id}`}>Meet page ›</Link>
         </div>
+        {prog && prog.total > 1 && (
+          <div className="lv-hero-days" aria-hidden="true">
+            {Array.from({ length: prog.total }, (_, i) => (
+              <span key={i} className={i + 1 < prog.current ? 'done' : i + 1 === prog.current ? 'now' : ''} />
+            ))}
+          </div>
+        )}
+        <dl className="lv-stats">
+          {STATS.map((s) => (
+            <div key={s.label}>
+              {/* a phone shows the four numbers on one line, so the labels are one word there */}
+              <dt><span className="lv-long">{s.label}</span><span className="lv-short" aria-hidden="true">{s.short}</span></dt>
+              <dd className="asw-num">{loading ? '–' : s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </header>
+      {/* Jakob's Law: the same tab strip as every other page, on one line */}
+      <div className="live-tabrow">
+        <Seg tabs options={TABS} value={shownTab} onChange={setTab} />
       </div>
 
       {loading ? <Loading label="Loading live data" /> : (
-        <>
-          {tab === 'program' && (
-            <div className="live-fade-in">
-              {/* admin: edit the program in place — add events to days, reorder, sessions */}
-              {isAdmin && (
-                <div style={{ marginBottom: 14 }}>
-                  <button
-                    type="button"
-                    aria-expanded={editProgram}
-                    className="btn btn-secondary" /* Von Restorff: the editor's own Save is the one primary */
-                    onClick={() => setEditProgram((v) => !v)}
-                  >
-                    {editProgram ? 'Close program editor' : 'Edit program'}
-                  </button>
-                  {editProgram && (
-                    <div style={{ marginTop: 12 }}>
-                      <MeetProgramEditor
-                        champId={meet.id}
-                        onSaved={() => getMeetProgram(meet.id).then((r) => setProgram(r.data)).catch(() => {})}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* day chips — only when the meet has more than one day */}
-              {days.length > 1 && (
-              <div ref={chipsRef} style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '10px 2px 12px', marginBottom: 6 }}>
-                {days.map((d) => {
-                  const active = d.day === (selectedDay ?? todayNum)
-                  const isToday = d.day === todayNum
-                  const hasFinals = finalsDays.has(d.day)
-                  return (
-                    <button
-                      key={d.day}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setSelectedDay(d.day)}
-                      className={`live-daychip${active ? ' active' : ''}`}
-                      style={{
-                        flex: 'none', minWidth: 84, padding: '10px 12px 8px', borderRadius: 0, cursor: 'pointer',
-                        textAlign: 'center', position: 'relative',
-                        background: active ? 'var(--color-accent-800)' : '#fff',
-                        color: active ? '#fff' : 'inherit',
-                        border: `1.5px solid ${active ? 'var(--color-accent-800)' : 'var(--color-neutral-300)'}`,
-                        boxShadow: active ? '0 4px 14px rgba(12,35,64,.22)' : 'none',
-                      }}
-                    >
-                      {isToday && (
-                        <span style={{
-                          position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 11, lineHeight: 1.2, fontWeight: 800, letterSpacing: '0.08em', padding: '1px 8px',
-                          borderRadius: 0, background: LIVE_RED, color: '#fff',
-                        }}>
-                          TODAY
-                        </span>
-                      )}
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: active ? 0.75 : 0.55 }}>
-                        {weekday(d.date) || `Day ${d.day}`}
-                      </div>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, marginTop: 2, lineHeight: 1 }}>
-                        {d.date ? Number(d.date.slice(8, 10)) : d.day}
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3, opacity: active ? 0.75 : 0.55, letterSpacing: '0.08em' }}>
-                        DAY {d.day}
-                      </div>
-                      <div style={{ marginTop: 4, height: 11 }}>
-                        {hasFinals && <MedalDots size={11} gap={0} />}
-                      </div>
+        <div className="lv-body">
+          {shownTab === 'program' && (
+            <div className={`lv-grid live-fade-in${hasRail ? ' with-rail' : ''}`}>
+              <div className="lv-main">
+                {/* admin: edit the program in place — add events to days, reorder, sessions */}
+                {isAdmin && (
+                  <div className="lv-admin">
+                    <button type="button" aria-expanded={editProgram}
+                      className="btn btn-secondary" /* Von Restorff: the editor's own Save is the one primary */
+                      onClick={() => setEditProgram((v) => !v)}>
+                      {editProgram ? 'Close program editor' : 'Edit program'}
                     </button>
-                  )
-                })}
-              </div>
-              )}
-              {/* Common Region: the filters sit in one bar right above what they filter */}
-              {(genderOptions.length > 1 || categoryOptions.length > 1) && (
-                <div className="live-filters" role="group" aria-label="Filter the program">
-                  {genderOptions.length > 1 && (
-                    <Seg
-                      options={[{ value: '', label: 'All' }, ...genderOptions.map((g) => ({ value: g, label: GENDER_STYLE[g].label }))]}
-                      value={genderOptions.includes(fGender) ? fGender : ''}
-                      onChange={setFGender}
-                    />
-                  )}
-                  {categoryOptions.length > 1 && (
-                    <select className="select" aria-label="Age category" value={fCat} onChange={(e) => setFCat(e.target.value)}>
-                      <option value="">All age categories</option>
-                      {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  )}
-                  <span className="live-filters-count asw-num" aria-live="polite">
-                    {shownRaces} {shownRaces === 1 ? 'race' : 'races'}
-                    {(fGender || fCat) && (
-                      <button type="button" className="btn btn-ghost" onClick={() => { setFGender(''); setFCat('') }}>Clear</button>
+                    <Link className="btn btn-secondary" to={`/import?championship=${meet.id}&live_day=${scheduleDay?.day || todayNum}`}>
+                      Upload results for day {scheduleDay?.day || todayNum}
+                    </Link>
+                    {editProgram && (
+                      <div className="lv-admin-editor">
+                        <MeetProgramEditor champId={meet.id} onSaved={loadProgram} />
+                      </div>
                     )}
-                  </span>
-                </div>
+                  </div>
+                )}
+                {/* day strip — only when the meet has more than one day */}
+                {days.length > 1 && (
+                  <div ref={chipsRef} className="lv-days" role="group" aria-label="Meet days">
+                    {days.map((d) => {
+                      const active = d.day === (scheduleDay?.day)
+                      const total = (d.items || []).length
+                      const done = doneCount(board, d.items || [])
+                      return (
+                        <button key={d.day} type="button" aria-pressed={active}
+                          onClick={() => setSelectedDay(d.day)}
+                          className={`lv-day live-daychip${active ? ' active' : ''}${d.day === todayNum ? ' today' : ''}`}>
+                          <span className="lv-day-wd">{weekday(d.date) || `Day ${d.day}`}</span>
+                          <span className="lv-day-num asw-num">{d.date ? Number(d.date.slice(8, 10)) : d.day}</span>
+                          <span className="lv-day-no">{d.day === todayNum ? 'Today' : `Day ${d.day}`}</span>
+                          <span className="lv-day-bar" aria-hidden="true"><i style={{ width: total ? `${(done / total) * 100}%` : 0 }} /></span>
+                          <span className="lv-day-count asw-num">{total ? `${done}/${total}` : 'No races'}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {/* Common Region: the filters sit in one bar right above what they filter */}
+                {(genderOptions.length > 1 || categoryOptions.length > 1) && (
+                  <div className="live-filters" role="group" aria-label="Filter the program">
+                    {genderOptions.length > 1 && (
+                      <Seg
+                        options={[{ value: '', label: 'All' }, ...genderOptions.map((g) => ({ value: g, label: GENDER_STYLE[g].label }))]}
+                        value={genderOptions.includes(fGender) ? fGender : ''}
+                        onChange={setFGender}
+                      />
+                    )}
+                    {categoryOptions.length > 1 && (
+                      <select className="select" aria-label="Age category" value={fCat} onChange={(e) => setFCat(e.target.value)}>
+                        <option value="">All age categories</option>
+                        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                    <span className="live-filters-count asw-num" aria-live="polite">
+                      {shownRaces} {shownRaces === 1 ? 'race' : 'races'}
+                      {(fGender || fCat) && (
+                        <button type="button" className="btn btn-ghost" onClick={() => { setFGender(''); setFCat('') }}>Clear</button>
+                      )}
+                    </span>
+                  </div>
+                )}
+                <DayProgram day={scheduleDay} meetId={meet.id} meet={meet} board={board}
+                  gender={genderOptions.includes(fGender) ? fGender : ''} category={fCat} />
+              </div>
+              {hasRail && (
+                <aside className="lv-rail">
+                  <LatestPodiums podiums={live.podiums || []} meetId={meet.id} meetName={meet.name} />
+                  <MedalGlance rows={medals} clubRows={clubMedals} isNational={isNational} onOpen={() => { setTab('medals'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+                </aside>
               )}
-              <DayProgram day={scheduleDay} meetId={meet.id} meet={meet} resultKeys={resultKeys}
-                gender={genderOptions.includes(fGender) ? fGender : ''} category={fCat} />
             </div>
           )}
 
-          {tab === 'medals' && <MedalsPanel rows={medals} clubRows={clubMedals} swimmerRows={swimmerMedals} isNational={['National', 'Other'].includes(meet.classification_name)} />}
+          {shownTab === 'medals' && <MedalsPanel rows={medals} clubRows={clubMedals} swimmerRows={swimmerMedals} isNational={isNational} />}
 
-          {tab === 'startlist' && <DocumentsPanel meetId={meet.id} kind="STARTLIST" docs={docs} onChanged={refreshDocs} />}
+          {shownTab === 'startlist' && <DocumentsPanel meetId={meet.id} kind="STARTLIST" docs={docs} onChanged={refreshDocs} />}
 
-          {tab === 'reports' && <DocumentsPanel meetId={meet.id} kind="REPORT" docs={docs} onChanged={refreshDocs} />}
-        </>
+          {shownTab === 'reports' && <DocumentsPanel meetId={meet.id} kind="REPORT" docs={docs} onChanged={refreshDocs} />}
+        </div>
       )}
     </div>
   )

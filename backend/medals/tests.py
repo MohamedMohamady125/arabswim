@@ -229,6 +229,70 @@ class RelayMedalTests(TestCase):
         self.assertEqual(rows.get('Omar SAYED'), 1)
         self.assertNotIn('Egypt Relay', rows)  # placeholder never a person
 
+    # --- relay sheets shorten the names (HY-TEK) ---------------------------
+
+    def _medalled(self):
+        return set(Medal.objects.filter(championship=self.champ, swimmer__is_relay_team=False)
+                   .values_list('swimmer__name', flat=True))
+
+    def test_middle_initial_on_relay_matches_full_profile_name(self):
+        Swimmer.objects.create(name='Sari TURKI ARBAEIN', sex='M', nationality=self.country)
+        r = self._relay_result('Egypt Relay', 20000, ['Sari T ARBAEIN'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), {'Sari TURKI ARBAEIN'})
+        # the profile id is written on the leg, so the profile lists the relay
+        r.refresh_from_db()
+        self.assertEqual(r.relay_swimmers[0]['swimmer_id'],
+                         Swimmer.objects.get(name='Sari TURKI ARBAEIN').id)
+
+    def test_middle_name_left_out_on_relay(self):
+        Swimmer.objects.create(name='Fatma Ezzahra DOUMA', sex='M', nationality=self.country)
+        self._relay_result('Egypt Relay', 20000, ['Fatma DOUMA'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), {'Fatma Ezzahra DOUMA'})
+
+    def test_two_profiles_fit_the_initial_no_medal_on_a_guess(self):
+        for n in ('Mohammed ABDULLAH ALQAHTANI', 'Mohammed AHMED ALQAHTANI'):
+            Swimmer.objects.create(name=n, sex='M', nationality=self.country, birth_year=2012)
+        r = self._relay_result('Egypt Relay', 20000, ['Mohammed A ALQAHTANI'])
+        r.category = "Boy's 13-14"
+        r.save(update_fields=['category'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), set())
+
+    def test_the_one_who_swam_at_the_meet_wins_over_a_namesake(self):
+        here = Swimmer.objects.create(name='Mohammed ABDULLAH ALQAHTANI', sex='M',
+                                      nationality=self.country, birth_year=2012)
+        Swimmer.objects.create(name='Mohammed AHMED ALQAHTANI', sex='M',
+                               nationality=self.country, birth_year=2012)
+        ind = Event.objects.create(name='50 M Freestyle', distance=50, stroke='Freestyle')
+        Result.objects.create(swimmer=here, championship=self.champ, event=ind,
+                              round_type='Heats', time_centiseconds=3000)
+        self._relay_result('Egypt Relay', 20000, ['Mohammed A ALQAHTANI'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), {'Mohammed ABDULLAH ALQAHTANI'})
+
+    def test_wrong_age_or_sex_or_other_initial_is_not_matched(self):
+        Swimmer.objects.create(name='Ali HACHEM BEYDOUN', sex='M',
+                               nationality=self.country, birth_year=1990)   # too old
+        Swimmer.objects.create(name='Mona SAMIR FAHMY', sex='F', nationality=self.country)
+        Swimmer.objects.create(name='Omar KARIM SAYED', sex='M', nationality=self.country)
+        r = self._relay_result('Egypt Relay', 20000,
+                               ['Ali H BEYDOUN', 'Mona S FAHMY', 'Omar T SAYED'])
+        r.category = "Boy's 17-18"
+        r.save(update_fields=['category'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), set())
+
+    def test_hand_matched_leg_is_kept(self):
+        chosen = Swimmer.objects.create(name='Completely OTHER', sex='M', nationality=self.country)
+        Swimmer.objects.create(name='Sari TURKI ARBAEIN', sex='M', nationality=self.country)
+        r = self._relay_result('Egypt Relay', 20000, ['Sari T ARBAEIN'])
+        r.relay_swimmers = [{'name': 'Sari T ARBAEIN', 'split_time': '', 'swimmer_id': chosen.id}]
+        r.save(update_fields=['relay_swimmers'])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medalled(), {'Completely OTHER'})
+
 
 class BFinalNoMedalsTests(TestCase):
     """Tunisian TC LCM nationals: Finale B (Consolation) awards no medals

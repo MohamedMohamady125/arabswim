@@ -55,6 +55,12 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
     return m
   }, [medals])
 
+  // medals whose result is not one of this swimmer's own swims: relay podiums
+  const relayMedals = useMemo(() => {
+    const own = new Set((rows || []).map((r) => r.id))
+    return medals.filter((m) => m.result && !own.has(m.result))
+  }, [medals, rows])
+
   const counts = useMemo(() => ({
     GOLD: medals.filter((m) => m.medal_type === 'GOLD').length,
     SILVER: medals.filter((m) => m.medal_type === 'SILVER').length,
@@ -175,7 +181,7 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                 <button type="button" className="btn btn-secondary" onClick={() => { setRows(null); setRetry((n) => n + 1) }}>Try again</button>
               </div>
             </div>
-          ) : sorted.length === 0 ? (
+          ) : sorted.length === 0 && relayMedals.length === 0 ? (
             <div style={{ padding: '26px 20px', textAlign: 'center', fontSize: 13, color: 'var(--color-neutral-700)' }}>
               No swims recorded at this meet yet.
             </div>
@@ -238,6 +244,30 @@ export default function AthleteMeetCard({ swimmer, meet, onClose }) {
                   </div>
                 )
               })}
+              {/* relay medals: the relay result belongs to the team, so it is
+                  not among the swimmer's own swims — list it here, or the
+                  medal count above would not add up */}
+              {relayMedals.map((m) => (
+                <div key={`relay-${m.id}`} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                  background: '#fff', border: '1px solid var(--color-divider)',
+                }}>
+                  <span style={{ width: 26, flex: 'none', display: 'flex', justifyContent: 'center' }}>
+                    <MedalIcon type={m.medal_type} size={21} style={{ display: 'block' }} />
+                  </span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, lineHeight: 1.25 }}>
+                      {m.event_detail?.name || 'Relay'}
+                    </div>
+                    <span style={{
+                      display: 'inline-block', marginTop: 3, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      padding: '1.4px 8px', background: 'var(--color-accent-100)', color: 'var(--color-accent)',
+                    }}>
+                      Relay team
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -21,60 +21,19 @@ _MEDAL_BY_RANK = {1: 'GOLD', 2: 'SILVER', 3: 'BRONZE'}
 _PRELIM_ROUNDS = {'Prelims', 'Heats', 'Semifinals', 'Semis', 'Swim-off'}
 
 
-def _relay_name_tokens(name):
-    """Order-independent set of alpha word tokens (lowercased) for a name."""
-    import re
-    return frozenset(
-        t.lower()
-        for t in re.sub(r"[^\w\s'’.\-]", ' ', name or '').split()
-        if any(c.isalpha() for c in t)
-    )
-
-
-def _match_relay_swimmer(name, nationality_id):
-    """Find the real Swimmer record for a relay leg name, preferring the
-    relay team's nationality when several swimmers share a name.
-
-    The relay legs and the individual profile can list the same person in a
-    different word order ("Adam Hamza ERRAFIY" on the leg vs "Hamza Adam
-    ERRAFIY" on the profile), so an exact match silently drops the relay
-    medal. Fall back to an order-independent token-set match before giving up.
-    """
-    from swimmers.models import Swimmer
-    name = (name or '').strip()
-    if not name:
-        return None
-    qs = Swimmer.objects.filter(is_relay_team=False, name__iexact=name)
-    if nationality_id:
-        match = qs.filter(nationality_id=nationality_id).first()
-        if match:
-            return match
-    exact = qs.first()
-    if exact:
-        return exact
-
-    # No exact string match — try an order-independent token-set match,
-    # narrowing on every token so the DB does the heavy lifting.
-    toks = _relay_name_tokens(name)
-    if len(toks) < 2:
-        return None
-    cand = Swimmer.objects.filter(is_relay_team=False)
-    for t in toks:
-        cand = cand.filter(name__icontains=t)
-    if nationality_id:
-        cand = cand.filter(nationality_id=nationality_id)
-    for s in cand[:12]:
-        if _relay_name_tokens(s.name) == toks:
-            return s
-    return None
-
-
 def recompute_medals(championship):
     """Delete and re-award all result-backed medals for a championship.
 
     Returns the number of medals awarded.
     """
     Medal.objects.filter(championship=championship, result__isnull=False).delete()
+
+    # Relay sheets print squad names differently from the profiles (middle
+    # names as initials, or left out). Tie every leg to its profile first,
+    # so each athlete of a relay podium gets their medal.
+    from championships.relay_legs import LegResolver, link_relay_legs
+    link_relay_legs(championship)
+    leg_resolver = LegResolver(championship)
 
     # Manually entered medals (result is NULL) take precedence: don't
     # auto-award a second medal to the same swimmer for the same event.
@@ -113,7 +72,7 @@ def recompute_medals(championship):
         if r.swimmer.is_relay_team:
             seen = set()
             for leg in (r.relay_swimmers or []):
-                s = _match_relay_swimmer(leg.get('name'), r.swimmer.nationality_id)
+                s = leg_resolver.resolve(leg, r)
                 if not s or s.id in seen:
                     continue
                 if (s.id, r.event_id) in manual:

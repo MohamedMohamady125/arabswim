@@ -1845,7 +1845,10 @@ class Nat2iRelaySplitTests(TestCase):
         }
         confirm_import(preview, {})
         result = Result.objects.get()
-        self.assertEqual(result.relay_swimmers, [
+        # each leg is also tied to its swimmer's profile (swimmer_id)
+        self.assertTrue(all(leg.get('swimmer_id') for leg in result.relay_swimmers))
+        self.assertEqual([{'name': leg['name'], 'split_time': leg['split_time']}
+                          for leg in result.relay_swimmers], [
             {'name': 'Youssef TRABELSI', 'split_time': '25.00'},
             {'name': 'Karim BEN AHMED', 'split_time': '27.00'},
             {'name': 'Sami DOUMA', 'split_time': '27.00'},

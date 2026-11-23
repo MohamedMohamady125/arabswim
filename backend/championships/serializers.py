@@ -115,7 +115,12 @@ class ResultSerializer(serializers.ModelSerializer):
             name = (leg.get('name') or '').strip() if isinstance(leg, dict) else str(leg).strip()
             split_time = leg.get('split_time', '') if isinstance(leg, dict) else ''
             swimmer_id = None
-            if name:
+            # the profile the leg was tied to (by hand at import, or by
+            # championships.relay_legs) wins over any name comparison
+            linked_id = leg.get('swimmer_id') if isinstance(leg, dict) else None
+            if linked_id:
+                swimmer_id = linked_id
+            elif name:
                 # Try exact match first
                 qs = Swimmer.objects.filter(is_relay_team=False, name__iexact=name)
                 match = qs.filter(nationality_id=nat_id).first() if nat_id else None

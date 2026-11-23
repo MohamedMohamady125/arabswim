@@ -210,7 +210,90 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'is_live': champ.is_live,
             'days': days,
             'total_results': champ.results.count(),
+            **self._live_board(champ),
         })
+
+    @staticmethod
+    def _live_board(champ):
+        """What the Live page needs to mark each program line and show the
+        podiums, in one light query each (the page polls this every minute):
+
+        status  — one row per event / gender / age category / round that
+                  has results: {event, gender, category, round, count, last}
+                  (round is HEATS, SEMIS or FINALS; `last` is the newest
+                  result id, so the page can tell what came in most recently)
+        podiums — the medals of every decided race, same key, each with its
+                  medallists in podium order
+        totals  — podiums decided and nations on the medal table
+        """
+        from django.db.models import Count, Max
+        from medals.models import Medal
+
+        def round_key(rt):
+            if rt in ('Prelims', 'Heats'):
+                return 'HEATS'
+            if rt in ('Semifinals', 'Semis', 'Swim-off'):
+                return 'SEMIS'
+            return 'FINALS'
+
+        def gender_key(event_name, sex):
+            # mixed relays carry one placeholder swimmer of either sex
+            return 'X' if 'mixed' in (event_name or '').lower() else sex
+
+        merged = {}
+        rows = (champ.results
+                .values('event_id', 'event__name', 'swimmer__sex', 'category', 'round_type')
+                .annotate(n=Count('id'), last=Max('id')))
+        for r in rows:
+            key = (r['event_id'], gender_key(r['event__name'], r['swimmer__sex']),
+                   r['category'] or '', round_key(r['round_type']))
+            cur = merged.get(key)
+            if cur:
+                cur['count'] += r['n']
+                cur['last'] = max(cur['last'], r['last'])
+            else:
+                merged[key] = {'event': key[0], 'gender': key[1], 'category': key[2],
+                               'round': key[3], 'count': r['n'], 'last': r['last']}
+
+        groups = {}
+        medals = (Medal.objects
+                  .filter(championship=champ, result__isnull=False, scope='CATEGORY')
+                  .select_related('result', 'result__swimmer', 'swimmer', 'event', 'nationality'))
+        order = {'GOLD': 0, 'SILVER': 1, 'BRONZE': 2}
+        for m in medals:
+            res = m.result
+            # a relay podium is one row (the team), not one per athlete
+            if res.swimmer.is_relay_team and not m.swimmer.is_relay_team:
+                continue
+            key = (m.event_id, gender_key(m.event.name, res.swimmer.sex),
+                   res.category or '', res.round_type or '')
+            g = groups.get(key)
+            if not g:
+                g = groups[key] = {
+                    'event': m.event_id, 'event_name': m.event.name, 'gender': key[1],
+                    'category': key[2], 'round_type': key[3], 'round': round_key(key[3]),
+                    'is_relay': bool(m.event.is_relay), 'last': 0, 'medals': []}
+            g['last'] = max(g['last'], res.id)
+            nat = m.nationality
+            g['medals'].append({
+                'type': m.medal_type,
+                'swimmer_id': None if m.swimmer.is_relay_team else m.swimmer_id,
+                'name': (nat.name if nat and m.swimmer.is_relay_team else m.swimmer.name),
+                'code': nat.code if nat else None,
+                'time': res.formatted_time,
+                'cs': res.time_centiseconds or 0,
+            })
+        podiums = list(groups.values())
+        for g in podiums:
+            g['medals'].sort(key=lambda x: (order.get(x['type'], 3), x['cs'], x['name']))
+        podiums.sort(key=lambda g: -g['last'])
+        nations = {x['code'] for g in podiums for x in g['medals'] if x['code']}
+        return {
+            'status': list(merged.values()),
+            'podiums': podiums,
+            'podiums_decided': len(podiums),
+            'medal_nations': len(nations),
+        }
 
     @action(detail=True, methods=['post'], url_path='finish-live')
     def finish_live(self, request, pk=None):

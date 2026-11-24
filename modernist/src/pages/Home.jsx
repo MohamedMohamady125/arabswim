@@ -84,7 +84,7 @@ export default function Home() {
         </div>
       </header>
 
-      <QuickStatsView data={data} pad />
+      <QuickStatsView data={data} pad headline />
 
       {/* ── Latest records broken across the platform ── */}
       {newRecords.length > 0 && (

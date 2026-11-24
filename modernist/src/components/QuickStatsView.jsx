@@ -166,16 +166,19 @@ export function SectionBar({ n, title }) {
   )
 }
 
-function StatChip({ icon: Icon, value, label }) {
+function StatChip({ icon: Icon, value, label, sub, standout = false }) {
   return (
-    <div style={{
-      background: 'var(--color-accent-800)',
+    <div className={sub !== undefined ? 'qs-chip-sub' : undefined} style={{
+      // Von Restorff: one tile — the headline number — takes the brand blue
+      background: standout ? 'var(--color-accent-500)' : 'var(--color-accent-800)',
       color: '#fff', padding: '16px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
     }}>
       <Icon size={18} aria-hidden="true" style={{ color: 'rgba(255,255,255,0.7)' }} />
       <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{value}</span>
       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+      {/* the sub-line keeps its slot on every tile of the row, so the numbers stay level */}
+      {sub !== undefined && <span className="asw-num" style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', minHeight: 15 }}>{sub}</span>}
     </div>
   )
 }
@@ -220,7 +223,7 @@ function ProgressRow({ icon: Icon, label, value }) {
 
 /* ── Shared Quick Statistics body (home page + meet Overview tab) ───── */
 
-export default function QuickStatsView({ data, busiest, pad = false, medalsLink = '/medals' }) {
+export default function QuickStatsView({ data, busiest, pad = false, medalsLink = '/medals', headline = false }) {
   const { counts, participation, medals, performance: perf, records, progress } = data
   const mf = participation.male + participation.female || 1
   const malePct = Math.round((participation.male / mf) * 1000) / 10
@@ -254,14 +257,36 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
     [TrendingUp, formatNumber(counts.personal_bests), 'Personal Bests'],
   ]
 
+  // Home: six headline figures instead of eight counts (Miller's Law) — the
+  // size of the meet, how widely the medals were spread, the records, and the
+  // best swim as a score. No swimmer is named (Home shows general content).
+  const who = medalsByClub ? 'Clubs' : 'Nations'
+  const entrants = medalsByClub ? counts.clubs : counts.countries
+  const onPodium = medals.table.filter((r) => r.total > 0).length
+  const recSplit = records.by_type.filter((t) => t.count > 0).slice(0, 3).map((t) => `${t.count} ${t.label}`).join(' · ')
+  const headlineChips = [
+    { icon: medalsByClub ? Shield : Globe, value: entrants, label: who, sub: '' },
+    { icon: Users, value: formatNumber(counts.swimmers), label: 'Swimmers', sub: `${participation.male} men · ${participation.female} women` },
+    { icon: MedalIcon, value: formatNumber(counts.medals), label: 'Medals awarded', sub: '' },
+    { icon: Award, value: onPodium, label: `${who} on the podium`, sub: entrants ? `of ${entrants}` : '' },
+    { icon: Trophy, value: counts.records, label: 'Records broken', sub: recSplit, standout: counts.records > 0 },
+    perf.best_overall && { icon: TrendingUp, value: formatNumber(perf.best_overall.points), label: 'Top swim', sub: 'World Aquatics points' },
+  ].filter(Boolean)
+
   return (
     // `pad` aligns the meet Overview tab with the other tabs' .pad gutters
     // (24/32 desktop, 18/16 phone); the home page keeps its own 16px gutters
     <div className={pad ? 'container pad' : 'container'} style={{ display: 'grid', gap: 16, ...(pad ? { paddingBottom: 40 } : { padding: '16px 16px 40px' }) }}>
       {/* ── Stat chips ── */}
-      <div className="qs-cards-8">
-        {chips.map(([Icon, value, label], i) => <StatChip key={label} icon={Icon} value={value} label={label} color={i % 2 ? GOLD : NAVY} />)}
-      </div>
+      {headline ? (
+        <div className="qs-cards-6" style={{ '--qs-n': headlineChips.length }}>
+          {headlineChips.map((c) => <StatChip key={c.label} {...c} />)}
+        </div>
+      ) : (
+        <div className="qs-cards-8">
+          {chips.map(([Icon, value, label], i) => <StatChip key={label} icon={Icon} value={value} label={label} color={i % 2 ? GOLD : NAVY} />)}
+        </div>
+      )}
 
       {/* ── 1 · Participation ── */}
       <SectionBar n={1} title="Participation" />

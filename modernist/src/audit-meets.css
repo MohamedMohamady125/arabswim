@@ -138,3 +138,12 @@
   .meets-subtabs .seg { display: flex; flex-wrap: nowrap; width: 100%; }
   .meets-subtabs .seg-opt { flex: 1 1 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
 }
+
+/* ── Home headline figures: six tiles (five when a meet has no points) ── */
+.qs-cards-6 { display: grid; grid-template-columns: repeat(var(--qs-n, 6), minmax(0, 1fr)); gap: 10px; }
+.qs-cards-6 > * { min-width: 0; padding: 18px 10px !important; }
+@media (max-width: 1100px) { .qs-cards-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .qs-cards-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qs-cards-6 > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

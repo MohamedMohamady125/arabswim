@@ -1,0 +1,249 @@
+/* Audit polish — tables. Brand tokens only (see theme.css). */
+
+/* ── Shared ─────────────────────────────────────────────────────────────── */
+/* Separated inline items that wrap cleanly: each item carries a rule on its
+   left, and the rule of the first item on every line is clipped away, so a
+   line never starts or ends on a separator. Markup: .at-sep > span > span… */
+.at-sep { overflow: hidden; }
+.at-sep > span { display: flex; flex-wrap: wrap; row-gap: 2px; margin-left: -9px; }
+.at-sep > span > span { padding-left: 8px; margin-right: 8px; border-left: 1px solid var(--color-neutral-400); line-height: 1.25; }
+
+/* ── Medal Tables page ──────────────────────────────────────────────────── */
+/* Cap the block so the name is not 1000px away from its counts (Proximity). */
+.at-medals > * { max-width: 980px; }
+/* Shared table header style (see .table th); only the medal bands keep colour. */
+.at-medals div:has(> .medals-table) { border: 0 !important; }
+.at-medals .medals-table th {
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0.08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent) !important;
+  padding-top: var(--space-2) !important; padding-bottom: var(--space-2) !important;
+  border-bottom: 2px solid var(--color-divider) !important; white-space: nowrap;
+}
+.at-medals .medals-table th.medal-col { color: var(--wa-ink) !important; }
+.at-medals .medals-table td { border-top: 0 !important; border-bottom: 1px solid var(--color-divider); }
+@media (min-width: 901px) {
+  .at-medals .medals-table th.medal-col { width: 88px !important; }
+  .at-medals .medals-table th:last-child { width: 88px; }
+}
+/* Podium: the headline figure is the gold count — the key the table is ranked
+   by — and the total follows as a labelled secondary figure. */
+.at-medals .live-podium > div > div:last-child { flex-wrap: nowrap !important; gap: 10px !important; }
+.at-medals .live-podium > div > div:last-child > .asw-num {
+  order: 2; margin-left: auto; white-space: nowrap;
+  font-family: var(--font-body) !important; font-size: 12px !important; font-weight: 600 !important;
+  color: var(--color-neutral-700);
+}
+.at-medals .live-podium > div > div:last-child > .asw-num::after { content: ' total'; }
+.at-medals .live-podium > div > div:last-child > span:last-child { flex-wrap: nowrap !important; gap: 10px !important; }
+.at-medals .live-podium > div > div:last-child > span:last-child > span { white-space: nowrap; }
+.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child { gap: 4px !important; }
+.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child img { width: 18px !important; height: 18px !important; }
+.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child .asw-num {
+  font-family: var(--font-heading); font-weight: 800; font-size: 24px; line-height: 1;
+}
+@media (max-width: 640px) {
+  /* three cards across (countries): place label on its own line so the flag
+     and code always fit, and the counts sit on a fixed grid — gold, then
+     silver + bronze, then the total — identical on every card */
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:first-child { flex-wrap: wrap; row-gap: 6px; }
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:first-child > span:first-child { flex: 0 0 100%; }
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child { flex-direction: column; align-items: flex-start !important; gap: 6px !important; }
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > .asw-num { order: 2; margin-left: 0; }
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > span:last-child {
+    display: grid !important; grid-template-columns: auto auto; justify-content: start; gap: 6px 10px !important;
+  }
+  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > span:last-child > span:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  /* both pickers the same full width */
+  .at-medals-fb .filterbar-controls .select,
+  .at-medals-fb .filterbar-controls .input { flex: 1 1 100% !important; width: 100% !important; max-width: none !important; min-height: 40px; }
+  .at-medals-fb .filterbar-controls .seg { flex: 1 1 100%; }
+  .at-medals-fb .seg-opt { min-height: 40px; }
+}
+
+/* ── New Records cards ──────────────────────────────────────────────────── */
+.record-cards > .at-rec-card { display: flex; flex-direction: column; min-width: 0; }
+.at-rec-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.at-rec-head .card-kicker { flex: 1 1 auto; min-width: 0; }
+.at-rec-avatar {
+  flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-accent-100); color: var(--color-accent);
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px; letter-spacing: 0.02em;
+}
+.at-rec-who { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; }
+.at-rec-who .asw-flag { margin-top: 1px; }
+/* two name lines are always reserved, so the lines below share a baseline */
+.at-rec-name { display: block; min-width: 0; line-height: 1.3; min-height: calc(2 * 1.3 * 13px); overflow-wrap: anywhere; }
+/* Fitts's Law: taller hit area on the name, same card height */
+.at-rec-name a.rec-name { padding: 8px 0; margin: -8px 0; }
+.at-rec-foot { margin-top: auto; padding-top: 8px; }
+@media (max-width: 900px) {
+  .at-rec-name { min-height: calc(2 * 1.3 * 12px); }
+  .at-rec-avatar { width: 34px; height: 34px; font-size: 12px; }
+  .at-rec-head { gap: 8px; }
+  .at-rec-foot .rec-meta { margin-top: 0 !important; }
+}
+
+/* ── Filter bars on the table pages (Rankings, Records) ─────────────────── */
+/* The result count sits on the last filter row's baseline, not floating
+   between two rows. */
+.at-fb-end .filterbar { align-items: flex-end; }
+.at-fb-end .filterbar-meta { min-height: 40px; }
+/* Fitts's Law: every filter control is 40px tall, on one tidy grid. */
+.at-filters { display: flex; flex-direction: column; gap: 8px; }
+.at-filters-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.at-filters .seg-opt { min-height: 40px; white-space: nowrap; }
+.at-filters .select { height: 40px; min-height: 40px; }
+@media (max-width: 900px) {
+  .at-fb-end .filterbar-meta { min-height: 0; width: 100%; margin-left: 0; justify-content: space-between; }
+  .at-filters { width: 100%; flex: 1 1 100% !important; }
+  .at-filters-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .at-filters-row > .at-span2, .at-filters-segs > .seg:first-child { grid-column: 1 / -1; }
+  .at-filters .seg { display: flex; flex-wrap: nowrap; }
+  .at-filters .seg-opt { flex: 1 1 0; justify-content: center; padding: 6px 6px; font-size: 13px; }
+  .at-filters .select { width: 100% !important; max-width: none !important; font-size: 14px; }
+}
+
+/* ── Rankings table ─────────────────────────────────────────────────────── */
+.at-rank-name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rankings-table td.at-rank-meet { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: clamp(300px, 38vw, 560px); }
+@media (max-width: 900px) {
+  /* one header size across the row */
+  .rankings-table thead th.num, .rankings-table thead th.time { font-size: 11px; }
+  /* names take two lines instead of "Omar NASSER AL…" */
+  .rankings-table td.swimmer-cell { white-space: normal; }
+  .at-rank-name {
+    white-space: normal; overflow-wrap: anywhere; line-height: 1.2;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  }
+}
+
+/* ── Records tables ─────────────────────────────────────────────────────── */
+/* One column template for every record table, so Individual and Relay
+   columns start at the same x (Law of Similarity). */
+.at-rec-table { table-layout: fixed; }
+.at-rec-c-event { width: 250px; }
+.at-rec-c-who { width: 30%; }
+.at-rec-c-time { width: 120px; }
+.at-rec-table td { overflow: hidden; text-overflow: ellipsis; }
+/* the meet supports the holder, it does not outweigh them */
+.table td.at-rec-meet { font-size: 14px; line-height: 1.3; color: var(--color-neutral-800); white-space: normal; }
+.at-rec-meet .results-sub { font-size: 12px; margin-top: 2px; }
+/* one label line and one control height (40px) across Gender / Pool / Age / Year */
+.records-page .recfilters-label { line-height: 14px; }
+.records-page .recfilters .seg-opt { min-height: 38px; height: 38px; }
+.records-page .recfilters .select { height: 40px; min-height: 40px; }
+@media (max-width: 760px) {
+  .records-page .recfilters .seg-opt { height: auto; }
+}
+
+/* ── Compare ────────────────────────────────────────────────────────────── */
+/* The face-off and the board read as one ~900px block, centred, instead of
+   two half-empty 530px cards and a table with 500px gaps (Proximity). */
+.at-compare > * { max-width: 900px; margin-left: auto; margin-right: auto; }
+.at-vs-label { font-weight: 700; font-size: 12px; color: var(--color-text); }
+/* both sides of a row share one size and face; the loser is only lighter */
+.vs-board .vs-row:not(.vs-head) > .vs-left,
+.vs-board .vs-row:not(.vs-head) > .vs-right { font-family: var(--font-heading); font-size: 16px; font-weight: 700; color: var(--color-neutral-700); }
+.vs-board .vs-row:not(.vs-head) > .vs-win { color: var(--asw-fast); font-weight: 800; }
+@media (max-width: 900px) {
+  /* phone: the two names share the header; the centre label is dropped */
+  .vs-board .vs-head { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .vs-board .vs-head .vs-mid { display: none; }
+  .vs-board .vs-row:not(.vs-head) > .vs-left,
+  .vs-board .vs-row:not(.vs-head) > .vs-right { font-size: 14px; }
+  .vs-board .vs-left.asw-time, .vs-board .vs-right.asw-time { font-size: 14px !important; }
+}
+
+/* ── Predictions ────────────────────────────────────────────────────────── */
+.at-pred-body { padding: 16px 32px 28px; }
+/* one fixed right rail, so every side panel shares a left edge (Uniform Connectedness) */
+.at-pred-row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+/* hero scrim: near-solid navy under the title; without a cover the block is solid navy */
+.at-pred-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--color-accent-900) 94%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent-900) 88%, transparent) 55%,
+    color-mix(in srgb, var(--color-accent-900) 64%, transparent) 100%);
+}
+.select.at-pred-pick { width: auto; max-width: min(100%, 320px); min-height: 40px; }
+.at-pred-notice {
+  margin-bottom: 16px; padding: 10px 12px; font-size: 13px; line-height: 1.45;
+  color: var(--color-text); background: var(--color-accent-100); border-left: 3px solid var(--color-accent);
+}
+/* five candidates fill the row */
+.at-pred-cands { display: grid; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 10px; }
+.at-pred-cand-name {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  font-weight: 700; font-size: 14px; line-height: 1.25; min-height: calc(2 * 1.25 * 14px); overflow-wrap: anywhere;
+}
+.at-pred-ev { white-space: nowrap; }
+.at-pred-chance { min-width: 150px; }
+.at-pred-bar { min-width: 60px; }
+@media (max-width: 1180px) {
+  .at-pred-cands { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+  /* rail panels drop under the main column at full width */
+  .at-pred-row { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  /* same 16px gutter as the page title */
+  .at-pred-body { padding: 16px 16px 24px; }
+  .at-pred-scrim { background: color-mix(in srgb, var(--color-accent-900) 88%, transparent); }
+  .at-pred-cands { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .select.at-pred-pick { max-width: 100%; }
+  .records-filters .select.at-pred-champ { height: 40px; min-height: 40px; font-size: 14px; padding-left: 10px; }
+  /* by-event table fits the screen, so the percentage stays at the bar end */
+  .at-pred-events { table-layout: fixed; }
+  .at-pred-events > thead > tr > th { white-space: normal; }
+  .at-pred-events > thead > tr > th:first-child { width: 31%; }
+  .at-pred-events > thead > tr > th:last-child { width: 30%; }
+  .at-pred-events .at-pred-ev { white-space: normal; }
+  .at-pred-events .at-pred-chance { min-width: 0; }
+  .at-pred-events .at-pred-bar { min-width: 0; }
+  .at-pred-events .at-pred-chance > div { gap: 6px !important; }
+}
+
+/* ── Horizontal strips: a fading edge says "more this way" ──────────────── */
+@media (max-width: 900px) {
+  .at-fade-x .seg-tabs, .at-fade-x.records-filters {
+    -webkit-mask-image: linear-gradient(90deg, black 0, black calc(100% - 36px), transparent 100%);
+    mask-image: linear-gradient(90deg, black 0, black calc(100% - 36px), transparent 100%);
+  }
+  /* room for the last item to scroll clear of the fade */
+  .at-fade-x .seg-tabs { padding-right: 36px; }
+  .at-fade-x.records-filters::after { content: ''; flex: 0 0 28px; }
+}
+
+/* ── Empty states on Qualifying Times, Lab and Reports ──────────────────── */
+/* The shared <Empty> prints its label as a small grey uppercase line; on these
+   pages it reads as a sentence: navy label, grey hint, action underneath. */
+.at-empty .empty {
+  font-family: var(--font-heading); font-weight: 800; font-size: 16px; line-height: 1.3;
+  letter-spacing: 0; text-transform: none; color: var(--color-text);
+}
+.at-empty .empty-hint { font-family: var(--font-body); font-weight: 400; font-size: 14px; line-height: 1.45; max-width: 46ch; margin-left: auto; margin-right: auto; }
+.at-empty .empty-action { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* ── Lab intro: a description list, not four cards ──────────────────────── */
+.at-lab-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; margin: 0; padding: 0 0 4px; }
+.at-lab-list dt { font-family: var(--font-heading); font-weight: 800; font-size: 14px; color: var(--color-text); }
+.at-lab-list dd { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--color-neutral-700); }
+@media (max-width: 900px) { .at-lab-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 16px; } }
+
+/* ── Clean-up round ─────────────────────────────────────────────────── */
+/* the capped medals block sits in the middle of the page, under its filters */
+.at-medals > * { margin-left: auto; margin-right: auto; }
+/* new-record cards: the tag line gets the full card width, under the avatar */
+.at-rec-head { flex-direction: column; align-items: flex-start; }
+.at-rec-head .card-kicker { width: 100%; }
+@media (max-width: 640px) {
+  /* an odd last candidate takes the row instead of leaving a hole */
+  .at-pred-cands > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+/* the record's tag line stays on one line in a narrow card */
+.at-rec-head .card-kicker { font-size: 10px; letter-spacing: 0.04em; }
+.at-rec-head .card-kicker > span { white-space: nowrap; }

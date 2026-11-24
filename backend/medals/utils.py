@@ -118,16 +118,33 @@ def recompute_medals(championship):
             # prelim 3rd became a phantom bronze). For each podium rank keep
             # only the fastest row(s); equal times are a genuine tie (a
             # shared gold, a dead heat) and are all kept.
+            #
+            # And a sheet sometimes numbers a dead heat 1, 2 instead of
+            # 1, 1. Equal times share the better place — two golds, no
+            # silver, and the swimmer placed 3rd keeps the bronze — exactly
+            # as the time-ranked path below does.
+            tied_rank = {}
+            for r in rows:
+                if r.original_rank and r.time_centiseconds > 0:
+                    cur = tied_rank.get(r.time_centiseconds)
+                    if cur is None or r.original_rank < cur:
+                        tied_rank[r.time_centiseconds] = r.original_rank
+
+            def place(r):
+                if not r.original_rank:
+                    return None
+                return tied_rank.get(r.time_centiseconds, r.original_rank)
+
             best_time = {}
             for r in rows:
-                if r.original_rank in _MEDAL_BY_RANK:
-                    t = best_time.get(r.original_rank)
+                if place(r) in _MEDAL_BY_RANK:
+                    t = best_time.get(place(r))
                     if t is None or r.time_centiseconds < t:
-                        best_time[r.original_rank] = r.time_centiseconds
+                        best_time[place(r)] = r.time_centiseconds
             for r in rows:
-                medal_type = _MEDAL_BY_RANK.get(r.original_rank)
+                medal_type = _MEDAL_BY_RANK.get(place(r))
                 if (medal_type is not None
-                        and r.time_centiseconds == best_time[r.original_rank]):
+                        and r.time_centiseconds == best_time[place(r)]):
                     award(r, medal_type, scope=scope)
             return
 

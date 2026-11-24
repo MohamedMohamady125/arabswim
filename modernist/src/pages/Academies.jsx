@@ -29,11 +29,8 @@ function AcademyLogo({ logo, name, size = 52 }) {
       background: 'var(--color-accent-100)', border: '1px solid var(--color-neutral-300)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {logo ? (
-        <Pic kind="logo" w={96} src={logo} />
-      ) : (
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-box-top)' }}>{acronym(name)}</span>
-      )}
+      {/* no logo, or one that fails to load: the initials, never an empty circle */}
+      <Pic kind="logo" w={96} src={logo} fallback={<span className="ap-initials-fill" style={{ fontSize: 16 }}>{acronym(name) || '?'}</span>} />
     </span>
   )
 }
@@ -209,7 +206,7 @@ export default function Academies() {
   if (loading) return <Loading label="Loading academies" />
 
   return (
-    <div>
+    <div className="ap-list">
       <PageHead title="Academies" />
 
       <FilterBar count={filtered.length} noun={filtered.length === 1 ? 'academy' : 'academies'} active={filtersOn} onClear={clearFilters}>
@@ -218,7 +215,7 @@ export default function Academies() {
           type="search"
           aria-label="Search academies"
           style={{ flex: '2 1 200px', width: 'auto', minWidth: 0, maxWidth: 320 }}
-          placeholder="Search by academy, city or country…"
+          placeholder="Search academies…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -288,7 +285,7 @@ export default function Academies() {
                     </div>
                   )}
                   <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--color-neutral-200)', fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)' }}>
-                    {a._team ? 'Swimmers, results and records →' : 'View academy →'}
+                    View academy →
                   </div>
                 </Link>
                 {isAdmin && !a._team && (

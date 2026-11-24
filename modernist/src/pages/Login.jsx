@@ -81,7 +81,7 @@ export default function Login() {
         {!locked && (
           <><strong>Are you a swimmer?</strong> <Link to="/register">Create an account</Link> to claim your profile — it takes about a minute.<br /></>
         )}
-        {locked ? 'New here? Open the sign-up link Arab Swim sent you to create your account, then sign in with your email.' : 'Clubs, academies and federations: open the sign-up link Arab Swim sent you to create your account, then sign in here with your email.'}
+        {locked ? 'New here? Open the sign-up link ArabSwim sent you to create your account, then sign in with your email.' : 'Clubs, academies and federations: open the sign-up link ArabSwim sent you to create your account, then sign in here with your email.'}
       </div>
     </div>
   )

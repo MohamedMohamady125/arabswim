@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { getSponsors } from '../api/sponsors'
 import Pic from './Pic'
 
@@ -14,8 +15,16 @@ const DEFAULT_PARTNERS = [
 // Sponsor/partner logo strip, shown site-wide just above the footer
 // (mirrors the "GLOBAL PARTNERS" band on worldaquatics.com). Shows the
 // bundled real partner until a sponsor with a logo exists in the admin.
+// Selective Attention: work screens (admin, import, reports) and sign-in /
+// sign-up forms carry no sponsor wall. The 404 page is hidden in CSS
+// (audit-chrome.css), because only the router knows that no route matched.
+const HIDDEN_ON = /^\/(admin|import|reports|login|register|join)(\/|$)/
+// below this a marquee has nothing to scroll: it only repeats the same logos
+const MARQUEE_MIN = 6
+
 export default function Partners() {
   const [partners, setPartners] = useState([])
+  const { pathname } = useLocation()
 
   useEffect(() => {
     let alive = true
@@ -30,6 +39,7 @@ export default function Partners() {
   }, [])
 
   const shown = partners.length > 0 ? partners : DEFAULT_PARTNERS
+  const marquee = shown.length >= MARQUEE_MIN
 
   const pillFor = (p, dupe) => {
     const img = p.logo ? (
@@ -62,19 +72,24 @@ export default function Partners() {
     )
   }
 
+  if (HIDDEN_ON.test(pathname)) return null
+
   return (
     <section className="rule-t asw-partners" aria-label="Partners">
       <span className="asw-partners-label">Our Partners</span>
       {/* Proximity: a handful of partners sit together beside the label; only a full wall spreads across */}
-      <div className={`asw-partners-row${shown.length < 5 ? ' few' : ''}`}>
-        {/* On phone the track auto-scrolls as an endless marquee (second copy
-            makes the loop seamless); on desktop both wrappers flatten away
-            (display:contents) and the duplicate set is hidden. */}
+      <div className={`asw-partners-row${shown.length < 5 ? ' few' : ''}${marquee ? '' : ' static'}`}>
+        {/* With six or more partners the phone track auto-scrolls as an endless
+            marquee (second copy makes the loop seamless); on desktop both
+            wrappers flatten away (display:contents) and the duplicate set is
+            hidden. Fewer partners sit in a still, centred row with no copy. */}
         <div className="asw-partners-track" style={{ '--partner-count': shown.length }}>
           <div className="asw-partners-half">{shown.map((p) => pillFor(p, false))}</div>
-          <div className="asw-partners-half asw-partner-dupe" aria-hidden="true">
-            {shown.map((p) => pillFor(p, true))}
-          </div>
+          {marquee && (
+            <div className="asw-partners-half asw-partner-dupe" aria-hidden="true">
+              {shown.map((p) => pillFor(p, true))}
+            </div>
+          )}
         </div>
       </div>
     </section>

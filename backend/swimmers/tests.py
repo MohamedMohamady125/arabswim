@@ -342,6 +342,28 @@ class CareerSummaryTests(TestCase):
         Medal.objects.create(swimmer=cls.sw, championship=c2, event=free100,
                              medal_type='GOLD', result=r2, nationality=cls.egy)
 
+    def test_top_personal_best_is_the_fastest_swim(self):
+        """A slower swim that carries more points never stands as the best:
+        Top Personal Bests shows the same time as the rankings and Times tab."""
+        from core.models import Event
+        from championships.models import Championship, Result
+        free200 = Event.objects.create(name='200 M Freestyle', distance=200,
+                                       stroke='Freestyle', is_relay=False)
+        c = Championship.objects.get(name='Nationals')
+        Result.objects.create(swimmer=self.sw, championship=c, event=free200,
+                              round_type='Prelims', time_centiseconds=11263,
+                              fina_points=427)
+        Result.objects.create(swimmer=self.sw, championship=c, event=free200,
+                              round_type='Finals', time_centiseconds=12541,
+                              fina_points=677)
+        resp = APIClient().get(f'/api/v1/swimmers/{self.sw.id}/profile-stats/')
+        pbs = {p['event_name']: p for p in resp.data['top_personal_bests']}
+        self.assertEqual(pbs['200 M Freestyle']['time'], '1:52.63')
+        self.assertEqual(pbs['200 M Freestyle']['fina_points'], 427)
+        self.assertEqual(pbs['100 M Freestyle']['time'], '55.00')
+        self.assertEqual([p['event_name'] for p in resp.data['top_personal_bests']],
+                         ['100 M Freestyle', '200 M Freestyle'])
+
     def test_career_summary_block(self):
         resp = APIClient().get(f'/api/v1/swimmers/{self.sw.id}/profile-stats/')
         self.assertEqual(resp.status_code, 200)

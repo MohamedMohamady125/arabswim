@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, Landmark, Medal, TrendingDown, TrendingUp, Trophy, User, Users, Waves } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getCountryProfile, getEvents, getCountries, updateCountry, ensureNationalTeam } from '../api/core'
@@ -142,6 +142,45 @@ function GSB({ gold, silver, bronze, size = 12 }) {
     <span className="asw-num" style={{ display: 'inline-flex', gap: 12, fontSize: size, fontWeight: 800, whiteSpace: 'nowrap', color: 'var(--color-accent-800)', flex: 'none' }}>
       {item(gold, '--asw-gold', 'gold')}{item(silver, '--asw-silver', 'silver')}{item(bronze, '--asw-bronze', 'bronze')}
     </span>
+  )
+}
+
+// Record-holder carousel. Cards that fit the width sit in a still, centred
+// row. Otherwise the track loops (two copies for a seamless join), but only
+// once it is on screen, so the reader always meets it at its first card
+// instead of somewhere mid-card. Reduced motion: a plain swipeable row.
+const TICKER_CARD = 235
+const TICKER_GAP = 18
+function RecordTicker({ items, renderItem }) {
+  const boxRef = useRef(null)
+  const [fits, setFits] = useState(false)
+  const [seen, setSeen] = useState(false)
+  const [still] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return undefined
+    const need = items.length * (TICKER_CARD + TICKER_GAP) - TICKER_GAP
+    const measure = () => setFits(need <= el.clientWidth)
+    measure()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    ro?.observe(el)
+    let io = null
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect() } }, { threshold: 0.35 })
+      io.observe(el)
+    } else setSeen(true)
+    return () => { ro?.disconnect(); io?.disconnect() }
+  }, [items.length])
+  const loop = !fits && !still
+  return (
+    <div ref={boxRef} className="asw-ticker" style={{ overflowX: !fits && still ? 'auto' : 'hidden', padding: '4px 0 10px' }}>
+      <div className={loop ? 'asw-ticker-track' : undefined}
+        style={loop
+          ? { display: 'flex', gap: TICKER_GAP, paddingRight: TICKER_GAP, width: 'max-content', animationDuration: `${Math.max(items.length * 5, 25)}s`, animationPlayState: seen ? undefined : 'paused' }
+          : { display: 'flex', gap: TICKER_GAP, width: fits ? 'auto' : 'max-content', justifyContent: fits ? 'center' : 'flex-start' }}>
+        {(loop ? [...items, ...items] : items).map((r, i) => renderItem(r, i))}
+      </div>
+    </div>
   )
 }
 
@@ -601,7 +640,7 @@ function PoolsTab({ hosted, countryName }) {
       if (!loc) return
       map[loc] = map[loc] || { location: loc, meets: 0, years: new Set(), pools: new Set() }
       map[loc].meets += 1
-      if (c.date) map[loc].years.add(new Date(c.date).getFullYear())
+      if (c.date) map[loc].years.add(Number(String(c.date).slice(0, 4)))
       if (c.pool) map[loc].pools.add(c.pool)
     })
     return Object.values(map).sort((a, b) => b.meets - a.meets || nameTie(a, b))
@@ -643,7 +682,7 @@ function ArchivesTab({ hosted, participated, countryName }) {
     })
     const map = {}
     dedup.forEach((c) => {
-      const y = new Date(c.date).getFullYear()
+      const y = Number(String(c.date).slice(0, 4)) // not new Date(): a 1 Jan meet read as UTC lands in the previous year west of Greenwich
       ;(map[y] = map[y] || []).push(c)
     })
     return Object.entries(map).sort((a, b) => b[0] - a[0]).map(([y, meets]) => [y, meets.sort((a, b) => new Date(b.date) - new Date(a.date))])
@@ -2013,7 +2052,7 @@ export default function CountryProfile({ arabFed = false }) {
   })()
 
   return (
-    <div className="m-zoom">
+    <div className="m-zoom fed-profile">
       {/* ===== ISF-style federation header: circular flag logo + info ===== */}
       {(() => {
         const navy = 'var(--color-accent-800)'
@@ -2178,7 +2217,9 @@ export default function CountryProfile({ arabFed = false }) {
           return out
         }
         const topRecords = [...pickHolders(true), ...pickHolders(false)].slice(0, 12)
-        const usDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+        // same helper as News/Article: reads the calendar day off the string, so the
+        // card cannot show the day before (new Date() shifted it by the timezone)
+        const usDate = formatDate
         // compact sidebar cards: small square photo, tight text — no stretching
         const hCard = { background: '#fff', borderRadius: 0, display: 'flex', gap: 12, padding: 10, alignItems: 'center', position: 'relative', borderTop: '3px solid var(--color-box-top)' }
         const hPhoto = { width: 96, height: 96, borderRadius: 0, background: 'var(--color-accent-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'var(--color-neutral-700)', flexShrink: 0 }
@@ -2214,7 +2255,7 @@ export default function CountryProfile({ arabFed = false }) {
                             : <Camera size={22} aria-hidden="true" />}
                         </div>
                         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, textAlign: 'left' }}>
-                          <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{a ? usDate(a.published_at || a.created_at) : 'No news yet'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', fontWeight: 700, textTransform: a ? 'none' : 'uppercase', letterSpacing: a ? 0 : '0.08em' }}>{a ? usDate(a.published_at || a.created_at) : 'No news yet'}</div>
                           {(() => {
                             const rtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF]/.test(a?.title || '')
                             return (
@@ -2249,7 +2290,7 @@ export default function CountryProfile({ arabFed = false }) {
 
                 {/* Current + Upcoming Events — fills the gap below the news cards */}
                 {(() => {
-                  const todayISO = new Date().toISOString().slice(0, 10)
+                  const todayISO = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}` })() // local day, not the UTC one
                   const evs = [...calEvents].filter((e) => e.date).sort((a, b) => a.date.localeCompare(b.date))
                   const current = evs.find((e) => e.date <= todayISO && todayISO <= (e.end_date || e.date)) || null
                   const upcoming = evs.find((e) => e.date > todayISO) || null
@@ -2305,7 +2346,7 @@ export default function CountryProfile({ arabFed = false }) {
                   const deco = [...(profile.top_medalists_international || [])]
                     .sort((a, b) => (b.total ?? 0) - (a.total ?? 0) || nameTie(a, b)).slice(0, 6)
                   return (
-                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14 }}>
+                    <div className="m-col1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 14, alignItems: 'start' }}>
                       <div style={panel}>
                         <div style={{ ...kick, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                           <span>International Medal Tally</span>
@@ -2345,10 +2386,13 @@ export default function CountryProfile({ arabFed = false }) {
                     </div>
                     <div style={hBody}>
                       <div className="hl-title" style={hTitle}>{title}</div>
+                      {/* the label spans the card; the lines under it keep clear of the corner icon */}
+                      <div style={{ paddingRight: icon === null ? 0 : 34, minWidth: 0 }}>
                       <div style={hBig}>{big}</div>
                       {sub ? <div style={hSub}>{sub}</div> : null}
                       {name ? <div style={{ ...hSub, fontWeight: 700, color: 'var(--color-accent-800)' }}>{name}</div> : null}
                       {extra ? <div style={{ ...hSub, color: 'var(--color-neutral-700)' }}>{extra}</div> : null}
+                      </div>
                     </div>
                     {icon === undefined ? barsIcon : icon}
                     {badgeEl}
@@ -2368,16 +2412,16 @@ export default function CountryProfile({ arabFed = false }) {
                 const gsb = medalBoxes.reduce((acc, m) => ({ g: acc.g + (m.gold || 0), s: acc.s + (m.silver || 0), b: acc.b + (m.bronze || 0) }), { g: 0, s: 0, b: 0 })
                 const lastHosted = [...hostedIntl].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
                 const pool = [
-                  { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: <>Best Season <br />Performance</>, big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
-                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: <>Most Decorated <br />Swimmer</>, big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
+                  { key: 'best-perf', person: seasonBest && nameKey(seasonBest.name), valid: !!seasonBest, render: () => hl({ photo: seasonBest.photo, title: 'Best Season Performance', big: seasonBest.best_time || '—', sub: seasonBest.best_event ? `${seasonBest.best_event} · ${seasonBest.season}` : '', name: seasonBest.name, extra: seasonBest.championship }) },
+                  { key: 'decorated', person: topMedalist && nameKey(topMedalist.name), valid: !!topMedalist, render: () => hl({ photo: topMedalist.photo, title: 'Most Decorated Swimmer', big: topMedalist.total || 0, sub: 'Total Medals', name: topMedalist.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Trophy size={20} aria-hidden="true" /></span> }) },
                   { key: 'new-record', person: newestRecord && nameKey(newestRecord.swimmer), valid: !!newestRecord, render: () => hl({ photo: newestRecord.swimmer_photo, title: 'New Record', big: newestRecord.time || '—', sub: newestRecord.event || '', name: newestRecord.swimmer, extra: newestRecord.date ? usDate(newestRecord.date) : null, icon: null, badgeEl: <span style={{ position: 'absolute', right: 14, bottom: 14, fontSize: 11, fontWeight: 800, background: 'var(--color-accent-800)', color: '#fff', padding: '4px 12px', borderRadius: 0, letterSpacing: '0.08em' }}>NEW</span> }) },
-                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: <>Trending <br />Swimmer</>, big: (<span style={{ color: trendUp ? 'var(--asw-fast)' : 'var(--asw-slow)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 16, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? <TrendingUp size={22} aria-hidden="true" /> : <TrendingDown size={22} aria-hidden="true" />}</span> }) },
-                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: <>Most Gold <br />Medals</>, big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
-                  { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: <>Leading <br />Woman</>, big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
-                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: <>Most <br />Records</>, big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
-                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: <>Longest-Standing <br />Record</>, big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
-                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: <>Total <br />Medals</>, big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
-                  { key: 'host', valid: hostedIntl.length > 0, render: () => hl({ emoji: <Landmark size={22} aria-hidden="true" />, title: <>Championship <br />Host</>, big: hostedIntl.length, sub: `International Championship${hostedIntl.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
+                  { key: 'trending', person: t && nameKey(t.name), valid: !!t, render: () => hl({ photo: t.photo, title: 'Trending Swimmer', big: (<span style={{ color: trendUp ? 'var(--asw-fast)' : 'var(--asw-slow)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>{t.is_new ? 'NEW' : t.is_hot ? 'HOT' : `${t.delta > 0 ? '+' : ''}${t.delta}`}{!t.is_new && !t.is_hot && <span style={{ fontSize: 16, lineHeight: 1 }}>{trendUp ? '▲' : '▼'}</span>}</span>), sub: `Arab ranking #${t.rank}${t.is_new ? ' · new entry' : t.is_hot ? ' · top recent performer' : ` · was #${t.prev_rank}`}`, name: <SwimmerLink id={t.id} name={t.name} />, extra: t.best_event ? `${t.best_event} · ${t.best_time}${t.fina ? ` · ${t.fina} pts` : ''}` : null, icon: <span style={{ position: 'absolute', right: 16, bottom: 14, fontSize: 20 }}>{trendUp ? <TrendingUp size={22} aria-hidden="true" /> : <TrendingDown size={22} aria-hidden="true" />}</span> }) },
+                  { key: 'golden', person: goldKing && nameKey(goldKing.name), valid: !!(goldKing && goldKing.gold > 0), render: () => hl({ photo: goldKing.photo, title: 'Most Gold Medals', big: goldKing.gold, sub: 'Gold Medals', name: goldKing.name, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Medal size={20} aria-hidden="true" /></span> }) },
+                  { key: 'leading-woman', person: leadingWoman && nameKey(leadingWoman.name), valid: !!leadingWoman, render: () => hl({ photo: leadingWoman.photo, title: 'Leading Woman', big: leadingWoman.best_time || '—', sub: leadingWoman.best_event || '', name: leadingWoman.name, extra: leadingWoman.championship }) },
+                  { key: 'collector', person: collector && nameKey(collector.rec.swimmer), valid: !!(collector && collector.n > 1), render: () => hl({ photo: collector.rec.swimmer_photo, title: 'Most Records', big: collector.n, sub: 'Records Held', name: collector.rec.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}>⏱</span> }) },
+                  { key: 'oldest-record', person: oldestRecord && nameKey(oldestRecord.swimmer), valid: !!oldestRecord, render: () => hl({ photo: oldestRecord.swimmer_photo, title: 'Longest-Standing Record', big: oldestRecord.time || '—', sub: `${oldestRecord.event || ''} · unbroken since ${oldestRecord.date.slice(0, 4)}`, name: oldestRecord.swimmer, icon: <span style={{ position: 'absolute', right: 14, bottom: 12, fontSize: 24 }}><Landmark size={20} aria-hidden="true" /></span> }) },
+                  { key: 'podium', valid: gsb.g + gsb.s + gsb.b > 0, render: () => hl({ emoji: <Medal size={22} aria-hidden="true" />, title: 'Total Medals', big: formatNumber(gsb.g + gsb.s + gsb.b), sub: 'Medals Across All Competitions', name: <GSB gold={gsb.g} silver={gsb.s} bronze={gsb.b} /> }) },
+                  { key: 'host', valid: hostedIntl.length > 0, render: () => hl({ emoji: <Landmark size={22} aria-hidden="true" />, title: 'Championship Host', big: hostedIntl.length, sub: `International Championship${hostedIntl.length === 1 ? '' : 's'} Hosted`, name: lastHosted?.name, extra: lastHosted?.date ? `Most recent · ${lastHosted.date.slice(0, 4)}` : null }) },
                   { key: 'quick-stats', valid: !!profile.stats, render: () => hl({ title: 'Quick Stats', big: formatNumber(profile.stats?.swimmers), sub: 'Total Swimmers', name: `${formatNumber(profile.stats?.medals)} Medals · ${formatNumber(profile.stats?.records)} Records` }) },
                 ]
                 const picked = pickHighlights(pool, mulberry32(hlSeed), 5)
@@ -2392,15 +2436,8 @@ export default function CountryProfile({ arabFed = false }) {
             {/* National Record Holders — section only exists when there are records */}
             {topRecords.length > 0 && (<>
             {secTitle(arabFed ? 'Arab Record Holders' : 'Record Holders')}
-            {/* Auto-scrolling ticker — track duplicated for a seamless loop, pauses on hover.
-                1-3 records render as a static centred row (a loop just shows duplicates). */}
-            <div className="asw-ticker" style={{ overflow: 'hidden', padding: '4px 0 10px' }}>
-              <div className={topRecords.length >= 4 ? 'asw-ticker-track' : undefined}
-                style={topRecords.length >= 4
-                  ? { display: 'flex', width: 'max-content', animationDuration: `${Math.max(topRecords.length * 5, 25)}s` }
-                  : { display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {(topRecords.length >= 4 ? [...topRecords, ...topRecords] : topRecords).map((r, i) => (
-                <div key={i} style={{ width: 235, marginRight: 18, flexShrink: 0, borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column' }}>
+            <RecordTicker items={topRecords} renderItem={(r, i) => (
+                <div key={i} style={{ width: TICKER_CARD, flexShrink: 0, borderRadius: 0, overflow: 'hidden', textAlign: 'center', background: 'var(--color-neutral-100)', border: '1px solid var(--color-divider)', display: 'flex', flexDirection: 'column' }}>
                   {/* Circular photo with navy ring */}
                   <div style={{ padding: '24px 0 8px' }}>
                     <div style={{ width: 165, height: 165, borderRadius: '50%', background: 'var(--color-neutral-300)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'var(--color-neutral-700)', border: '4px solid var(--color-accent-800)', overflow: 'hidden' }}>
@@ -2408,7 +2445,8 @@ export default function CountryProfile({ arabFed = false }) {
                     </div>
                   </div>
                   <div style={{ padding: '12px 12px 14px' }}>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
+                    {/* two lines reserved: a long name no longer pushes its event line below the neighbours' */}
+                    <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1.25, minHeight: '2.5em', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent-800)' }}><SwimmerLink id={r.swimmer_id} name={r.swimmer} /></div>
                     <div style={{ fontSize: 14, color: 'var(--color-neutral-800)', marginTop: 8, lineHeight: 1.55 }}>
                       {recordEventLabel(r.event, r.pool)}
                     </div>
@@ -2419,9 +2457,7 @@ export default function CountryProfile({ arabFed = false }) {
                     <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3, opacity: 0.92 }}>{REC_TYPE_LABELS[r.record_type] || 'National'} Record</div>
                   </div>
                 </div>
-              ))}
-              </div>
-            </div>
+            )} />
             </>)}
           </div>
         )

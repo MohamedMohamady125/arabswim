@@ -4,13 +4,13 @@ import { getRankings } from '../api/rankings'
 import { getCountries, getEvents } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, Pager, FilterBar } from '../components/ui'
-import { formatDate, AGE_GROUPS } from '../utils'
+import { formatDate, AGE_GROUPS, poolLabel } from '../utils'
 
 // The API serves 50 rows a page; asking for 25 was ignored, so the pager
 // counted twice as many pages as existed and the second half came back empty.
 const PAGE_SIZE = 50
 const SCOPE_LABEL = { national: 'National', arab: 'Arab', gcc: 'GCC' }
-const POOL_LABEL = { LCM: 'LCM (50m pool)', SCM: 'SCM (25m pool)', OW: 'Open water' }
+const POOL_LABEL = { LCM: poolLabel('LCM'), SCM: poolLabel('SCM'), OW: 'Open water' }
 // Working Memory: the selection lives in the address bar, so coming back from
 // a swim (or sharing the link) lands on the same ranking, not the defaults.
 const DEFAULTS = { scope: 'arab', country: '', gender: 'M', pool: 'LCM', year: '', age: 'OPEN', event: '', page: '1' }
@@ -168,33 +168,34 @@ export default function Rankings() {
       {/* Common Region + Working Memory: one bar holds every filter, the size
           of the list and the way back to the default ranking. Segments first
           (who / which pool), dropdowns below (what / when) — same order as Records. */}
+      <div className="at-fb-end">
       <FilterBar count={showTable ? count : null} noun={count === 1 ? 'swimmer' : 'swimmers'} active={filtersChanged} onClear={clearFilters}>
-        <div className="records-filters results-filters" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="results-filters at-filters">
+          <div className="at-filters-row at-filters-segs">
             <Seg
               options={[{ value: 'arab', label: 'Arab' }, { value: 'gcc', label: 'GCC' }, { value: 'national', label: 'National' }]}
               value={scope}
               onChange={setScope}
             />
             <Seg
-              options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+              options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
               value={gender}
               onChange={setGender}
             />
             <Seg
-              options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
+              options={[{ value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]}
               value={pool}
               onChange={setPool}
             />
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="at-filters-row at-filters-picks">
             {scope === 'national' && (
-              <select className="select" aria-label="Country" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+              <select className="select at-span2" aria-label="Country" style={{ flex: '2 1 140px', width: 'auto', minWidth: 0, maxWidth: 260 }} value={country} onChange={(e) => setCountry(e.target.value)}>
                 <option value="">Select country…</option>
                 {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
-            <select className="select" aria-label="Event" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0, maxWidth: 420 }} value={event} onChange={(e) => setEvent(e.target.value)}>
+            <select className="select at-span2" aria-label="Event" style={{ flex: '3 1 170px', width: 'auto', minWidth: 0, maxWidth: 420 }} value={event} onChange={(e) => setEvent(e.target.value)}>
               {!event && <option value="">Select event…</option>}
               {eventGroups.map((g) => (
                 <optgroup key={g.stroke} label={g.stroke}>
@@ -212,6 +213,7 @@ export default function Rankings() {
           </div>
         </div>
       </FilterBar>
+      </div>
 
       {needsCountry ? (
         <Empty label="Select a country to view national rankings" hint="Pick a federation from the country list above, or switch to the Arab ranking." />
@@ -239,7 +241,7 @@ export default function Rankings() {
               </h2>
               {/* Working Memory: the heading repeats every choice that shaped this list */}
               <span className="kicker">
-                {scope === 'national' ? (countryName || 'National') : SCOPE_LABEL[scope]} · {gender === 'M' ? "Men's" : "Women's"} · {POOL_LABEL[pool]} · {year || 'All-time'}{ageGroup !== 'OPEN' ? ` · ${ageGroup}` : ''}
+                {scope === 'national' ? (countryName || 'National') : SCOPE_LABEL[scope]} · {gender === 'M' ? 'Men' : 'Women'} · {POOL_LABEL[pool]} · {year || 'All-time'}{ageGroup !== 'OPEN' ? ` · ${ageGroup}` : ''}
               </span>
             </div>
           )}
@@ -279,13 +281,13 @@ export default function Rankings() {
                     >
                       <td className="asw-num" style={{ fontWeight: 800 }}>{isTied ? '=' : r.rank}</td>
                       <td className="swimmer-cell">
-                        {/* one line always — long names ellipsize instead of wrapping */}
+                        {/* one line on desktop; on phone the name takes up to two lines so it is never cut mid-surname */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <Flag code={r.nationality_code} name={r.nationality} />
                           {/* whole row goes to the swim; profile stays a click away via the meet page */}
                           {swimLink
-                            ? <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.swimmer_name}</span>
-                            : <Link to={`/swimmers/${r.swimmer_id}`} style={{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.swimmer_name}</Link>}
+                            ? <span className="at-rank-name">{r.swimmer_name}</span>
+                            : <Link to={`/swimmers/${r.swimmer_id}`} className="at-rank-name" style={{ color: 'inherit', textDecoration: 'none' }}>{r.swimmer_name}</Link>}
                         </div>
                       </td>
                       <td className="num asw-num">{r.age_at_competition ?? '—'}</td>
@@ -293,9 +295,8 @@ export default function Rankings() {
                         {r.time}
                       </td>
                       <td className="num asw-num">{r.fina_points ?? '—'}</td>
-                      {/* one line — long meet names ellipsize so rows stay short */}
-                      <td className="text-muted hide-mobile"
-                        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}
+                      {/* one line — the cap grows with the window, so a meet name is only cut when the row is truly full */}
+                      <td className="text-muted hide-mobile at-rank-meet"
                         title={`${r.championship_name}${r.championship_location ? ` · ${r.championship_location.split(',').pop().trim()}` : ''}`}>
                         {r.championship_name}
                         {r.championship_location ? ` · ${r.championship_location.split(',').pop().trim()}` : ''}

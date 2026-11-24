@@ -45,14 +45,9 @@ export default function Register() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: '0 auto', padding: '64px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '-0.02em' }}>ARABSWIM</span>
-      </div>
-      {/* real page heading for assistive tech; the kicker below keeps the look */}
-      <h1 className="sr-only">Create account</h1>
-      <div className="kicker" aria-hidden="true" style={{ marginBottom: 8 }}>Create account</div>
+    <div className="content-auth-wrap">
+      {/* the header already carries the brand lockup; the page leads with its heading */}
+      <h1 style={{ fontSize: 24, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Create account</h1>
       <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginBottom: 18 }}>
         For swimmers who want to manage their own profile. Three short steps, about a minute.
       </div>

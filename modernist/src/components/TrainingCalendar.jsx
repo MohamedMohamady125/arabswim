@@ -220,7 +220,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(96px, 1fr))', gap: 6, minWidth: 720 }}>
+            <div className="tc-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(96px, 1fr))', gap: 6, minWidth: 720 }}>
               {WEEKDAYS.map((w) => (
                 <div key={w} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', padding: '2px 0 6px' }}>{w}</div>
               ))}
@@ -252,7 +252,7 @@ export default function TrainingCalendar({ teamId, academyId, canEdit }) {
                     {hasPractice && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-accent-800)', flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: NAVY }}>
+                        <span className="tc-label" style={{ fontSize: 11, fontWeight: 700, color: NAVY }}>
                           {dSessions.length === 1 ? 'Practice' : `${dSessions.length} sessions`}
                         </span>
                       </div>

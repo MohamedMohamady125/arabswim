@@ -21,20 +21,33 @@ const ALIASES = {
 
 // `cols` = which optional columns carry any data. All-zero columns are left
 // out (Cognitive Load): three columns of 0 say nothing.
-function CountryTable({ countries, cols, startRank = 1 }) {
+// Similarity: every table on the page uses one column template (fixed widths
+// in audit-chrome.css), so Swimmers and Clubs sit at the same place in the
+// Arab and Other tables. `medals={false}` keeps the three medal columns as
+// blank space instead of dropping them, which would shift the others.
+function CountryTable({ countries, cols, medals = true, startRank = 1 }) {
   const navigate = useNavigate()
+  const blank = cols.medals && !medals
   return (
-    <div className="table-scroll" style={{ maxWidth: 880 }}>
-      <table className="table">
+    <div className="table-scroll">
+      <table className="table fed-table">
+        <colgroup>
+          <col className="fed-col-rank" />
+          <col />
+          <col className="fed-col-num" />
+          {cols.clubs && <col className="fed-col-num" />}
+          {cols.medals && <><col className="fed-col-medal" /><col className="fed-col-medal" /><col className="fed-col-medal" /></>}
+        </colgroup>
         <thead>
           <tr>
-            <th style={{ width: 28 }} aria-label="Rank by swimmers">#</th>
+            <th aria-label="Rank by swimmers">#</th>
             <th>Federation</th>
             <th className="num">Swimmers</th>
             {cols.clubs && <th className="num">Clubs</th>}
-            {cols.medals && <th className="num"><MedalIcon type="GOLD" size={16} /></th>}
-            {cols.medals && <th className="num"><MedalIcon type="SILVER" size={16} /></th>}
-            {cols.medals && <th className="num"><MedalIcon type="BRONZE" size={16} /></th>}
+            {blank && <th colSpan={3} aria-hidden="true" />}
+            {cols.medals && !blank && <th className="num"><MedalIcon type="GOLD" size={16} /></th>}
+            {cols.medals && !blank && <th className="num"><MedalIcon type="SILVER" size={16} /></th>}
+            {cols.medals && !blank && <th className="num"><MedalIcon type="BRONZE" size={16} /></th>}
           </tr>
         </thead>
         <tbody>
@@ -43,7 +56,7 @@ function CountryTable({ countries, cols, startRank = 1 }) {
             <tr key={c.id} className="row-link" onClick={() => navigate(`/countries/${c.id}`)}>
               <td className="asw-num" style={{ color: 'var(--color-neutral-700)' }}>{startRank + i}</td>
               <td>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="fed-name">
                   <Flag code={c.code} name={c.name} flagUrl={c.flag_url} placeholder large />
                   <Link to={`/countries/${c.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                     {c.name}
@@ -52,9 +65,10 @@ function CountryTable({ countries, cols, startRank = 1 }) {
               </td>
               <td className="num asw-num">{formatNumber(c.swimmers_count || 0)}</td>
               {cols.clubs && <td className="num asw-num">{formatNumber(c.clubs_count || 0)}</td>}
-              {cols.medals && <td className="num asw-num" style={{ fontWeight: 800 }}>{c.gold || 0}</td>}
-              {cols.medals && <td className="num asw-num">{c.silver || 0}</td>}
-              {cols.medals && <td className="num asw-num">{c.bronze || 0}</td>}
+              {blank && <td colSpan={3} aria-hidden="true" />}
+              {cols.medals && !blank && <td className="num asw-num" style={{ fontWeight: 800 }}>{c.gold || 0}</td>}
+              {cols.medals && !blank && <td className="num asw-num">{c.silver || 0}</td>}
+              {cols.medals && !blank && <td className="num asw-num">{c.bronze || 0}</td>}
             </tr>
           ))}
         </tbody>
@@ -118,7 +132,7 @@ export default function Countries() {
           type="search"
           style={{ flex: '1 1 220px', width: 'auto', minWidth: 0, maxWidth: 320 }}
           autoComplete="off"
-          placeholder="Search by country or code (e.g. Egypt, KSA)"
+          placeholder="Country or code"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search federations"
@@ -165,12 +179,12 @@ export default function Countries() {
               <SectHead title={`Other countries · ${others.length}`} />
               <div className="micro" style={{ marginBottom: 10 }}>Countries whose swimmers raced at meets in the database</div>
               {q || others.length <= OTHERS_FIRST + 3 ? (
-                <CountryTable countries={others} cols={{ ...cols, medals: false }} />
+                <CountryTable countries={others} cols={cols} medals={false} />
               ) : (
                 <>
-                  <CountryTable countries={others.slice(0, OTHERS_FIRST)} cols={{ ...cols, medals: false }} />
+                  <CountryTable countries={others.slice(0, OTHERS_FIRST)} cols={cols} medals={false} />
                   <ShowMore label={`Show all ${others.length} countries`} lessLabel={`Show top ${OTHERS_FIRST} only`}>
-                    <CountryTable countries={others.slice(OTHERS_FIRST)} cols={{ ...cols, medals: false }} startRank={OTHERS_FIRST + 1} />
+                    <CountryTable countries={others.slice(OTHERS_FIRST)} cols={cols} medals={false} startRank={OTHERS_FIRST + 1} />
                   </ShowMore>
                 </>
               )}

@@ -23,6 +23,11 @@ function parseMeetDate(d) {
   if (!d) return null
   const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
   if (m) return new Date(+m[3], +m[2] - 1, +m[1])
+  // A bare 'YYYY-MM-DD' handed to new Date() is read as UTC midnight, which is
+  // the previous evening west of Greenwich: the tile said DEC 19 for a 20 Dec
+  // meet. Build it as a local calendar day, the same day formatDate prints.
+  const iso = String(d).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3])
   const dt = new Date(String(d))
   return Number.isNaN(dt.getTime()) ? null : dt
 }

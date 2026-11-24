@@ -6,7 +6,7 @@ import { getEvents, getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, FilterBar, notify } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { formatDate, RECORD_TYPES, mediaUrl, parseTime, recordEventLabel } from '../utils'
+import { formatDate, RECORD_TYPES, mediaUrl, parseTime, recordEventLabel, nameInitials } from '../utils'
 import Pic from '../components/Pic'
 
 const TYPE_LABEL = Object.fromEntries(RECORD_TYPES.map((t) => [t.value, t.label]))
@@ -112,7 +112,7 @@ function AddRecordModal({ onClose, onCreated }) {
       <form onSubmit={submit} role="dialog" aria-modal="true" aria-label="Add record" style={{ width: 520, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>Add Record</strong>
-          <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
+          <button type="button" className="btn-ghost" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 40, minHeight: 40 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -123,7 +123,7 @@ function AddRecordModal({ onClose, onCreated }) {
               <div style={{ ...input, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Flag code={sel.nationality_detail?.code} name={sel.nationality_detail?.name} />
                 <span style={{ fontWeight: 600, flex: 1 }}>{sel.name}</span>
-                <button type="button" onClick={() => { setSel(null); setQ(''); setForm((f) => ({ ...f, country: '' })) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, margin: '-6px -6px -6px 0' }} aria-label="Clear swimmer" title="Clear swimmer">×</button>
+                <button type="button" onClick={() => { setSel(null); setQ(''); setForm((f) => ({ ...f, country: '' })) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, minWidth: 40, minHeight: 40, margin: '-10px -6px -10px 0' }} aria-label="Clear swimmer" title="Clear swimmer">×</button>
               </div>
             ) : (
               <>
@@ -295,7 +295,7 @@ function ImportRecordsModal({ onClose, onImported }) {
       <div role="dialog" aria-modal="true" aria-label="Import records from Excel" style={{ width: 560, maxWidth: '100%', background: 'var(--color-bg)', borderTop: '4px solid var(--color-box-top)' }}>
         <div className="rule-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
           <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 16 }}>Import Records from Excel</strong>
-          <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 36, minHeight: 36 }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ fontSize: 20, lineHeight: 1, border: 'none', background: 'none', cursor: 'pointer', minWidth: 40, minHeight: 40 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -510,15 +510,16 @@ export default function NewRecords() {
         active={scope !== 'NATIONAL' || !!country}
         onClear={() => { setScope('NATIONAL'); setCountry('') }}
       >
-        <div className="records-filters results-filters" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Fitts's Law: 40px controls; on phone the books and the country each take a full row */}
+        <div className="results-filters at-filters"><div className="at-filters-row at-filters-segs">
           <Seg options={SCOPE_OPTIONS} value={scope} onChange={(v) => { setScope(v); if (v !== 'NATIONAL') setCountry('') }} />
           {isNational && (
-            <select className="select" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+            <select className="select at-span2" aria-label="Country" style={{ flex: '1 1 150px', width: 'auto', minWidth: 0, maxWidth: 220 }} value={country} onChange={(e) => setCountry(e.target.value)}>
               <option value="">All countries</option>
               {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-        </div>
+        </div></div>
       </FilterBar>
 
       {addOpen && (
@@ -614,31 +615,33 @@ function RecordCards({ rows, onRemove }) {
   return (
     <div className="record-cards">
       {rows.map((r) => (
-                <div key={r.id}>
-                  {r.swimmer_detail?.photo ? (
+                <div key={r.id} className="at-rec-card">
+                  {r.swimmer_detail?.photo && (
                     <Pic kind="person" w={256}
                       src={r.swimmer_detail.photo}
                       alt={r.swimmer_detail?.name}
                       className="grayscale"
                       style={{ width: '100%', aspectRatio: '1 / 1', marginBottom: 10 }}
                     />
-                  ) : (
-                    <div
-                      style={{
-                        width: '100%', aspectRatio: '1 / 1', marginBottom: 10,
-                        background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, color: 'var(--color-accent)',
-                      }}
-                    >
-                      {(r.swimmer_detail?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('')}
-                    </div>
                   )}
-                  {/* 1 — scope + age category (Open / under-age) */}
-                  <div className="card-kicker" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {/* each separator travels with the item after it, so a wrapped line never ends on a dot */}
-                    <span style={{ whiteSpace: 'nowrap' }}>{TYPE_LABEL[r.record_type] || r.record_type} record</span>
-                    <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{ageCategoryLabel(r.age_category)}</span>
-                    <span style={{ whiteSpace: 'nowrap' }}><span style={{ opacity: 0.5 }}>· </span>{r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'}</span>
+                  {/* 1 — scope + age category (Open / under-age). Without a photo the card
+                      opens on a compact avatar row, not an empty square (Cognitive Load) */}
+                  <div className="at-rec-head">
+                    {!r.swimmer_detail?.photo && (
+                      <span className="at-rec-avatar" aria-hidden="true">
+                        {r.swimmer_detail?.is_relay_team && r.swimmer_detail?.nationality_detail?.code
+                          ? <Flag large code={r.swimmer_detail.nationality_detail.code} name={r.swimmer_detail.nationality_detail.name} />
+                          : nameInitials(r.swimmer_detail?.name)}
+                      </span>
+                    )}
+                    {/* .at-sep: separators are rules clipped at each line start, so a wrapped line never begins or ends on one */}
+                    <div className="card-kicker at-sep">
+                      <span>
+                        <span>{TYPE_LABEL[r.record_type] || r.record_type} record</span>
+                        <span>{ageCategoryLabel(r.age_category)}</span>
+                        <span>{r.swimmer_detail?.sex === 'F' ? 'Women' : 'Men'}</span>
+                      </span>
+                    </div>
                   </div>
                   {/* 2 — the swim, always "100 M Freestyle | LCM" */}
                   <div className="rec-event" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
@@ -650,29 +653,33 @@ function RecordCards({ rows, onRemove }) {
                       {r.formatted_time}
                     </span>
                   </div>
-                  {/* 4 — swimmer name + flag */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  {/* 4 — swimmer name + flag; two lines are reserved so every card's meet and date line up */}
+                  <div className="at-rec-who">
                     <Flag code={r.swimmer_detail?.nationality_detail?.code} name={r.swimmer_detail?.nationality_detail?.name} />
-                    {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
-                      <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ padding: '8px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, same card height */, color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
-                        {r.swimmer_detail?.name}
-                      </Link>
-                    ) : (
-                      <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_detail?.name}</span>
+                    <span className="at-rec-name">
+                      {r.swimmer && !r.swimmer_detail?.is_relay_team ? (
+                        <Link to={`/swimmers/${r.swimmer}`} className="rec-name" style={{ color: 'inherit', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                          {r.swimmer_detail?.name}
+                        </Link>
+                      ) : (
+                        <span className="rec-name" style={{ fontSize: 13, fontWeight: 600 }}>{r.swimmer_detail?.name}</span>
+                      )}
+                    </span>
+                  </div>
+                  {/* 5 — meet, place and date, pinned to the card foot */}
+                  <div className="at-rec-foot">
+                    {r.meet_name && (
+                      <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{r.meet_name}</div>
+                    )}
+                    {(r.location || r.result_date) && (
+                      <div className="rec-meta at-sep" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
+                        <span>
+                          {r.location && <span>{r.location}</span>}
+                          {r.result_date && <span className="asw-num">{formatDate(r.result_date)}</span>}
+                        </span>
+                      </div>
                     )}
                   </div>
-                  {/* 5 — meet name */}
-                  {(r.meet_name || r.location) && (
-                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 6 }}>
-                      {[r.meet_name, r.location].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
-                  {/* 6 — date of meet */}
-                  {r.result_date && (
-                    <div className="rec-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>
-                      {formatDate(r.result_date)}
-                    </div>
-                  )}
                   {/* hand-entered records have no meet behind them, so this is the only place to take one back */}
                   {onRemove && r.source && r.source !== 'AUTO' && (
                     <button type="button" className="btn btn-ghost" style={{ marginTop: 8, fontSize: 12, color: 'var(--asw-slow)' }} onClick={() => onRemove(r)}>

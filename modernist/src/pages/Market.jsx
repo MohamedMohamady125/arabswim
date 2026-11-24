@@ -243,7 +243,7 @@ export default function Market() {
                         </button>
                       )}
                       <span style={{ flex: 1 }} />
-                      <button type="button" className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} aria-label={`Delete listing ${l.title}`} onClick={() => handleDelete(l)}>
+                      <button type="button" className="btn btn-secondary content-adminbtn content-adminbtn-danger" aria-label={`Delete listing ${l.title}`} onClick={() => handleDelete(l)}>
                         <Trash2 size={13} /> Delete
                       </button>
                     </div>

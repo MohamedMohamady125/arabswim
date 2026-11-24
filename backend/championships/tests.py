@@ -494,3 +494,67 @@ class TopPerformersArabWomenTests(TestCase):
         self.assertIn('Arab WOMAN', [t['swimmer_name'] for t in top if t['is_arab'] and t['gender'] == 'F'])
         self.assertEqual(sum(1 for t in top if not t['is_arab']), 30)
         self.assertEqual([t['fina_points'] for t in top], sorted((t['fina_points'] for t in top), reverse=True))
+
+
+class QuickStatsAgreeWithTabsTests(TestCase):
+    """The Overview/Home tiles and the meet's Highlights tabs share one
+    definition: a personal best beats a time the swimmer had before the
+    meet, and a broken record beats an existing pre-meet best."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from rest_framework.test import APIClient
+        cls.client_api = APIClient
+        cls.tun = Country.objects.create(name='Tunisia', code='TUN', region='ARAB')
+        cls.arab = Classification.objects.create(name='Arab')
+        cls.free = Event.objects.create(name='50 M Freestyle', distance=50,
+                                        stroke='Freestyle', is_relay=False)
+        cls.back = Event.objects.create(name='50 M Backstroke', distance=50,
+                                        stroke='Backstroke', is_relay=False)
+        old = Championship.objects.create(
+            name='Old', date='2025-07-01', pool='LCM', country=cls.tun,
+            classification=cls.arab, is_published=True)
+        cls.champ = Championship.objects.create(
+            name='New', date='2026-07-01', pool='LCM', country=cls.tun,
+            classification=cls.arab, is_published=True)
+        cls.vet = Swimmer.objects.create(name='Vet ERAN', sex='M', nationality=cls.tun)
+        cls.rookie = Swimmer.objects.create(name='New COMER', sex='M', nationality=cls.tun)
+
+        def swim(sw, champ, event, cs):
+            Result.objects.create(swimmer=sw, championship=champ, event=event,
+                                  round_type='Finals', time_centiseconds=cs,
+                                  nationality=cls.tun)
+        swim(cls.vet, old, cls.free, 2600)
+        swim(cls.vet, cls.champ, cls.free, 2500)      # beats his 26.00: PB + record
+        swim(cls.rookie, cls.champ, cls.free, 2700)   # first-ever swim: not a PB
+        swim(cls.rookie, cls.champ, cls.back, 3000)   # first-ever time in the event: no record broken
+
+    def _get(self, path):
+        return self.client_api().get(f'/api/v1/championships/{path}').data
+
+    def test_personal_best_tile_matches_the_tab_list(self):
+        qs = self._get(f'quick-stats/?championship={self.champ.id}')
+        listed = self._get(f'{self.champ.id}/stats/')['personal_bests']
+        self.assertEqual([p['swimmer_name'] for p in listed], ['Vet ERAN'])
+        self.assertEqual(listed[0]['previous_best'], '26.00')
+        self.assertEqual(qs['counts']['personal_bests'], len(listed))
+        self.assertEqual(qs['performance']['most_pbs']['count'], 1)
+        self.assertEqual(qs['performance']['most_pbs']['name'], 'Vet ERAN')
+
+    def test_no_previous_times_means_no_personal_bests(self):
+        Result.objects.filter(championship__name='Old').delete()
+        qs = self._get(f'quick-stats/?championship={self.champ.id}')
+        self.assertEqual(qs['counts']['personal_bests'], 0)
+        self.assertIsNone(qs['performance']['most_pbs'])
+        self.assertEqual(self._get(f'{self.champ.id}/stats/')['personal_bests'], [])
+
+    def test_records_tile_matches_the_records_tab(self):
+        qs = self._get(f'quick-stats/?championship={self.champ.id}')
+        tab = self._get(f'{self.champ.id}/records-broken/')
+        # 50 Free: Arab + Tunisian national; 50 Back had no previous time
+        self.assertEqual(sorted(r['scope'] for r in tab), ['arab', 'national'])
+        self.assertEqual(qs['records']['total'], len(tab))
+        self.assertEqual(qs['counts']['records'], len(tab))
+        self.assertEqual(qs['progress']['records_broken'], len(tab))
+        self.assertEqual({t['type']: t['count'] for t in qs['records']['by_type']},
+                         {'ARAB': 1, 'NATIONAL': 1})

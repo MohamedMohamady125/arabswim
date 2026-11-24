@@ -74,9 +74,11 @@ export default function AcademyProfile() {
 
   if (loading) return <Loading label="Loading academy" />
   if (!academy) return (
-    <Empty label="Academy not found" hint="It may have been removed, or the link is wrong.">
-      <Link to="/academies" className="btn btn-secondary">All academies</Link>
-    </Empty>
+    <div className="ap-notfound">
+      <Empty label={<h1 className="ap-notfound-title">Academy not found</h1>} hint="This academy may have been removed, or the link is wrong. Every academy on Arab Swim is in the list.">
+        <Link to="/academies" className="btn btn-primary">Back to academies</Link>
+      </Empty>
+    </div>
   )
 
   const a = academy
@@ -123,13 +125,11 @@ export default function AcademyProfile() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '1px solid var(--color-divider)',
           }}>
-            {a.logo ? (
-              <Pic kind="logo" w={160} eager src={a.logo} />
-            ) : (
-              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, color: 'var(--color-accent-800)' }}>
-                {acronym(a.name)}
+            <Pic kind="logo" w={160} eager src={a.logo} fallback={(
+              <span className="ap-initials-fill" style={{ fontSize: 40 }}>
+                {acronym(a.name) || '?'}
               </span>
-            )}
+            )} />
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <h1 style={{
@@ -159,7 +159,7 @@ export default function AcademyProfile() {
 
       {/* Overview */}
       <div className="m-pad" style={{ padding: '24px 32px 40px' }}>
-        <div style={{ maxWidth: 860 }}>
+        <div>
           {a.description && (
             <div style={{
               background: '#fff', border: '1px solid var(--color-neutral-300)', borderRadius: 0,

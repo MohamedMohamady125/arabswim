@@ -197,11 +197,13 @@ export default function Media() {
                     <div key={al.id} className="content-album">
                       <Link to={`/media/albums/${al.id}`}>
                         <div className="content-album-cover">
-                          {al.cover ? (
-                            <Pic kind="gallery" w={384} src={al.cover} />
-                          ) : (
-                            <span className="content-album-ph"><Images size={28} aria-hidden="true" />{n === 0 ? 'Empty — add photos' : 'No preview'}</span>
-                          )}
+                          {/* `cover` is already the album's first photo (or video
+                              thumbnail). A file that fails to load used to leave a
+                              blank grey tile: Pic now falls back to the placeholder. */}
+                          <Pic
+                            kind="gallery" w={384} src={al.cover}
+                            fallback={<span className="content-album-ph"><Images size={28} aria-hidden="true" />{n === 0 ? 'Empty — add photos' : 'No preview'}</span>}
+                          />
                         </div>
                         <div className="content-album-title">{al.title}</div>
                         <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
@@ -209,7 +211,7 @@ export default function Media() {
                         </div>
                       </Link>
                       {isAdmin && (
-                        <button type="button" className="btn btn-ghost" style={{ marginTop: 4 }} onClick={() => handleDelete(al)} aria-label={`Delete album ${al.title}`}>
+                        <button type="button" className="btn btn-secondary content-adminbtn content-adminbtn-danger" style={{ marginTop: 6 }} onClick={() => handleDelete(al)} aria-label={`Delete album ${al.title}`}>
                           <Trash2 size={13} /> Delete
                         </button>
                       )}

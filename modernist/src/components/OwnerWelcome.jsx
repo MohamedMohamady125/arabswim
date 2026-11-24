@@ -19,7 +19,7 @@ export default function OwnerWelcome({ show, name, items = [], actionLabel = 'Fi
       <div className="owner-welcome-head">
         <div>
           <div className="kicker" style={{ marginBottom: 4 }}>Your account is ready</div>
-          <div className="owner-welcome-title">This is {name ? `the ${name} page` : 'your page'}. Only you and Arab Swim can edit it.</div>
+          <div className="owner-welcome-title">This is {name ? `the ${name} page` : 'your page'}. Only you and ArabSwim can edit it.</div>
         </div>
         <button type="button" className="btn btn-ghost" onClick={close} aria-label="Close this guide">Close</button>
       </div>

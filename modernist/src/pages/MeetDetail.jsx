@@ -12,7 +12,7 @@ import { searchSwimmers } from '../api/swimmers'
 import MeetProgramEditor from '../components/MeetProgramEditor'
 import { DragDropMeetProgramEditor } from '../components/DragDropProgramEditor'
 import { CropUpload } from '../components/ImageCropper'
-import QuickStatsView from '../components/QuickStatsView'
+import QuickStatsView, { SectionBar, Panel } from '../components/QuickStatsView'
 import { getMedals, getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import Flag from '../components/Flag'
 import MeetGallery from '../components/meets/MeetGallery'
@@ -20,7 +20,7 @@ import AthleteMeetCard from '../components/meets/AthleteMeetCard'
 import { Loading, notify, Empty, Seg, MedalIcon, BackLink, ShowMore } from '../components/ui'
 import MedalStandings from '../components/MedalStandings'
 import { useAuth } from '../context/AuthContext'
-import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials, normCategory, byAgeCategory } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatNumber, mediaUrl, parseTime, POOL_TYPES, nameInitials, normCategory, byAgeCategory, displayCategory, poolLabel, formatPoints } from '../utils'
 import { splitTimeToCs, csToSplitTime } from '../components/swimmer/SplitsBreakdown'
 import Pic from '../components/Pic'
 
@@ -86,7 +86,31 @@ const roundLabel = (r, allRounds) => {
   return r
 }
 
-const GENDER_LABEL = { M: "Men's", F: "Women's", X: 'Mixed' }
+const GENDER_LABEL = { M: 'Men', F: 'Women', X: 'Mixed' }
+
+// Imported forfeits/DQs keep the federation file's own wording in the data
+// ("Frf n.d.", "Disqual.", "Abandon"). Jakob's Law: on screen every meet
+// shows the same short code (DNS / DQ / DNF) and the source wording stays
+// one hover away. Unknown wording is shown as it is.
+const STATUS_CODES = [
+  [/^(frf|forf|dns|abs)/i, 'DNS', 'Did not start'],
+  [/^(dis|dsq|dq)/i, 'DQ', 'Disqualified'],
+  [/^(aband|dnf)/i, 'DNF', 'Did not finish'],
+  [/^tld/i, 'TLD', 'Time limit exceeded'],
+  [/^(h\.?\s?c|exh)/i, 'HC', 'Hors concours'],
+]
+const statusCode = (raw) => {
+  const text = String(raw || '').trim()
+  if (!text) return null
+  const hit = STATUS_CODES.find(([re]) => re.test(text))
+  if (!hit) return { code: text, title: undefined }
+  const [, code, meaning] = hit
+  return { code, title: text.toUpperCase() === code ? meaning : `${meaning} — in the results file: “${text}”` }
+}
+const StatusCode = ({ raw, className = 'text-muted' }) => {
+  const st = statusCode(raw)
+  return st ? <span className={className} title={st.title}>{st.code}</span> : <span className={className}>—</span>
+}
 
 // Some sources omit the final split (e.g. an 800 recorded only to 700).
 // When the official total sits about one lap beyond the last split, append
@@ -910,6 +934,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // from their source placements, host-country swimmers from a host-only
   // ranking — a guest gold AND a host gold can coexist in the same event
   // (mirrors medals/utils.recompute_medals on the backend).
+  // A sheet sometimes numbers a dead heat 1, 2: equal times share the better
+  // place, so both rows show the same medal (mirrors medals/utils).
+  const sourceRank = (r, among) => {
+    if (!r.original_rank) return 0
+    if (!(r.time_centiseconds > 0)) return r.original_rank
+    return Math.min(...among.filter((x) => x.original_rank && x.time_centiseconds === r.time_centiseconds).map((x) => x.original_rank), r.original_rank)
+  }
   const medalRank = (r, ranked, overall) => {
     if (!hasDoublePodium || !hostCode) return overall
     const isHost = (x) => x.swimmer_detail?.nationality_detail?.code === hostCode
@@ -917,7 +948,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     const guests = ranked.filter((x) => !isHost(x))
     if (hosts.length === 0 || guests.length === 0) return overall
     if (!isHost(r)) {
-      if (guests.some((x) => x.original_rank)) return r.original_rank || 0
+      if (guests.some((x) => x.original_rank)) return sourceRank(r, guests)
       return guests.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
     }
     return hosts.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
@@ -931,7 +962,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     // per-category source rank doesn't apply there.
     const ranked = arr.filter((x) => !x.is_hc)
     const computedRank = r.is_hc ? 0 : ranked.findIndex((x) => x.time_centiseconds === r.time_centiseconds) + 1
-    const rank = !r.is_hc && !isOpenView && !poolHeats && r.original_rank ? r.original_rank : computedRank
+    const rank = !r.is_hc && !isOpenView && !poolHeats && r.original_rank ? sourceRank(r, ranked) : computedRank
     const mRank = r.is_hc ? 0 : medalRank(r, ranked, rank)
     // A heats-only *category* is only a real podium when the event ran a
     // final for other categories; a heats-only *event* awaits its final.
@@ -980,14 +1011,10 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 and every phone */}
             <div className="rank-box">
               {r.is_hc && !r.time_centiseconds ? (
-                // no time: the reason is in the Time column, in the file's own
-                // words ("Frf n.d.", "Disqual.") — too long for this 18px box
+                // no time: the reason (DNS / DQ / DNF) is in the Time column
                 '—'
               ) : r.is_hc ? (
-                <span
-                  className="tag tag-neutral"
-                  title={r.hc_type === 'TLD' ? 'Time limit exceeded' : 'Hors concours'}
-                >{r.hc_type || 'HC'}</span>
+                <StatusCode raw={r.hc_type || 'HC'} className="tag tag-neutral" />
               ) : medalOnRow ? (
                 <MedalIcon type={mRank === 1 ? 'GOLD' : mRank === 2 ? 'SILVER' : 'BRONZE'} size={18} style={{ display: 'block' }} />
               ) : (
@@ -1027,14 +1054,14 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             <td className="text-muted hide-mobile">
               {/* single line + ellipsis so long club names never stretch
                   row heights (keeps every meet's table looking the same) */}
-              <span title={r.team || undefined} style={{ display: 'inline-block', maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' }}>
+              <span className="am-team" title={r.team || undefined}>
                 {r.team || '—'}
               </span>
             </td>
           )}
           <td className="time asw-time">
             {!r.time_centiseconds
-              ? <span className="text-muted">{r.hc_type || '—'}</span>
+              ? <StatusCode raw={r.hc_type} />
               : isRelay && swimmers.length === 1 && swimmers[0]?.split_time && swimmers[0]?.first_leg !== false
               ? <span title={`Relay time: ${r.formatted_time}`}>{swimmers[0].split_time} <span className="micro" style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 11 }}>SPLIT</span></span>
               : r.formatted_time}
@@ -1121,16 +1148,16 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
             const has = (g) => events.some((e) => e.gender === g && (discipline === 'OW') === (e.stroke === 'Open Water'))
             if (isAllMode) {
               const opts = []
-              if (has('M')) opts.push({ value: 'M_MEN', label: "Men's" })
-              if (has('F')) opts.push({ value: 'F_WOMEN', label: "Women's" })
+              if (has('M')) opts.push({ value: 'M_MEN', label: 'Men' })
+              if (has('F')) opts.push({ value: 'F_WOMEN', label: 'Women' })
               if (has('M')) opts.push({ value: 'M_BOYS', label: 'Boys' })
               if (has('F')) opts.push({ value: 'F_GIRLS', label: 'Girls' })
               if (has('X')) opts.push({ value: 'X', label: 'Mixed' })
               return opts
             }
             return [
-              { value: 'M', label: showingBoys ? 'Boys' : "Men's" },
-              { value: 'F', label: showingBoys ? 'Girls' : "Women's" },
+              { value: 'M', label: showingBoys ? 'Boys' : 'Men' },
+              { value: 'F', label: showingBoys ? 'Girls' : 'Women' },
               { value: 'X', label: 'Mixed' },
             ].filter((o) => has(o.value))
           })()
@@ -1188,7 +1215,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                 if (ageView === 'boys') return mapped === 'boys'
                 return mapped !== 'boys'
               }).map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{displayCategory(c)}</option>
               ))}
               {/* The uncategorized (blank) group in a meet that otherwise has
                   age groups is the open/senior (18+) category — offer it so it
@@ -1285,7 +1312,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
                   )}
                   {selectedCategory === 'ALL' && hasCategories && (
                     <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{cat || 'Open'}</td>
+                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{displayCategory(cat) || 'Open'}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}
@@ -1331,7 +1358,7 @@ function FeaturedCards({ picks, sideBySide = false, stackOnPhone = false, hideRa
       // sideBySide keeps the two cards on one row even on phone widths;
       // a single pick never reserves an empty second column and caps narrower
       gridTemplateColumns: sideBySide && shown.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: 12, marginBottom: 22, maxWidth: shown.length === 1 ? 420 : 680,
+      gap: 12, marginBottom: 22, maxWidth: shown.length === 1 ? 420 : undefined,
     }}>
       {shown.map((p) => (
         <div
@@ -1568,7 +1595,7 @@ function MedalsTab({ meetId, isNational }) {
 
       <div className="pad">
         {/* desktop: men + women side by side; phone: stacked so full names show */}
-        <FeaturedCards sideBySide stackOnPhone hideRank picks={[decoratedPick('M', "Men's"), decoratedPick('F', "Women's")]} />
+        <FeaturedCards sideBySide stackOnPhone hideRank picks={[decoratedPick('M', 'Men'), decoratedPick('F', 'Women')]} />
         {/* tally */}
         {scopeOptions.length > 0 && (
           <>
@@ -1576,7 +1603,7 @@ function MedalsTab({ meetId, isNational }) {
               <Seg options={scopeOptions} value={activeScope} onChange={setScope} />
               {activeScope === 'swimmer' && (
                 <Seg
-                  options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                  options={[{ value: 'ALL', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                   value={swimmerGender}
                   onChange={setSwimmerGender}
                 />
@@ -1686,13 +1713,13 @@ function PersonalBestsTab({ stats, onRetry }) {
       photo: s.photo,
       sub: s.event_name,
       value: s.time,
-      valueLabel: s.fina_points ? `${s.fina_points} FINA` : '',
+      valueLabel: s.fina_points ? formatPoints(s.fina_points) : '',
     }
   }
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[pbPick('M', "Men's"), pbPick('F', "Women's")]} />
+      <FeaturedCards picks={[pbPick('M', 'Men'), pbPick('F', 'Women')]} />
       {/* personal bests achieved */}
       {hasPbs && (
         <div style={{ marginBottom: 28 }}>
@@ -1719,10 +1746,10 @@ function PersonalBestsTab({ stats, onRetry }) {
                 </div>
                 {/* Line 2 — event + FINA */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 36 }}>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.02em' }}>
                     {s.event_name}
                   </span>
-                  {s.fina_points != null && <span className="tag tag-neutral asw-num" style={{ flex: 'none' }}>{s.fina_points} FINA</span>}
+                  {s.fina_points != null && <span className="tag tag-neutral asw-num" style={{ flex: 'none', textTransform: 'none' }}>{formatPoints(s.fina_points)}</span>}
                 </div>
                 {/* Line 3 — previous PB */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, paddingLeft: 36, fontSize: 12, color: 'var(--color-neutral-700)' }}>
@@ -1774,18 +1801,18 @@ function TopPerformancesTab({ stats, onRetry }) {
       nationality_code: t.nationality_code,
       photo: t.photo,
       sub: t.event_name,
-      value: String(t.fina_points || ''),
-      valueLabel: 'FINA points',
+      value: t.fina_points ? formatPoints(t.fina_points) : '',
+      valueLabel: '',
     }
   }
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[perfPick('M', "Men's"), perfPick('F', "Women's")]} sideBySide stackOnPhone />
+      <FeaturedCards picks={[perfPick('M', 'Men'), perfPick('F', 'Women')]} sideBySide stackOnPhone />
       {(
-        <div style={{ marginBottom: 28, maxWidth: 760 }}>
+        <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <div className="kicker">Top performances — highest FINA points</div>
+            <div className="kicker">Top performances — highest World Aquatics points</div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {mixedRegions && (
                 <Seg
@@ -1796,7 +1823,7 @@ function TopPerformancesTab({ stats, onRetry }) {
               )}
               {raw.some((t) => t.gender === 'M') && raw.some((t) => t.gender === 'F') && (
                 <Seg
-                  options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                  options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                   value={perfGender}
                   onChange={setPerfGender}
                 />
@@ -1806,15 +1833,18 @@ function TopPerformancesTab({ stats, onRetry }) {
           {performers.length === 0 ? (
             <Empty label="No performances for this filter" hint="Try another filter above." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
+            /* the list uses the page width: two balanced columns on a laptop
+               (1–15 beside 16–30); on a phone the event drops under the name
+               so neither is cut */
+            <div className="am-top-list">
               {performers.map((t, i) => (
-                <div key={i} className="row-link" style={{ cursor: 'pointer' }} {...rowLink(() => navigate(`/swimmers/${t.swimmer_id}`))}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto', alignItems: 'center', gap: 8, fontSize: 16, marginBottom: 4 }}>
+                <div key={i} className="am-top-item row-link" style={{ cursor: 'pointer' }} {...rowLink(() => navigate(`/swimmers/${t.swimmer_id}`))}>
+                  <div className="am-top-row">
                     <span className="asw-num text-muted">{i + 1}</span>
                     <Flag code={t.nationality_code} name={t.swimmer_name} />
-                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.swimmer_name}</span>
-                    <span className="text-muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.event_name}</span>
-                    <span className="asw-num" style={{ fontWeight: 800, textAlign: 'right' }}>{t.fina_points}</span>
+                    <span className="am-top-name">{t.swimmer_name}</span>
+                    <span className="am-top-event text-muted">{t.event_name}</span>
+                    <span className="am-top-pts asw-num">{formatPoints(t.fina_points)}</span>
                   </div>
                   <div className="bar">
                     <div style={{ width: `${Math.round(((t.fina_points || 0) / maxFina) * 100)}%`, background: i < 3 ? 'var(--color-accent)' : 'var(--color-neutral-800)' }} />
@@ -1866,102 +1896,116 @@ function OverviewTab({ meetId, stats }) {
       {/* home-page style quick statistics + busiest swimmers widget */}
       <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} pad medalsLink={`/meets/${meetId}?tab=medals`} />
 
-      {/* participating nations — countries ranked by swimmers entered
-          (only meaningful for international meets with ≥2 nations) */}
-      {stats?.countries?.length > 1 && (() => {
-        const rows = stats.countries.slice(0, 12)
-        const maxS = Math.max(...rows.map((c) => c.swimmers_count), 1)
-        return (
-          <div className="pad">
-            <div className="kicker" style={{ marginBottom: 4 }}>Participating nations</div>
-            <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>{stats.countries.length} countries · ranked by swimmers entered</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
-              {rows.map((c, i) => (
-                <div key={c.nationality__code || i} className={c.nationality__id ? 'row-link' : undefined} {...rowLink(c.nationality__id ? () => navigate(`/countries/${c.nationality__id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', minHeight: 32, cursor: c.nationality__id ? 'pointer' : 'default' }}>
-                  <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
-                  <Flag code={c.nationality__code} name={c.nationality__name} />
-                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nationality__name}</span>
-                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
-                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-2)', borderRadius: 0, minWidth: 6 }} />
+      {/* Similarity: the lower half follows the same numbered section + card
+          pattern as sections 1–5 above (numbers continue from there) */}
+      {(() => {
+        let n = 5
+        const nations = stats?.countries?.length > 1 ? stats.countries.slice(0, 12) : []
+        const clubs = stats?.clubs?.length > 0 ? stats.clubs.slice(0, 12) : []
+        const ap = stats?.age_profile?.distribution?.length > 0 ? stats.age_profile : null
+        if (!nations.length && !clubs.length && !ap && comparison.length < 2) return null
+        // ranked rows with a bar; the two figures sit under real column headers
+        const standings = (rows, { entity, key, to, icon, name, color }) => {
+          const maxS = Math.max(...rows.map((c) => c.swimmers_count), 1)
+          return (
+            <div className="am-standings" role="table">
+              <div className="am-standings-row am-standings-head" role="row">
+                <span role="columnheader" className="am-st-rank">#</span>
+                <span role="columnheader" className="am-st-name">{entity}</span>
+                <span aria-hidden="true" className="am-st-bar" />
+                <span role="columnheader" className="am-st-num">Swimmers</span>
+                <span role="columnheader" className="am-st-num hide-mobile">Results</span>
+              </div>
+              {rows.map((c, i) => {
+                const href = to(c)
+                return (
+                  <div key={key(c) || i} role="row" className={`am-standings-row${href ? ' row-link' : ''}`}
+                    {...rowLink(href ? () => navigate(href) : null)} style={{ cursor: href ? 'pointer' : 'default' }}>
+                    <span role="cell" className="am-st-rank asw-num">{i + 1}</span>
+                    <span role="cell" className="am-st-name">{icon(c)}<span title={name(c)}>{name(c)}</span></span>
+                    <span aria-hidden="true" className="am-st-bar"><i style={{ width: `${(c.swimmers_count / maxS) * 100}%`, background: color }} /></span>
+                    <span role="cell" className="am-st-num asw-num" style={{ fontWeight: 800 }}>{formatNumber(c.swimmers_count)}</span>
+                    <span role="cell" className="am-st-num asw-num hide-mobile">{formatNumber(c.results_count)}</span>
                   </div>
-                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 13 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 600 }}> sw</span></span>
-                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
-          </div>
-        )
-      })()}
-
-      {/* club standings — clubs ranked by swimmers entered */}
-      {stats?.clubs?.length > 0 && (() => {
-        const rows = stats.clubs.slice(0, 12)
-        const maxS = Math.max(...rows.map((c) => c.swimmers_count), 1)
+          )
+        }
         return (
-          <div className="pad">
-            <div className="kicker" style={{ marginBottom: 4 }}>Club standings</div>
-            <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Clubs ranked by swimmers entered</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 880 }}>
-              {rows.map((c, i) => (
-                <div key={c.team} className={c.team_id ? 'row-link' : undefined} {...rowLink(c.team_id ? () => navigate(`/teams/${c.team_id}`) : null)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', minHeight: 32, cursor: c.team_id ? 'pointer' : 'default' }}>
-                  <span className="asw-num" style={{ width: 20, textAlign: 'right', fontWeight: 800, color: 'var(--color-neutral-500)', flex: 'none' }}>{i + 1}</span>
-                  <ClubLogo logo={c.team_logo} name={c.team} size={24} />
-                  <span style={{ width: 150, flex: 'none', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.team}</span>
-                  <div style={{ flex: 1, height: 16, background: 'var(--color-neutral-200)', borderRadius: 0, overflow: 'hidden' }}>
-                    <div style={{ width: `${(c.swimmers_count / maxS) * 100}%`, height: '100%', background: 'var(--color-accent-500)', borderRadius: 0, minWidth: 6 }} />
-                  </div>
-                  <span className="asw-num" style={{ width: 54, textAlign: 'right', flex: 'none', fontWeight: 800, fontSize: 13 }}>{c.swimmers_count}<span style={{ color: 'var(--color-neutral-500)', fontWeight: 600 }}> sw</span></span>
-                  <span className="asw-num hide-mobile" style={{ width: 56, textAlign: 'right', flex: 'none', fontSize: 12, color: 'var(--color-neutral-700)' }}>{c.results_count} res</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
+          <div className="container pad" style={{ display: 'grid', gap: 16, marginTop: -24, paddingTop: 0, paddingBottom: 40 }}>
+            {/* participating nations — countries ranked by swimmers entered
+                (only meaningful for international meets with ≥2 nations) */}
+            {nations.length > 0 && (
+              <>
+                <SectionBar n={++n} title="Participating nations" />
+                <Panel title={`${stats.countries.length} countries · ranked by swimmers entered`}>
+                  {standings(nations, {
+                    entity: 'Country', key: (c) => c.nationality__code, color: 'var(--color-accent-2)',
+                    to: (c) => (c.nationality__id ? `/countries/${c.nationality__id}` : null),
+                    icon: (c) => <Flag code={c.nationality__code} name={c.nationality__name} />,
+                    name: (c) => c.nationality__name,
+                  })}
+                </Panel>
+              </>
+            )}
 
-      {/* age distribution of entered swimmers */}
-      {stats?.age_profile?.distribution?.length > 0 && (() => {
-        const ap = stats.age_profile
-        const maxC = Math.max(...ap.distribution.map((d) => d.count), 1)
-        return (
-          <div className="pad">
-            <div className="kicker" style={{ marginBottom: 4 }}>Age distribution</div>
-            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Average age {ap.average} · {ap.known_count} swimmers with known age</div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 150, borderBottom: '1px solid var(--color-neutral-300)' }}>
-              {ap.distribution.map((d) => (
-                <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
-                  <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
-                  <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: 0 }} />
-                  <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
-                </div>
-              ))}
-            </div>
-            {(ap.youngest?.length > 0 || ap.oldest?.length > 0) && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-                {[['Youngest', ap.youngest], ['Oldest', ap.oldest]].map(([lbl, arr]) => (
-                  <div key={lbl} style={{ minWidth: 0 }}>
-                    <div className="micro" style={{ marginBottom: 6 }}>{lbl}</div>
-                    {(arr || []).map((s) => (
-                      <div key={s.swimmer_id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, minWidth: 0 }}>
-                        <Flag code={s.nationality_code} name={s.nationality} />
-                        {/* Fitts's Law: a real link, 32px tall */}
-                        <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'inherit', textDecoration: 'none', lineHeight: '32px' }}>{s.swimmer_name}</Link>
-                        <span className="asw-num" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>{s.age}</span>
+            {/* club standings — clubs ranked by swimmers entered */}
+            {clubs.length > 0 && (
+              <>
+                <SectionBar n={++n} title="Club standings" />
+                <Panel title="Clubs ranked by swimmers entered">
+                  {standings(clubs, {
+                    entity: 'Club', key: (c) => c.team, color: 'var(--color-accent-500)',
+                    to: (c) => (c.team_id ? `/teams/${c.team_id}` : null),
+                    icon: (c) => <ClubLogo logo={c.team_logo} name={c.team} size={24} />,
+                    name: (c) => c.team,
+                  })}
+                </Panel>
+              </>
+            )}
+
+            {/* age distribution of entered swimmers */}
+            {ap && (() => {
+              const maxC = Math.max(...ap.distribution.map((d) => d.count), 1)
+              const ends = [['Youngest', ap.youngest], ['Oldest', ap.oldest]].filter(([, arr]) => (arr || []).length > 0)
+              return (
+                <>
+                  <SectionBar n={++n} title="Age profile" />
+                  <div className={ends.length > 0 ? 'am-age-grid' : undefined}>
+                    <Panel title={`Age distribution · average ${ap.average} · ${formatNumber(ap.known_count)} swimmers with known age`}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 150, borderBottom: '1px solid var(--color-neutral-300)' }}>
+                        {ap.distribution.map((d) => (
+                          <div key={d.age} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', minWidth: 0 }}>
+                            <span className="asw-num" style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 3 }}>{d.count}</span>
+                            <div style={{ width: '72%', maxWidth: 30, height: `${Math.max(3, (d.count / maxC) * 110)}px`, background: 'var(--color-accent-800)', borderRadius: 0 }} />
+                            <span className="asw-num" style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 5 }}>{d.age}</span>
+                          </div>
+                        ))}
                       </div>
+                    </Panel>
+                    {ends.map(([lbl, arr]) => (
+                      <Panel key={lbl} title={`${lbl} swimmers`}>
+                        {arr.map((s) => (
+                          <div key={s.swimmer_id} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minWidth: 0 }}>
+                            <Flag code={s.nationality_code} name={s.nationality} />
+                            {/* Fitts's Law: a real link, 40px tall */}
+                            <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, fontWeight: 600, color: 'inherit', textDecoration: 'none', padding: '10px 0', lineHeight: '20px', overflowWrap: 'anywhere' }}>{s.swimmer_name}</Link>
+                            <span className="asw-num" style={{ flex: 'none', fontWeight: 800, color: 'var(--color-accent-800)' }}>{s.age}<span className="micro" style={{ marginLeft: 4, textTransform: 'none', letterSpacing: 0 }}>yrs</span></span>
+                          </div>
+                        ))}
+                      </Panel>
                     ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+                </>
+              )
+            })()}
 
       {/* comparison with previous editions */}
       {comparison.length > 1 && (
-        <div className="pad">
-          <div className="kicker" style={{ marginBottom: 4 }}>Compare with previous editions</div>
-          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Same classification, same pool type</div>
+        <>
+          <SectionBar n={++n} title="Compare with previous editions" />
+          <Panel title="Same classification, same pool type">
           <div className="table-scroll">
             <table className="table">
               <thead>
@@ -1973,7 +2017,7 @@ function OverviewTab({ meetId, stats }) {
                   <th className="num">Countries</th>
                   <th className="num">Events</th>
                   <th className="num">Results</th>
-                  <th className="num">Best FINA</th>
+                  <th className="num">Best points</th>
                 </tr>
               </thead>
               <tbody>
@@ -2002,14 +2046,18 @@ function OverviewTab({ meetId, stats }) {
                     <td className="num asw-num">{ch.countries_count}</td>
                     <td className="num asw-num">{ch.total_events}</td>
                     <td className="num asw-num">{ch.total_results}</td>
-                    <td className="num asw-num" style={{ fontWeight: 800 }}>{ch.best_fina || '—'}</td>
+                    <td className="num asw-num" style={{ fontWeight: 800 }}>{ch.best_fina ? formatPoints(ch.best_fina) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+          </Panel>
+        </>
       )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -2061,7 +2109,7 @@ function MostImprovedTab({ meetId }) {
 
   return (
     <div className="pad">
-      <FeaturedCards picks={[improvedPick('M', "Men's"), improvedPick('F', "Women's")]} />
+      <FeaturedCards picks={[improvedPick('M', 'Men'), improvedPick('F', 'Women')]} />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <div>
           <div className="kicker">Most improved swimmers</div>
@@ -2077,7 +2125,7 @@ function MostImprovedTab({ meetId }) {
           )}
           {allImprovements.some((s) => s.gender === 'M') && allImprovements.some((s) => s.gender === 'F') && (
             <Seg
-              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+              options={[{ value: 'overall', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
               value={gender}
               onChange={setGender}
             />
@@ -2225,7 +2273,7 @@ function RecordsBrokenTab({ meetId }) {
                 {/* Line 1 — event + gender + new time */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                       {r.event_name}
                     </span>
                     <span className={`tag ${r.gender === 'F' ? 'tag-accent-2' : r.gender === 'X' ? 'tag-neutral' : 'tag-accent'}`} style={{ flex: 'none' }}>
@@ -2264,7 +2312,7 @@ function RecordsBrokenTab({ meetId }) {
 
 /* ─────────────────────────── Program tab ─────────────────────────── */
 
-const PROGRAM_GENDER = { M: "Men's", F: "Women's", X: 'Mixed' }
+const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
 
 const PROGRAM_SESSION = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const PROGRAM_TIME_OF_DAY = { MORNING: 'Morning', EVENING: 'Evening' }
@@ -2307,7 +2355,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
   return (
     <div className="pad-lg">
       {hasItems ? (
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', maxWidth: days.length === 1 ? 680 : undefined, marginBottom: isAdmin ? 26 : 0 }}>
+        <div className={days.length === 1 ? 'am-prog-single' : undefined} style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
           {days.map((d) => (
             <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
               <div style={{ padding: '10px 16px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -2315,7 +2363,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                 <span className="micro">{formatDate(d.date)}</span>
               </div>
               {d.items.length > 0 ? (
-                <div style={{ padding: '6px 0' }}>
+                <div className="am-prog-items" style={{ padding: '6px 0' }}>
                   {sessionsOf(d).map(([session, items]) => (
                     <div key={session || 'none'}>
                       {session && (
@@ -2331,14 +2379,14 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                             className={linked ? 'row-link' : undefined}
                             {...rowLink(linked ? () => openResults(it) : null)}
                             title={linked ? 'View results' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px', minHeight: 32, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px', minHeight: 40, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
                           >
                             <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
                             <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
                               {it.event_name}
                             </span>
                             {it.time_of_day && <span className="tag tag-neutral" style={{ flex: 'none' }}>{PROGRAM_TIME_OF_DAY[it.time_of_day]}</span>}
-                            {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{it.age_category}</span>}
+                            {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{displayCategory(it.age_category)}</span>}
                             <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
                           </div>
                         )
@@ -2606,7 +2654,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
             <option value="">Auto-detect</option>
             <option value="men_women">Men / Women</option>
             <option value="boys_girls">Boys / Girls</option>
-            <option value="all">Men's / Women's / Boys / Girls</option>
+            <option value="all">Men / Women / Boys / Girls</option>
           </select>
         </div>
         {form.gender_display === 'all' && (() => {
@@ -2618,7 +2666,7 @@ function MeetEditPanel({ meet, onSaved, onClose }) {
               <label>Assign categories</label>
               {allCats.map((cat) => (
                 <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{cat}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13, width: 140 }}>{displayCategory(cat)}</span>
                   <select className="select" aria-label={`Gender display for ${cat}`} style={{ fontSize: 13, padding: '4px 8px' }}
                     value={map[cat] || 'men'}
                     onChange={(e) => setForm((f) => ({
@@ -2687,7 +2735,7 @@ function CompareMeetsModal({ meet, onClose }) {
   const b = data?.b
   const metricRows = a && b ? [
     ['Swimmers', a.swimmers, b.swimmers],
-    ['Male / Female', `${a.male} / ${a.female}`, `${b.male} / ${b.female}`, true],
+    ['Men / Women', `${a.male} / ${a.female}`, `${b.male} / ${b.female}`, true],
     ['Countries', a.countries, b.countries],
     ['Clubs / Teams', a.clubs, b.clubs],
     ['Events swum', a.events, b.events],
@@ -2695,10 +2743,11 @@ function CompareMeetsModal({ meet, onClose }) {
     ['Medals awarded', a.medals, b.medals],
     ['Records broken', a.records_broken, b.records_broken],
     ['Average age', a.avg_age ?? '—', b.avg_age ?? '—', true],
-    ['Best FINA points', a.best_fina ?? '—', b.best_fina ?? '—'],
+    // plain numbers: the rows are compared numerically to highlight the higher one
+    ['Best swim (pts)', a.best_fina ?? '—', b.best_fina ?? '—'],
   ] : []
 
-  const genders = [['M', "Men's"], ['F', "Women's"], ['X', 'Mixed']]
+  const genders = [['M', 'Men'], ['F', 'Women'], ['X', 'Mixed']]
 
   return (
     <div
@@ -3229,7 +3278,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
             <tr key={r.id}>
               <td className="asw-num" style={{ fontWeight: 800, width: 36, minWidth: 36 }}>
                 {r.is_hc && !r.time_centiseconds ? '—'
-                  : r.is_hc ? <span className="tag tag-neutral">{r.hc_type || 'HC'}</span>
+                  : r.is_hc ? <StatusCode raw={r.hc_type || 'HC'} className="tag tag-neutral" />
                   : showMedals && i <= 2 ? <MedalIcon type={['GOLD','SILVER','BRONZE'][i]} size={18} style={{ display: 'block' }} /> : (r.original_rank || i + 1)}
               </td>
               <td style={{ maxWidth: 0, width: '100%' }}>
@@ -3254,7 +3303,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               </td>
               <td className="num asw-num hide-mobile">{r.age_at_competition || '—'}</td>
               {isNational && <td className="hide-mobile text-muted">{r.team || '—'}</td>}
-              <td className="time asw-time">{r.time_centiseconds ? r.formatted_time : <span className="text-muted">{r.hc_type || '—'}</span>}</td>
+              <td className="time asw-time">{r.time_centiseconds ? r.formatted_time : <StatusCode raw={r.hc_type} />}</td>
               <td className="num asw-num">{r.fina_points || '—'}</td>
             </tr>
           ))}
@@ -3276,7 +3325,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
           transition: 'background 0.1s', flexWrap: 'wrap',
         }}>
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: grouped ? 700 : 800, fontSize: compact ? 13 : 14, flex: 1, minWidth: 0 }}>
-          {grouped ? (p.age_category || 'Open') : p.event_name}
+          {grouped ? (displayCategory(p.age_category) || 'Open') : p.event_name}
         </span>
         {roundBadge && (
           <span style={{
@@ -3290,7 +3339,7 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
             background: 'var(--color-accent-100)', color: 'var(--color-accent)',
             whiteSpace: 'nowrap', flex: 'none',
-          }}>{p.age_category || 'Open'}</span>
+          }}>{displayCategory(p.age_category) || 'Open'}</span>
         )}
         <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--color-accent)', flex: 'none', width: 14, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
       </div>
@@ -3302,12 +3351,12 @@ function EventRow({ meetId, programItem: p, isNational, isAdmin, meet, compact, 
               {['results', 'heats'].map((t) => (
                 <button key={t} type="button" aria-pressed={tab === t} onClick={(e) => { e.stopPropagation(); switchTab(t) }}
                   style={{
-                    padding: '4px 16px', minHeight: 32, fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
+                    padding: '4px 16px', minHeight: 40, fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-heading)',
                     textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer',
                     border: '1px solid var(--color-accent)',
                     background: tab === t ? 'var(--color-accent)' : 'transparent',
                     color: tab === t ? '#fff' : 'var(--color-accent)',
-                    borderRadius: t === 'results' ? '4px 0 0 4px' : '0 4px 4px 0',
+                    borderRadius: 0,
                   }}>
                   {t === 'results' ? 'Results' : 'Heats'}
                 </button>
@@ -3531,30 +3580,33 @@ export default function MeetDetail() {
   const isFinished = meetEnd && today > new Date(meetEnd.getTime() + 86400000)
 
   return (
-    <div>
+    <div className="am-meet">
       {/* Jakob's Law: the way back to the list sits top-left, above the title */}
       <div className="meets-back"><BackLink to="/championships">All meets</BackLink></div>
       {/* header */}
       <div className="pad-lg rule-b meets-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          {/* logo + title are one block that keeps its width: the (admin)
+              button row wraps below it instead of squeezing the title into
+              mid-word breaks. minWidth 0 keeps the title beside the logo on
+              phones. */}
+          <div className="am-head-main">
           <MeetLogo photo={meet.meet_photo} name={meet.name} />
-          {/* minWidth 0 keeps the title beside the logo on phones; long names
-              scale down instead of wrapping to three lines */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 className={`meet-title${(meet.name || '').length > 38 ? ' meet-title-long' : ''}`}
               style={{ margin: 0, letterSpacing: '-0.03em' }}>{meet.name}</h1>
             <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span>{formatDateRange(meet.date, meet.end_date)}</span>
-              {/* Mental Model: say the pool length in swimmers' words, keep the code as a hint */}
-              <span className="tag tag-dark" style={{ fontSize: 11 }} title={meet.pool === 'LCM' ? 'Long course (LCM)' : meet.pool === 'SCM' ? 'Short course (SCM)' : undefined}>
-                {meet.pool === 'LCM' ? '50m pool' : meet.pool === 'SCM' ? '25m pool' : meet.pool}
+              <span className="tag tag-dark" style={{ fontSize: 11 }} title={meet.pool === 'LCM' ? 'Long course' : meet.pool === 'SCM' ? 'Short course' : undefined}>
+                {poolLabel(meet.pool)}
               </span>
               {meet.country_detail && <><span style={{ color: 'var(--color-neutral-400)' }}>·</span><span>{meet.country_detail.name}</span></>}
               {meet.is_live && LIVE_BADGE}
               {isAdmin && meet.is_published === false && <span className="tag tag-neutral" style={{ fontSize: 11 }}>Unpublished</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          </div>
+          <div className="am-head-actions">
             {/* Similarity: Compare opens a dialog, so it is a button here and
                 no longer sits among the tabs looking like one */}
             {!(isLiveMode && !isFinished) && (
@@ -3657,7 +3709,7 @@ export default function MeetDetail() {
       ) : (
         <>
           {/* Normal mode: full tabs */}
-          <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>
+          <div className="rule-b tabbar tabbar-sticky am-tabbar" style={{ padding: '16px 32px', overflowX: 'auto' }}>
             <Seg
               tabs
               options={[

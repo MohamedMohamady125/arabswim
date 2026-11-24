@@ -5,14 +5,13 @@ import { getRankings } from '../api/rankings'
 import { getEvents } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty } from '../components/ui'
-import { mediaUrl } from '../utils'
+import { mediaUrl, poolLabel, nameInitials, formatPoints } from '../utils'
 import Pic from '../components/Pic'
 
 const MAX = 5
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
-// Mental Model: pools in swimmers' words
-const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
-const poolWord = (p) => POOL_WORDS[p] || p
+// one wording for a pool course on every page (utils.poolLabel)
+const poolWord = (p) => (p === 'OW' ? 'Open water' : poolLabel(p))
 const gapText = (cs) => `${(cs / 100).toFixed(2)}s`
 
 export default function Compare() {
@@ -243,17 +242,17 @@ export default function Compare() {
         </button>
         </div>
         {selected.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: '10px 8px', flexWrap: 'wrap', marginTop: 12 }}>
             {selected.map((s) => (
-              <span key={s.id} className="tag tag-dark" style={{ gap: 8, paddingRight: 6 }}>
+              <span key={s.id} className="tag tag-dark" style={{ gap: 4, paddingRight: 6, minHeight: 32 }}>
                 {s.name}
                 <button
                   type="button"
                   onClick={() => remove(s.id)}
                   aria-label={`Remove ${s.name}`}
                   title={`Remove ${s.name}`}
-                  // Fitts's Law: 32px hit box; negative margins keep the chip its size
-                  style={{ background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 32, minHeight: 32, margin: '-9px -6px -9px -8px' }}
+                  // Fitts's Law: 40px hit box; negative margins keep the chip its size
+                  style={{ background: 'none', border: 0, color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, minHeight: 40, fontSize: 16, margin: '-4px -6px -4px 0' }}
                 >
                   ×
                 </button>
@@ -279,7 +278,7 @@ export default function Compare() {
           <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
         </Empty>
       ) : (
-        <div className="pad">
+        <div className="pad at-compare">
           {/* face-off header — the marketable bit: faces, flags, gold VS */}
           {data.swimmers.length === 2 && (
             <div className="faceoff" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 0, alignItems: 'stretch', border: '2px solid var(--color-text)', marginBottom: 22 }}>
@@ -293,7 +292,7 @@ export default function Compare() {
                         <Pic kind="person" w={160} src={photo} alt={sw.name} />
                       ) : (
                         <span style={{ color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32 }}>
-                          {String(sw.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                          {nameInitials(sw.name)}
                         </span>
                       )}
                     </div>
@@ -305,7 +304,7 @@ export default function Compare() {
                       <div className="text-muted" style={{ fontSize: 12, marginTop: 5 }}>
                         {[sw.club, sw.age ? `Age ${sw.age}` : null].filter(Boolean).join(' · ') || '—'}
                       </div>
-                      {sw.best_fina != null && <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4 }}>{sw.best_fina} <span className="micro">FINA</span></div>}
+                      {sw.best_fina != null && <div className="asw-num" style={{ fontWeight: 800, fontSize: 13, marginTop: 4 }}><span className="micro">Best FINA</span> {formatPoints(sw.best_fina)}</div>}
                     </div>
                   </div>
                 )
@@ -318,7 +317,7 @@ export default function Compare() {
           {data.swimmers.length === 2 ? (() => {
             const [a, b] = data.swimmers
             const timeCell = (pb, won, side) => (
-              <div className={`vs-${side} asw-time ${won ? 'vs-win' : ''}`} style={{ fontSize: 16, fontWeight: won ? 800 : 500 }}>
+              <div className={`vs-${side} asw-time ${won ? 'vs-win' : ''}`} style={{ fontSize: 16, fontWeight: won ? 800 : 700 }}>
                 {pb?.best_time || <span className="text-muted">—</span>}
               </div>
             )
@@ -346,7 +345,7 @@ export default function Compare() {
                   <div className="vs-row">
                     <div className={`vs-left asw-num ${wins[0] > wins[1] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{wins[0]}</div>
                     <div className="vs-mid">
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>Events won</div>
+                      <div className="at-vs-label">Events won</div>
                       <div className="micro">of {sharedRows.length} in common</div>
                     </div>
                     <div className={`vs-right asw-num ${wins[1] > wins[0] ? 'vs-win' : ''}`} style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{wins[1]}</div>
@@ -355,7 +354,7 @@ export default function Compare() {
                 {(a.best_fina != null || b.best_fina != null) && (
                   <div className="vs-row">
                     <div className={`vs-left asw-num ${a.best_fina != null && a.best_fina >= (b.best_fina ?? -1) ? 'vs-win' : ''}`}>{a.best_fina ?? '—'}</div>
-                    <div className="vs-mid">Best FINA</div>
+                    <div className="vs-mid"><div className="at-vs-label">Best FINA</div></div>
                     <div className={`vs-right asw-num ${b.best_fina != null && b.best_fina >= (a.best_fina ?? -1) ? 'vs-win' : ''}`}>{b.best_fina ?? '—'}</div>
                   </div>
                 )}
@@ -369,8 +368,10 @@ export default function Compare() {
                     <div className="vs-row" key={row.key}>
                       {timeCell(pa, aWin, 'left')}
                       <div className="vs-mid">
-                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 12 }}>{row.event_name}</div>
-                        <div className="micro">{poolWord(row.pool)}{both && pa.best_cs !== pbb.best_cs ? ` · gap ${gapText(Math.abs(pa.best_cs - pbb.best_cs))}` : ''}</div>
+                        <div className="at-vs-label">{row.event_name}</div>
+                        <div className="micro">{poolWord(row.pool)}</div>
+                        {/* the gap has its own line, so it never wraps away from its pool */}
+                        {both && pa.best_cs !== pbb.best_cs && <div className="micro asw-num" style={{ whiteSpace: 'nowrap' }}>Gap {gapText(Math.abs(pa.best_cs - pbb.best_cs))}</div>}
                       </div>
                       {timeCell(pbb, bWin, 'right')}
                     </div>

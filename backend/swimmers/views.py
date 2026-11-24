@@ -825,18 +825,36 @@ class SwimmerViewSet(viewsets.ModelViewSet):
         while fina_distribution and fina_distribution[-1]['count'] == 0:
             fina_distribution.pop()
 
-        # Top 3 personal bests by FINA points (one per event, best time)
-        from django.db.models import Subquery, OuterRef
-        top_events = (
-            Result.objects.filter(swimmer=swimmer, fina_points__isnull=False, fina_points__gt=0)
-            .values('event_id').annotate(best_fina=Max('fina_points'))
-            .order_by('-best_fina')[:3]
-        )
+        # Top 3 personal bests. A personal best is the FASTEST swim of an
+        # event in one pool — the same best time the Times tab and the
+        # rankings show — and the three shown are the ones worth the most
+        # FINA points (one per event). Picking the swim with the most points
+        # instead let a slower swim stand as the "best" whenever a faster
+        # one carried fewer (or wrongly computed) points.
+        pb_by_pool = {}
+        for row in (Result.objects
+                    .filter(swimmer=swimmer, time_centiseconds__gt=0)
+                    .values('id', 'event_id', 'championship__pool',
+                            'time_centiseconds', 'fina_points')):
+            key = (row['event_id'], row['championship__pool'] or '')
+            cur = pb_by_pool.get(key)
+            rank = (row['time_centiseconds'], -(row['fina_points'] or 0))
+            if cur is None or rank < (cur['time_centiseconds'], -(cur['fina_points'] or 0)):
+                pb_by_pool[key] = row
+        pb_by_event = {}
+        for (event_id, _pool), row in pb_by_pool.items():
+            if not row['fina_points'] or row['fina_points'] <= 0:
+                continue
+            cur = pb_by_event.get(event_id)
+            if cur is None or row['fina_points'] > cur['fina_points']:
+                pb_by_event[event_id] = row
+        top_rows = sorted(pb_by_event.values(),
+                          key=lambda x: (-x['fina_points'], x['time_centiseconds']))[:3]
+        top_by_id = {r.id: r for r in Result.objects.filter(
+            id__in=[x['id'] for x in top_rows]).select_related('event', 'championship')}
         top_pbs = []
-        for te in top_events:
-            r = (Result.objects.filter(
-                swimmer=swimmer, event_id=te['event_id'], fina_points=te['best_fina']
-            ).select_related('event', 'championship').first())
+        for te in top_rows:
+            r = top_by_id.get(te['id'])
             if r:
                 from championships.models import ProgramItem
                 from datetime import timedelta
@@ -885,7 +903,11 @@ class SwimmerViewSet(viewsets.ModelViewSet):
             stroke_rows = list(ind.values('event__stroke')
                                .annotate(n=Count('id')).order_by('-n'))
             top_stroke = stroke_rows[0]['event__stroke'] if stroke_rows else None
-            dist_rows = list(ind.values('event__distance').annotate(n=Count('id')))
+            # the distance range is read from the swims of that stroke only,
+            # so the pair names one specialty ("Distance · Freestyle") and
+            # not a stroke from one event and a distance from another
+            dist_rows = list((ind.filter(event__stroke=top_stroke) if top_stroke else ind)
+                             .values('event__distance').annotate(n=Count('id')))
             sprint = sum(r['n'] for r in dist_rows if (r['event__distance'] or 0) <= 100)
             middle = sum(r['n'] for r in dist_rows if 100 < (r['event__distance'] or 0) <= 400)
             longd = sum(r['n'] for r in dist_rows if (r['event__distance'] or 0) > 400)

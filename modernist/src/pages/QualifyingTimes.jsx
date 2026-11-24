@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getQualifyingStandards, getQualifyingStandard,
   createQualifyingStandard, updateQualifyingStandard, deleteQualifyingStandard,
@@ -7,7 +8,7 @@ import {
 } from '../api/qualifyingTimes'
 import { getEvents } from '../api/core'
 import { PageHead, Loading, Empty, Seg, Modal } from '../components/ui'
-import { formatDate, parseTime } from '../utils'
+import { formatDate, parseTime, poolLabel } from '../utils'
 import { useAuth } from '../context/AuthContext'
 
 const COMP_LABEL = {
@@ -24,7 +25,7 @@ function compLabel(value) {
 const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 3, 'Individual Medley': 4 }
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
-const POOLS = [{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]
+const POOLS = [{ value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
 // Goal-Gradient: where the qualifying window stands today, in plain words
@@ -76,7 +77,7 @@ function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
 
   const strokes = Object.keys(byStroke)
   if (strokes.length === 0) {
-    return <Empty label={`No times for ${gender === 'M' ? 'men' : 'women'} (${pool}) yet`} hint="Try the other pool or gender above." />
+    return <Empty label={`No times for ${gender === 'M' ? 'men' : 'women'} (${poolLabel(pool)}) yet`} hint="This standard has no cut for that group. Try the other pool or gender above." />
   }
 
   return (
@@ -442,7 +443,7 @@ export default function QualifyingTimes() {
   if (loading) return <Loading label="Loading qualifying standards" />
 
   return (
-    <div>
+    <div className="at-empty">
       <PageHead title="Qualifying Times">
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -458,7 +459,14 @@ export default function QualifyingTimes() {
       )}
 
       {standards.length === 0 ? (
-        <Empty label="No qualifying standards published" hint={isAdmin ? 'Create the first standard with the button above.' : 'Check back later, or reload the page.'} />
+        <Empty
+          label="No qualifying standards published yet"
+          hint={isAdmin ? 'Create the first standard to publish its cut times here.' : 'Cut times appear here as soon as a federation publishes them for a championship.'}
+        >
+          {isAdmin
+            ? <button type="button" className="btn btn-primary" onClick={() => setEditModal({})}>Create standard</button>
+            : <Link to="/championships" className="btn btn-secondary">Browse championships</Link>}
+        </Empty>
       ) : (
         <>
           {/* Competition selector — big and prominent */}
@@ -473,7 +481,7 @@ export default function QualifyingTimes() {
                     onClick={() => setSelectedId(s.id)}
                     aria-pressed={active}
                     style={{
-                      cursor: 'pointer', minHeight: 36,
+                      cursor: 'pointer', minHeight: 40,
                       fontFamily: 'var(--font-heading)', fontWeight: 800,
                       fontSize: active ? 22 : 15,
                       padding: 0, lineHeight: 1.2,
@@ -492,21 +500,21 @@ export default function QualifyingTimes() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Seg
-                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                 value={gender}
                 onChange={setGender}
               />
               {/* a standard published for one pool only needs no pool switch */}
               {pools.length > 1
                 ? <Seg options={pools} value={pool} onChange={setPool} />
-                : pools.length === 1 && <span className="micro">{pools[0].value === 'LCM' ? 'LCM · 50m pool' : 'SCM · 25m pool'}</span>}
+                : pools.length === 1 && <span className="micro">{poolLabel(pools[0].value)}</span>}
             </div>
           </div>
 
           {detailLoading ? (
             <Loading label="Loading standard" />
           ) : !detail ? (
-            <Empty label="Standard unavailable" hint="Pick another competition above, or reload the page." />
+            <Empty label="This standard could not be loaded" hint="Pick another competition above, or try again in a moment." />
           ) : (
             <div style={{ padding: '16px 32px 28px' }}>
               {/* the selected tab already names the standard — only show

@@ -15,7 +15,7 @@ const KIND_COPY = {
 }
 
 /**
- * /join/:token — the page behind an invite link. Arab Swim makes the link for
+ * /join/:token — the page behind an invite link. ArabSwim makes the link for
  * one academy, club, federation or swimmer; whoever opens it creates the
  * account that owns that page. One screen, two fields (Hick's Law).
  */
@@ -40,7 +40,7 @@ export default function Join() {
       .catch((err) => {
         if (!alive) return
         setMissing(err?.response?.status === 404
-          ? 'This link is not valid. Check that you copied all of it, or ask Arab Swim for a new one.'
+          ? 'This link is not valid. Check that you copied all of it, or ask ArabSwim for a new one.'
           : 'We could not reach the server. Check your connection and open the link again.')
       })
     return () => { alive = false }
@@ -134,7 +134,7 @@ export default function Join() {
     <>
       <h1 style={{ fontSize: 24, margin: '0 0 6px', letterSpacing: '-0.02em' }}>Create your account</h1>
       <p style={{ fontSize: 14, color: 'var(--color-neutral-700)', margin: '0 0 18px' }}>
-        Arab Swim invited you to manage this {copy.noun} page. {copy.can}
+        ArabSwim invited you to manage this {copy.noun} page. {copy.can}
       </p>
       {who}
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }} noValidate>

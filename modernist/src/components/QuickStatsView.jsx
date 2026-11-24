@@ -6,7 +6,7 @@ import {
 import Flag from './Flag'
 import { Empty } from './ui'
 import MedalStandings from './MedalStandings'
-import { formatNumber } from '../utils'
+import { formatNumber, formatPoints } from '../utils'
 
 const NAVY = 'var(--color-accent)'
 const NAVY_DARK = 'var(--color-accent-800)'
@@ -90,17 +90,26 @@ function LineChart({ points, color = NAVY }) {
   )
 }
 
-function HBars({ rows, color = NAVY }) {
+/* `wide`: rows whose label is a name + an event (Top 5) — the label column
+   takes half the card and wraps onto a second line instead of being cut. */
+function HBars({ rows, color = NAVY, wide = false }) {
   const max = Math.max(...rows.map((r) => r.value), 1)
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div style={{ display: 'grid', gap: wide ? 10 : 8 }}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 150, flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
+          {wide ? (
+            <span className="am-hbar-label">
+              <span>{r.label}</span>
+              {r.sub && <span className="am-hbar-sub">{r.sub}</span>}
+            </span>
+          ) : (
+            <span style={{ width: 150, flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.label}>{r.label}</span>
+          )}
           <div style={{ flex: 1, background: 'var(--color-neutral-100)' }}>
             <div style={{ width: `${Math.max((r.value / max) * 100, 2)}%`, height: 14, background: r.color || color }} />
           </div>
-          <span className="asw-num" style={{ width: 34, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.value}</span>
+          <span className="asw-num" style={{ width: wide ? 'auto' : 34, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.shown ?? r.value}</span>
         </div>
       ))}
     </div>
@@ -138,7 +147,7 @@ function MedalStack({ rows, wide = false }) {
 
 /* `center`: the content sits in the middle of the panel when a taller
    neighbour in the row stretches it (a chart must not hang at the top). */
-function Panel({ title, children, style, center = false }) {
+export function Panel({ title, children, style, center = false }) {
   return (
     <div className="qs-panel" style={center ? { display: 'flex', flexDirection: 'column', ...style } : style}>
       {title && <div className="qs-panel-title">{title}</div>}
@@ -147,7 +156,7 @@ function Panel({ title, children, style, center = false }) {
   )
 }
 
-function SectionBar({ n, title }) {
+export function SectionBar({ n, title }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0 2px' }}>
       <span style={{ width: 24, height: 24, borderRadius: '50%', background: NAVY, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flex: 'none' }}>{n}</span>
@@ -180,17 +189,20 @@ function LegendDot({ color, children }) {
   )
 }
 
+/* Every card has the same three rows — a two-line title slot, the figure,
+   then name + one reserved sub-line — so figures and names line up across
+   the row whatever the title length (Prägnanz). */
 function PerfCard({ title, value, unit, name, code, event, gold = false }) {
   return (
-    <div style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 128 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', lineHeight: 1.35 }}>{title}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+    <div className="am-perf-card">
+      <div className="am-perf-title">{title}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
         <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 800, color: gold ? GOLD : '#fff', lineHeight: 1 }}>{value}</span>
-        {unit && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>{unit}</span>}
+        {unit && <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{unit}</span>}
       </div>
-      <div style={{ marginTop: 'auto', fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>
-        {name}{code ? ` (${code})` : ''}
-        {event && <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{event}</div>}
+      <div className="am-perf-who">
+        <div>{name}{code ? ` (${code})` : ''}</div>
+        <div className="am-perf-sub">{event || '\u00a0'}</div>
       </div>
     </div>
   )
@@ -264,13 +276,13 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             <VBars data={participation.by_country.map((c) => ({ label: c.code, value: c.count }))} />
           </Panel>
         )}
-        <Panel title="Male vs Female" center>
+        <Panel title="Men vs Women" center>
           {participation.male === 0 || participation.female === 0 ? (
             /* single-sex meet: a 100%/0% donut says nothing — state it plainly */
             <div style={{ textAlign: 'center', padding: '26px 0' }}>
               <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 40, lineHeight: 1, color: NAVY }}>{counts.swimmers}</div>
               <div className="micro" style={{ marginTop: 8 }}>
-                {participation.female === 0 ? 'Men only' : 'Women only'} · all swimmers {participation.female === 0 ? 'male' : 'female'}
+                {participation.female === 0 ? 'Men only' : 'Women only'}
               </div>
             </div>
           ) : (
@@ -283,8 +295,8 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 <Donut segments={[
                   /* drawn clockwise from 12 o'clock: women first, so each arc
                      sits on the side of its own figure (Proximity) */
-                  { label: 'Female', value: participation.female, color: BLUE },
-                  { label: 'Male', value: participation.male, color: NAVY },
+                  { label: 'Women', value: participation.female, color: BLUE },
+                  { label: 'Men', value: participation.male, color: NAVY },
                 ]} centerTop={counts.swimmers} centerBot="SWIMMERS" />
                 <div>
                   <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: NAVY_DARK }}>{femalePct}%</div>
@@ -292,8 +304,8 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
-                <LegendDot color={NAVY}>Male ({participation.male})</LegendDot>
-                <LegendDot color={BLUE}>Female ({participation.female})</LegendDot>
+                <LegendDot color={NAVY}>Men ({participation.male})</LegendDot>
+                <LegendDot color={BLUE}>Women ({participation.female})</LegendDot>
               </div>
             </>
           )}
@@ -316,7 +328,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                   <th style={{ textAlign: 'left', paddingBottom: 6 }}>Swimmer</th>
                   <th style={{ textAlign: 'center', paddingBottom: 6 }}>Swims</th>
                   <th style={{ textAlign: 'center', paddingBottom: 6 }}>Events</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>Best FINA</th>
+                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>Best points</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,7 +343,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
                     </td>
                     <td className="asw-num" style={{ textAlign: 'center', fontWeight: 800, color: NAVY_DARK }}>{s.swims}</td>
                     <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{s.events_count}</td>
-                    <td className="asw-num" style={{ textAlign: 'right', fontWeight: 700 }}>{s.best_fina ?? '—'}</td>
+                    <td className="asw-num" style={{ textAlign: 'right', fontWeight: 700 }}>{s.best_fina ? formatPoints(s.best_fina) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -389,25 +401,27 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
 
       {/* ── 3 · Performance ── */}
       <SectionBar n={3} title="Performance" />
-      <div className="qs-perf-6">
+      {/* equal columns for however many cards there are (5 or 6); on a phone
+          two across with the odd last card spanning the row — no hole, no orphan */}
+      <div className="am-perf">
         {perf.best_overall && (
-          <PerfCard title="Best Performance of Championships" value={perf.best_overall.points} unit="Points"
+          <PerfCard title="Best Performance Overall" value={formatNumber(perf.best_overall.points)} unit="pts"
             name={perf.best_overall.name} code={perf.best_overall.code} event={perf.best_overall.event} />
         )}
         {perf.best_male && (
-          <PerfCard title="Best Male Performance" value={perf.best_male.points} unit="Points"
+          <PerfCard title="Best Performance · Men" value={formatNumber(perf.best_male.points)} unit="pts"
             name={perf.best_male.name} code={perf.best_male.code} event={perf.best_male.event} />
         )}
         {perf.best_female && (
-          <PerfCard title="Best Female Performance" value={perf.best_female.points} unit="Points"
+          <PerfCard title="Best Performance · Women" value={formatNumber(perf.best_female.points)} unit="pts"
             name={perf.best_female.name} code={perf.best_female.code} event={perf.best_female.event} />
         )}
         {perf.most_golds && (
-          <PerfCard title="Most Gold Medals" value={perf.most_golds.count} unit="Gold" gold
+          <PerfCard title="Most Gold Medals" value={perf.most_golds.count} unit={perf.most_golds.count === 1 ? 'gold' : 'golds'} gold
             name={perf.most_golds.name} code={perf.most_golds.code} />
         )}
         {perf.most_pbs && (
-          <PerfCard title="Most Personal Bests" value={perf.most_pbs.count} unit="PBs"
+          <PerfCard title="Most Personal Bests" value={perf.most_pbs.count} unit={perf.most_pbs.count === 1 ? 'PB' : 'PBs'}
             name={perf.most_pbs.name} code={perf.most_pbs.code} />
         )}
         {perf.biggest_improvement && (() => {
@@ -416,7 +430,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           const asTime = isFinite(sec) && sec >= 60
           const shown = asTime ? `${Math.floor(sec / 60)}:${(sec % 60).toFixed(2).padStart(5, '0')}` : perf.biggest_improvement.seconds
           return (
-            <PerfCard title="Biggest Improvement" value={`−${shown}`} unit={asTime ? 'min:sec' : 'Seconds'}
+            <PerfCard title="Biggest Improvement" value={`−${shown}`} unit={asTime ? 'min:sec' : 'sec'}
               name={perf.biggest_improvement.name} code={perf.biggest_improvement.code}
               event={perf.biggest_improvement.event} />
           )
@@ -426,8 +440,9 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
         <div className="qs-perf-2">
           {perf.top5.length > 0 && (
             <Panel title="Top 5 Performances (by Points)">
-              <HBars color="var(--color-accent-500)" rows={perf.top5.map((t) => ({
-                label: `${t.name}${t.code ? ` (${t.code})` : ''} – ${t.event}`, value: t.points,
+              <HBars wide color="var(--color-accent-500)" rows={perf.top5.map((t) => ({
+                label: `${t.name}${t.code ? ` (${t.code})` : ''}`, sub: t.event,
+                value: t.points, shown: formatPoints(t.points),
               }))} />
             </Panel>
           )}
@@ -443,13 +458,14 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
       <div className="qs-main-2">
         <div style={{ display: 'grid', gap: 16 }}>
           <SectionBar n={4} title="Records" />
-          <div className="qs-rec-counters">
+          {/* equal columns filling the width (4 tiles → 4 columns, 2×2 on a phone) */}
+          <div className="am-rec">
             {recCounters.map((c) => (
               <div key={c.label} className="qs-panel" style={{ padding: '12px 8px', textAlign: 'center' }}>
                 {/* contrast: numerals are navy; the series colour is a marker under the number */}
                 <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: NAVY_DARK }}>{c.count}</div>
                 <div aria-hidden="true" style={{ width: 22, height: 3, background: c.color, margin: '5px auto 4px' }} />
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginTop: 2 }}>{c.label}</div>
+                <div className="am-rec-label">{c.label}</div>
               </div>
             ))}
           </div>

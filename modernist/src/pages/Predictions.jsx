@@ -12,12 +12,17 @@ import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
-import { nameTie, formatDate, formatDateRange, formatTime, parseTime, mediaUrl } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatTime, parseTime, mediaUrl, poolLabel } from '../utils'
 import Pic from '../components/Pic'
 
-// Mental Model: pools in swimmers' words
-const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
-const poolWord = (p) => POOL_WORDS[p] || p
+// one wording for a pool course on every page (utils.poolLabel)
+const poolWord = (p) => (p === 'OW' ? 'Open water' : poolLabel(p))
+// A medal-table row without a club comes back named "—": never print a bare
+// dash as a name — say what the bucket is.
+const entityName = (n) => {
+  const t = String(n ?? '').trim()
+  return !t || /^[—–-]+$/.test(t) ? 'Unattached' : t
+}
 const STROKE_ORDER = { Freestyle: 0, Backstroke: 1, Breaststroke: 2, Butterfly: 3, 'Individual Medley': 4 }
 
 // tier → visual treatment: gold tint for favorites, navy for strong, neutral otherwise
@@ -67,7 +72,7 @@ function SwimmerCard({ c, showDelta }) {
   return (
     <div>
       <div className="card-kicker kicker" style={{ marginBottom: 6 }}>
-        {c.event} · {c.gender === 'M' ? "Men's" : "Women's"}{c.age_group ? ` · ${c.age_group}` : ''}
+        {c.event} · {c.gender === 'M' ? 'Men' : 'Women'}{c.age_group ? ` · ${c.age_group}` : ''}
       </div>
       <div className="rec-name" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Flag code={c.country_code} name={c.country_name} />
@@ -132,7 +137,7 @@ function TallyTable({ table, isNational }) {
                 <td style={{ fontWeight: 600 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     {r.code && <Flag code={r.code} name={r.name} />}
-                    {r.name}
+                    {entityName(r.name)}
                   </span>
                 </td>
                 <td className="num asw-num" style={{ fontWeight: 700 }}>{r.gold.toFixed(1)}</td>
@@ -298,7 +303,7 @@ function AgeGroupsAdmin({ champId, onChanged }) {
                 disabled={busy}
                 title={`Remove ${g.label}`}
                 onClick={() => { if (window.confirm(`Remove the "${g.label}" category? The prediction is recomputed without it.`)) act(() => deletePredictionAgeGroup(champId, g.id), 'Category removed — prediction recomputed') }}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 32, minHeight: 32, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 40, minHeight: 40, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
                 aria-label={`Remove ${g.label}`}
               >
                 ×
@@ -385,7 +390,7 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
                   key={s.id}
                   type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 40, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
                 </button>
@@ -415,7 +420,7 @@ function ExclusionsAdmin({ champId, onChanged, refreshKey }) {
                 disabled={busy}
                 title={`Restore ${x.swimmer_name}`}
                 onClick={() => act(() => removePredictionExclusion(champId, x.id), 'Restored — prediction recomputed')}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 32, minHeight: 32, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, color: 'var(--color-neutral-700)', minWidth: 40, minHeight: 40, margin: '-7px -9px -7px -5px' /* Fitts's Law: 32px target, chip size unchanged */ }}
                 aria-label={`Restore ${x.swimmer_name}`}
               >
                 ×
@@ -503,7 +508,7 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
                   key={s.id}
                   type="button"
                   onClick={() => { setSwimmer(s); setResults([]) }}
-                  style={{ display: 'block', width: '100%', minHeight: 32, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{ display: 'block', width: '100%', minHeight: 40, textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--color-divider)' }}
                 >
                   {s.name} {s.nationality_code ? `(${s.nationality_code})` : ''}
                 </button>
@@ -587,11 +592,12 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 
 const TIER_LEGEND = [
   { label: 'Gold Favorite', range: '\u2265 50% gold', color: 'var(--asw-gold)' },
-  { label: 'Medal Favorite', range: '80 – 100%', color: 'var(--asw-fast)' },
-  { label: 'Strong Medal Chance', range: '65 – 79%', color: 'var(--color-accent-2)' },
-  { label: 'Medal Contender', range: '45 – 64%', color: 'var(--color-neutral-600)' },
-  { label: 'Podium Challenger', range: '25 – 44%', color: 'var(--asw-gold)' },
-  { label: 'Outside Chance', range: '10 – 24%', color: 'var(--asw-slow)' },
+  // Law of Similarity: one token per tier — a navy ramp from likeliest to least
+  { label: 'Medal Favorite', range: '80 – 100%', color: 'var(--color-accent-800)' },
+  { label: 'Strong Medal Chance', range: '65 – 79%', color: 'var(--color-accent-500)' },
+  { label: 'Medal Contender', range: '45 – 64%', color: 'var(--color-accent-400)' },
+  { label: 'Podium Challenger', range: '25 – 44%', color: 'var(--color-accent-300)' },
+  { label: 'Outside Chance', range: '10 – 24%', color: 'var(--color-neutral-400)' },
 ]
 
 const STROKE_CHIPS = ['All', 'Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
@@ -642,19 +648,20 @@ function CandidateCard({ c, rank }) {
       <span className="asw-num" style={{
         position: 'absolute', top: 8, left: 10, fontFamily: 'var(--font-heading)',
         fontWeight: 800, fontSize: 16,
-        color: rank === 1 ? 'var(--asw-gold)' : 'var(--color-neutral-300)',
+        color: rank === 1 ? 'var(--color-accent)' : 'var(--color-neutral-700)',
       }}>
         {rank}
       </span>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
         <Avatar photo={c.photo} name={c.name} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 0 }}>
+      {/* the name takes up to two lines (reserved on every card) instead of being cut */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
         <Flag code={c.country_code} name={c.country_name} />
-        <Link to={`/swimmers/${c.swimmer_id}`} style={{ padding: '8px 0', margin: '-7px 0', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {c.name}
-        </Link>
       </div>
+      <Link to={`/swimmers/${c.swimmer_id}`} className="at-pred-cand-name">
+        {c.name}
+      </Link>
       <div className="micro" style={{ marginTop: 3 }}>
         {shortEvent(c.event)}{c.age_group ? ` · ${c.age_group}` : ''}
       </div>
@@ -706,7 +713,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
     return [...map.values()].sort((a, b) => (b.p_medal - a.p_medal) || (b.eg - a.eg) || nameTie(a, b)).slice(0, 5)
   }, [snap])
 
-  const selectedCountry = table.find((r) => r.name === countryKey) || table[0]
+  // Tesler's Law: open on the first named club/country, not on the "no club" bucket
+  const selectedCountry = table.find((r) => r.name === countryKey) || table.find((r) => entityName(r.name) === r.name) || table[0]
 
   const evKey = (e) => `${e.event_id}|${e.gender}|${e.age_group || ''}`
   const eventRows = useMemo(() => (
@@ -730,23 +738,21 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   return (
     <div>
       {/* hero */}
-      <div style={{
-        border: '1px solid var(--color-divider)', display: 'flex', flexWrap: 'wrap',
-        marginBottom: 18, overflow: 'hidden',
-      }}>
+      <div className="at-pred-row" style={{ marginBottom: 18 }}>
         <div style={{
-          flex: '1 1 320px', minHeight: 130, position: 'relative',
+          minHeight: 130, position: 'relative', overflow: 'hidden', minWidth: 0,
           background: 'var(--color-accent-800)', color: '#fff',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '22px 26px',
         }}>
           {champ.meet_photo && (
             <>
               <Pic kind="meet" w={960} src={champ.meet_photo} style={{ position: 'absolute', inset: 0, objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(12,36,64,0.92) 0%, rgba(12,36,64,0.55) 60%, rgba(12,36,64,0.25) 100%)' }} />
+              {/* scrim: near-solid navy under the title, so no cover can fight it */}
+              <div className="at-pred-scrim" />
             </>
           )}
           <div style={{ position: 'relative' }}>
-            <div className="kicker" style={{ color: 'var(--asw-gold)', marginBottom: 6 }}>
+            <div className="kicker" style={{ color: 'var(--color-accent-200)', marginBottom: 6 }}>
               {champ.classification || 'Championship'}{champ.pool ? ` · ${poolWord(champ.pool)}` : ''}
             </div>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.15 }}>
@@ -759,9 +765,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
           </div>
         </div>
         <div style={{
-          flex: '0 1 250px', minWidth: 210, borderLeft: '1px solid var(--color-divider)',
-          padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center',
-          background: 'var(--color-surface)',
+          ...panelStyle, minWidth: 0,
+          display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center',
         }}>
           <div>
             <div className="micro" style={{ marginBottom: 3 }}>Prediction updated</div>
@@ -781,25 +786,25 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* projection overview */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
-        <div style={{ flex: '1 1 460px', minWidth: 0 }}>
+      <div className="at-pred-row" style={{ marginBottom: 22 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
             <SectHead title="Medal Projection Overview" />
             {table.length > 1 && (
               <select
+                className="select at-pred-pick" style={{ marginLeft: 'auto' }}
                 aria-label={snap.is_national ? 'Club' : 'Country'}
                 value={selectedCountry?.name || ''}
                 onChange={(e) => setCountryKey(e.target.value)}
-                style={{ minHeight: 32, padding: '4px 8px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff', marginLeft: 'auto' }}
               >
-                {table.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
+                {table.map((r) => <option key={r.name} value={r.name}>{entityName(r.name)}</option>)}
               </select>
             )}
           </div>
           {selectedCountry ? (
             <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
               <StatCard
-                label={`${selectedCountry.name} — expected medals`}
+                label={`${entityName(selectedCountry.name)} · expected medals`}
                 value={selectedCountry.total.toFixed(1)}
                 sub={`Likely range: ${selectedCountry.likely_min} – ${selectedCountry.likely_max}`}
                 accent="var(--color-accent)"
@@ -812,7 +817,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             <Empty label="No projection available yet" hint="Check back after the next prediction update." />
           )}
         </div>
-        <div style={{ flex: '0 1 280px', minWidth: 230, ...panelStyle }}>
+        <div style={{ minWidth: 0, ...panelStyle }}>
           <div className="kicker" style={{ marginBottom: 8 }}>About the prediction</div>
           <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-neutral-700)' }}>
             Predictions are calculated from current season best times, recent form, progression and
@@ -823,23 +828,23 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* top candidates + legend */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
-        <div style={{ flex: '1 1 520px', minWidth: 0 }}>
+      <div className="at-pred-row" style={{ marginBottom: 22 }}>
+        <div style={{ minWidth: 0 }}>
           <SectHead title="Top Medal Candidates" />
           {candidates.length === 0 ? (
             <Empty label="No candidates yet" hint="Candidates appear once the fields are predicted." />
           ) : (
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginTop: 10 }}>
+            <div className="at-pred-cands">
               {candidates.map((c, i) => <CandidateCard key={c.swimmer_id} c={c} rank={i + 1} />)}
             </div>
           )}
         </div>
-        <div style={{ flex: '0 1 280px', minWidth: 230, ...panelStyle, alignSelf: 'flex-start' }}>
+        <div style={{ minWidth: 0, ...panelStyle, alignSelf: 'flex-start' }}>
           <div className="kicker" style={{ marginBottom: 10 }}>Medal chance status</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {TIER_LEGEND.map((t) => (
               <div key={t.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flex: 'none' }} />
+                <span style={{ width: 10, height: 10, background: t.color, flex: 'none' }} />
                 <span style={{ fontWeight: 600 }}>{t.label}</span>
                 <span className="asw-num" style={{ marginLeft: 'auto', color: 'var(--color-neutral-700)', fontSize: 12 }}>{t.range}</span>
               </div>
@@ -852,8 +857,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
       </div>
 
       {/* by event + medal table */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 22, alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 520px', minWidth: 0 }}>
+      <div className="at-pred-row" style={{ marginBottom: 22, alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
           <SectHead title="Medal Predictions by Event" />
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '8px 0 12px' }}>
             {STROKE_CHIPS.map((s) => {
@@ -862,8 +867,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                 <button
                   key={s} type="button" aria-pressed={active} onClick={() => { setStroke(s); setOpenKey('') }}
                   style={{
-                    cursor: 'pointer', minHeight: 32, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 11,
-                    padding: '4px 10px', lineHeight: 1, whiteSpace: 'nowrap',
+                    cursor: 'pointer', minHeight: 40, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12,
+                    padding: '4px 12px', lineHeight: 1, whiteSpace: 'nowrap',
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
                     color: active ? '#fff' : 'var(--color-accent-800)',
                     border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
@@ -875,7 +880,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             })}
             <span style={{ marginLeft: 'auto' }}>
               <Seg
-                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                 value={gender}
                 onChange={(g) => { setGender(g); setOpenKey('') }}
               />
@@ -885,7 +890,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
             <Empty label="No events match this filter" hint="Try All events or the other gender." />
           ) : (
             <div className="table-scroll">
-              <table className="table">
+              <table className="table at-pred-events">
                 <thead>
                   <tr>
                     <th>Event</th>
@@ -908,7 +913,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                           role="button" tabIndex={0} aria-expanded={open}
                           onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenKey(open ? '' : key) } }}
                         >
-                          <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          <td className="at-pred-ev" style={{ fontWeight: 600 }}>
                             {shortEvent(ev.event)}{ev.age_group ? ` · ${ev.age_group}` : ''} {open ? '▲' : '▾'}
                           </td>
                           <td>
@@ -919,12 +924,12 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                           </td>
                           <td className="time asw-time hide-mobile">{top.seed}</td>
                           <td className="num asw-num hide-mobile">{top.place_range}</td>
-                          <td style={{ minWidth: 150 }}>
+                          <td className="at-pred-chance">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ flex: 1, height: 7, background: 'var(--color-bg)', border: '1px solid var(--color-divider)', minWidth: 60 }}>
+                              <div className="at-pred-bar" style={{ flex: 1, height: 7, background: 'var(--color-bg)', border: '1px solid var(--color-divider)' }}>
                                 <div style={{ width: `${Math.min(100, top.p_medal)}%`, height: '100%', background: top.p_gold >= 50 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
                               </div>
-                              <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, width: 34, textAlign: 'right' }}>{Math.round(top.p_medal)}%</span>
+                              <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, width: 34, flex: 'none', textAlign: 'right' }}>{Math.round(top.p_medal)}%</span>
                             </div>
                           </td>
                         </tr>
@@ -944,9 +949,9 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
           )}
         </div>
 
-        <div style={{ flex: '0 1 300px', minWidth: 250, ...panelStyle }}>
+        <div style={{ minWidth: 0, ...panelStyle }}>
           <div className="kicker" style={{ marginBottom: 10 }}>
-            {snap.is_national ? 'Projected medal table — clubs' : 'Projected medal table'}
+            {snap.is_national ? 'Projected medal table · clubs' : 'Projected medal table'}
           </div>
           {table.length === 0 ? (
             <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>Not available yet</div>
@@ -967,7 +972,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
                     <td style={{ padding: '4px 0', fontWeight: 600 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         {r.code && <Flag code={r.code} name={r.name} />}
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120, display: 'inline-block' }}>{r.name}</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120, display: 'inline-block' }}>{entityName(r.name)}</span>
                       </span>
                     </td>
                     <td className="asw-num" style={{ textAlign: 'right' }}>{r.gold.toFixed(1)}</td>
@@ -1118,10 +1123,10 @@ export default function Predictions() {
       ) : (
         <>
           {/* championship tab bar */}
-          <div className="rule-b records-filters" style={{ padding: '10px 32px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className={`rule-b records-filters${champs.length > 6 ? '' : ' at-fade-x'}`} style={{ padding: '10px 32px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Hick's Law: a handful of meets are buttons; a long season is one list, soonest first */}
             {champs.length > 6 ? (
-              <select className="select" aria-label="Championship" style={{ width: 'auto', maxWidth: '100%' }} value={selectedId || ''} onChange={(e) => pickChamp(Number(e.target.value))}>
+              <select className="select at-pred-champ" aria-label="Championship" style={{ width: 'auto', maxWidth: '100%' }} value={selectedId || ''} onChange={(e) => pickChamp(Number(e.target.value))}>
                 {champs.map((c) => <option key={c.id} value={c.id}>{c.name} · {formatDate(c.date)}</option>)}
               </select>
             ) : champs.map((c) => {
@@ -1134,7 +1139,7 @@ export default function Predictions() {
                   aria-pressed={active}
                   title={formatDateRange(c.date, c.end_date)}
                   style={{
-                    cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 36,
+                    cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 40, flex: 'none',
                     fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13,
                     padding: '8px 13px', lineHeight: 1,
                     background: active ? 'var(--color-accent)' : 'var(--color-bg)',
@@ -1156,7 +1161,7 @@ export default function Predictions() {
               <button type="button" className="btn btn-secondary" onClick={() => loadDetail(selectedId)}>Try again</button>
             </Empty>
           ) : (
-            <div style={{ padding: '16px 32px 28px' }}>
+            <div className="at-pred-body">
               {/* header: dates + stage + confidence + updated
                   (Overview has its own hero card with all of this) */}
               {view !== 'overview' && (
@@ -1186,8 +1191,8 @@ export default function Predictions() {
               </>
               )}
               {snap.stage !== 'OFFICIAL' && (
-                <div className="micro" style={{ marginBottom: 16, color: 'var(--asw-gold)' }}>
-                  Early prediction — the entry list has not been published yet. Fields are estimated from recent results and will update when entries are official.
+                <div className="at-pred-notice" role="note">
+                  <strong>Early prediction.</strong> The entry list has not been published yet. Fields are estimated from recent results and will update when entries are official.
                 </div>
               )}
               <div style={{ margin: '12px 0 20px' }}>
@@ -1217,19 +1222,19 @@ export default function Predictions() {
                 <SectHead title="Medal Chances by Event" />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '4px 0 12px' }}>
                   <Seg
-                    options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                    options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                     value={gender}
                     onChange={(g) => { setGender(g); setEventKey('') }}
                   />
                   <select
+                    className="select at-pred-pick"
                     aria-label="Event"
                     value={selectedEvent ? evKey(selectedEvent) : ''}
                     onChange={(e) => setEventKey(e.target.value)}
-                    style={{ minHeight: 36, padding: '8px 10px', border: '1px solid var(--color-neutral-300)', fontSize: 13, background: '#fff' }}
                   >
                     {genderEvents.map((e) => (
                       <option key={evKey(e)} value={evKey(e)}>
-                        {e.event}{e.age_group ? ` — ${e.age_group}` : ''}
+                        {e.event}{e.age_group ? ` · ${e.age_group}` : ''}
                       </option>
                     ))}
                   </select>

@@ -70,10 +70,7 @@ export default function Article() {
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '80vh' }}>
-      {/* Top accent bar */}
-      <div style={{ height: 3, background: 'linear-gradient(90deg, var(--asw-gold), var(--color-accent))' }} />
-
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 60px' }}>
+      <div className="content-article-wrap">
 
         {/* Jakob's Law: one back link, top-left. Occam's Razor: the "News"
             kicker that repeated it is gone; the row below only exists for admins */}
@@ -87,11 +84,10 @@ export default function Article() {
               {article.status === 'PUBLISHED' ? 'Published' : 'Draft — only admins can see this'}
             </span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
+              <button type="button" className="btn btn-secondary content-adminbtn" onClick={() => setEditing(true)}>
                 <Edit3 size={13} /> Edit
               </button>
-              <button type="button" className="btn btn-secondary"
-                style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }}
+              <button type="button" className="btn btn-secondary content-adminbtn content-adminbtn-danger"
                 onClick={async () => {
                   if (!window.confirm(`Delete article "${article.title}"? This cannot be undone.`)) return
                   try {
@@ -114,10 +110,9 @@ export default function Article() {
 
         {/* ── Title ── */}
         <div dir={textDir}>
-          <h1 style={{
+          <h1 className={`content-article-h1${isRTL ? ' rtl' : ''}`} style={{
             margin: '0 0 20px',
             fontFamily: isRTL ? AJ_HEADING_FONTS : 'var(--font-heading)',
-            fontSize: isRTL ? 34 : 36,
             fontWeight: isRTL ? 700 : 800,
             lineHeight: isRTL ? 1.7 : 1.12,
             letterSpacing: isRTL ? 0 : '-0.03em',

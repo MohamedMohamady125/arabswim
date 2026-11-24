@@ -4,7 +4,7 @@ import { getLiveMeets, getChampionships, getMeetProgram, getMeetLive, getChampio
 import { useAuth } from '../context/AuthContext'
 import { getMedalSummary, getMedalClubSummary, getMedalSwimmerSummary } from '../api/medals'
 import { resultsByCategory, normCategory } from '../utils'
-import { formatDateRange, formatNumber, formatDate, mediaUrl, nameInitials } from '../utils'
+import { formatDateRange, formatNumber, formatDate, mediaUrl, nameInitials, displayCategory, poolLabel, formatPoints } from '../utils'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, MedalIcon, Seg } from '../components/ui'
 import MeetProgramEditor from '../components/MeetProgramEditor'
@@ -106,7 +106,25 @@ function lineState(board, item) {
 
 const FINAL_BLOCKS = ['Finals', '', 'Junior Final', 'Consolation', 'Final C', 'Final D']
 const FINAL_LABEL = { Consolation: 'Final B', 'Junior Final': 'Junior final', 'Final C': 'Final C', 'Final D': 'Final D' }
-const hasTime = (r) => r.time_centiseconds > 0 && !(r.hc_type && r.hc_type !== 'HC' && r.hc_type !== 'TLD')
+// Imported forfeits/DQs keep the federation file's wording in the data
+// ("Frf n.d.", "Disqual.", "Abandon"). Jakob's Law: every meet shows the same
+// short code, with the source wording as a tooltip (same table as MeetDetail).
+const STATUS_CODES = [
+  [/^(frf|forf|dns|abs)/i, 'DNS', 'Did not start'],
+  [/^(dis|dsq|dq)/i, 'DQ', 'Disqualified'],
+  [/^(aband|dnf)/i, 'DNF', 'Did not finish'],
+  [/^tld/i, 'TLD', 'Time limit exceeded'],
+  [/^(h\.?\s?c|exh)/i, 'HC', 'Hors concours'],
+]
+const statusCode = (raw) => {
+  const text = String(raw || '').trim()
+  if (!text) return { code: '—', title: undefined }
+  const hit = STATUS_CODES.find(([re]) => re.test(text))
+  if (!hit) return { code: text, title: undefined }
+  const [, code, meaning] = hit
+  return { code, title: text.toUpperCase() === code ? meaning : `${meaning} — in the results file: “${text}”` }
+}
+const hasTime = (r) => r.time_centiseconds > 0 && !(r.hc_type && !['HC', 'TLD'].includes(statusCode(r.hc_type).code))
 
 /* The results of one program line, opened in place.
    `round` is the round to show (the line's own, or the earlier one while the
@@ -144,12 +162,19 @@ function InlineResults({ meetId, meet, item, round, stamp, waiting }) {
         const medals = round === 'FINALS' && (kind !== 'Consolation' || (isNational && !meet?.b_final_no_medals))
         const head = [
           (kinds.length > 1 || FINAL_LABEL[kind]) && round === 'FINALS' ? (FINAL_LABEL[kind] || 'Final A') : '',
-          !item.age_category && g.category ? g.category : '',
+          !item.age_category && g.category ? displayCategory(g.category) : '',
         ].filter(Boolean).join(' · ')
         out.push({
           key: `${g.key}-${kind}`, head, medals,
           rows: [
-            ...timed.map((r) => ({ r, rank: r.original_rank || 1 + timed.filter((x) => x.time_centiseconds < r.time_centiseconds).length })),
+            // equal times share the better place (and its medal), even when
+            // the sheet numbered a dead heat 1, 2 — mirrors medals/utils
+            ...timed.map((r) => ({
+              r,
+              rank: r.original_rank
+                ? Math.min(...timed.filter((x) => x.original_rank && x.time_centiseconds === r.time_centiseconds).map((x) => x.original_rank))
+                : 1 + timed.filter((x) => x.time_centiseconds < r.time_centiseconds).length,
+            })),
             ...rest.map((r) => ({ r, rank: null })),
           ],
         })
@@ -190,7 +215,7 @@ function InlineResults({ meetId, meet, item, round, stamp, waiting }) {
               <div key={r.id} className={`lv-res-row${medal ? ' podium' : ''}${rank ? '' : ' out'}`}>
                 <span className="lv-res-rank">
                   {medal ? <MedalIcon type={['GOLD', 'SILVER', 'BRONZE'][rank - 1]} size={18} style={{ display: 'block' }} />
-                    : r.is_hc && rank ? <span className="lv-res-code">{r.hc_type || 'HC'}</span>
+                    : r.is_hc && rank ? <span className="lv-res-code" title={statusCode(r.hc_type || 'HC').title}>{statusCode(r.hc_type || 'HC').code}</span>
                     : <span className="asw-num">{rank || '–'}</span>}
                 </span>
                 <Flag code={nat?.code} name={nat?.name} />
@@ -217,8 +242,8 @@ function InlineResults({ meetId, meet, item, round, stamp, waiting }) {
                 )}
                 {hasTime(r)
                   ? <span className="lv-res-time asw-time">{r.formatted_time}</span>
-                  : <span className="lv-res-time lv-res-code">{r.hc_type || '—'}</span>}
-                <span className="lv-res-pts asw-num hide-mobile">{hasTime(r) && r.fina_points ? r.fina_points : ''}</span>
+                  : <span className="lv-res-time lv-res-code" title={statusCode(r.hc_type).title}>{statusCode(r.hc_type).code}</span>}
+                <span className="lv-res-pts asw-num hide-mobile">{hasTime(r) && r.fina_points ? formatPoints(r.fina_points) : ''}</span>
               </div>
             )
           }),
@@ -243,9 +268,9 @@ function ProgramRow({ item, meetId, meet, board, last, grouped = false }) {
   const inner = (
     <div className={`lv-row is-${st.state}${last ? ' last' : ''}${open ? ' open' : ''}`}>
       <div className="lv-row-main">
-        <span className="lv-row-title">{grouped ? (item.age_category || 'Open') : item.event_name}</span>
+        <span className="lv-row-title">{grouped ? (displayCategory(item.age_category) || 'Open') : item.event_name}</span>
         {!grouped && <span className="lv-row-gender" style={{ background: g.bg, color: g.color }}>{g.label}</span>}
-        {!grouped && item.age_category && <span className="lv-row-cat">{item.age_category}</span>}
+        {!grouped && item.age_category && <span className="lv-row-cat">{displayCategory(item.age_category)}</span>}
         {item.session && <span className="lv-row-round">{SESSION_LABEL[item.session]}</span>}
       </div>
       <span className="lv-row-status">
@@ -380,7 +405,7 @@ function LatestPodiums({ podiums, meetId, meetName }) {
                 <span className="lv-pod-event">{p.event_name}</span>
                 <span className="lv-pod-meta">
                   <span style={{ background: g.bg, color: g.color }}>{g.label}</span>
-                  {p.category}
+                  {displayCategory(p.category)}
                 </span>
               </Link>
               {p.medals.map((m, i) => (
@@ -790,7 +815,7 @@ function LiveHub({ meet }) {
           <span>{[meet.location, meet.country_detail?.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</span>
           <span aria-hidden="true">·</span>
           <span>{formatDateRange(meet.date, meet.end_date)}</span>
-          {meet.pool && <><span aria-hidden="true" className="hide-mobile">·</span><span className="hide-mobile">{meet.pool === 'LCM' ? '50 m pool' : meet.pool === 'SCM' ? '25 m pool' : meet.pool}</span></>}
+          {meet.pool && <><span aria-hidden="true" className="hide-mobile">·</span><span className="hide-mobile">{poolLabel(meet.pool)}</span></>}
           <Link className="lv-hero-link" to={`/meets/${meet.id}`}>Meet page ›</Link>
         </div>
         {prog && prog.total > 1 && (
@@ -872,7 +897,7 @@ function LiveHub({ meet }) {
                     {categoryOptions.length > 1 && (
                       <select className="select" aria-label="Age category" value={fCat} onChange={(e) => setFCat(e.target.value)}>
                         <option value="">All age categories</option>
-                        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                        {categoryOptions.map((c) => <option key={c} value={c}>{displayCategory(c)}</option>)}
                       </select>
                     )}
                     <span className="live-filters-count asw-num" aria-live="polite">

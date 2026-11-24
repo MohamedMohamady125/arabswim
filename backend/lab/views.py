@@ -9,7 +9,7 @@ from statistics import mean, pstdev
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Min
+from django.db.models import Max, Min
 
 from championships.models import Result
 from swimmers.models import Swimmer
@@ -102,7 +102,7 @@ def swimmer_dna(request, swimmer_id):
                     event__is_relay=False)
             .values('event_id', 'event__name', 'event__stroke')
             .annotate(best_time=Min('time_centiseconds'),
-                      best_fina=Min('fina_points')))
+                      best_fina=Max('fina_points')))
 
     per_stroke = {s: None for s in STROKES}
     for b in best:

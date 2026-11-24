@@ -1,0 +1,162 @@
+/* Audit polish — chrome. Brand tokens only (see theme.css). */
+
+/* ── Header brand bar ─────────────────────────────────────────────────── */
+.asw-brandbar { display: flex; align-items: center; gap: 24px; padding: 10px 32px; background: var(--color-accent-800); }
+/* the emblem is a navy roundel; a light tile and hairline make it read on navy */
+.asw-emblem { object-fit: contain; flex: none; box-sizing: border-box; padding: 2px; background: var(--color-bg); outline: 1px solid var(--color-accent-2-300); outline-offset: -1px; }
+/* Similarity: on the navy bar the navy primary button was invisible (bare
+   "Search" text); here it takes the inverse fill, same shape as every button */
+.asw-brandbar .content-search > .btn { background: var(--color-bg); color: var(--color-accent-800); border-color: var(--color-bg); font-weight: 700; padding-inline: 16px; }
+.asw-brandbar .content-search > .btn:hover { background: var(--color-accent-200); border-color: var(--color-accent-200); }
+.asw-brandbar .content-signin { border: 1px solid var(--color-accent-2-300); padding: 0 14px; }
+.asw-brandbar .content-signin:hover { text-decoration: none; background: var(--color-accent-700); }
+
+/* ── Desktop navigation: always open, five equal columns (= footer grid) ── */
+.content-nav { display: grid; padding: 0 32px; column-gap: 24px; }
+.content-nav-group,
+.content-nav-group:first-child,
+.content-nav-group:last-child { flex: none; min-width: 0; padding: 8px 0 9px; border-right: 0; }
+.content-nav-group .kicker { margin-bottom: 1px; }
+.content-nav-links { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.content-nav-links a { display: inline-block; line-height: 1.3; padding: 3px 0; overflow-wrap: normal; white-space: nowrap; }
+/* Jakob's Law: the current section carries a navy underline as well as bold */
+.content-nav-links a.active { box-shadow: inset 0 -2px 0 var(--color-accent); }
+.content-userbar a { min-height: 28px; }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.asw-foot { background: var(--color-accent-800); color: var(--color-bg); padding: 32px; }
+.asw-foot-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px 48px; flex-wrap: wrap; }
+.asw-foot-tagline { font-size: 13px; color: var(--color-accent-2-300); max-width: 720px; margin: 0; }
+.asw-foot-cols { display: grid; column-gap: 24px; row-gap: 24px; margin-top: 24px; }
+.asw-foot-legal { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--color-accent-700); font-size: 12px; color: var(--color-accent-2-400); }
+.asw-foot-legal a { color: var(--color-accent-2-400); display: inline-flex; align-items: center; min-height: 32px; }
+
+/* ── Partners strip ───────────────────────────────────────────────────── */
+/* label on the page's 32px gutter (was 40px) */
+.asw-partners { padding: 40px 32px; }
+/* square tiles, logo contained with padding: a square logo no longer touches a round rim */
+.asw-partner-pill { width: 132px; height: 88px; padding: 12px; box-sizing: border-box; border-radius: 0; background: var(--color-bg); }
+.asw-partner-logo { max-width: 100%; max-height: 100%; }
+/* the 404 page shows no sponsor wall (the router, not Partners, knows it is a 404) */
+.shell:has(.content-notfound) .asw-partners { display: none; }
+
+/* ── 404 quick links ──────────────────────────────────────────────────── */
+/* tiles span the container (the grid used to stop at 980px) */
+.content-notfound-links { max-width: none; }
+
+/* ── Scrolling tab strips: fade the cut edge so a clipped label reads as
+   "more this way" (global fallback; pages may add their own) ───────────── */
+@media (max-width: 900px) {
+  .seg-tabs, .meets-subtabs, .swimmer-more-tabs {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+  }
+  /* a spacer the width of the fade, so the last tab scrolls clear of it and a
+     strip that fits is never dimmed */
+  .seg-tabs::after { content: ''; flex: none; width: 20px; }
+  .meets-subtabs, .swimmer-more-tabs { padding-right: 28px; }
+
+  /* one 16px gutter for the chrome on phone */
+  .asw-brandbar { padding: 10px 16px; gap: 12px; }
+  /* Fitts's Law: 40px minimum for the menu button and footer links */
+  .asw-burger { width: 40px; height: 40px; }
+  .asw-foot { padding: 28px 16px; }
+  /* footer groups stack in one column, each with its links two across: the
+     two-column layout let a wrapping heading push one column 17px lower */
+  .asw-foot-cols { grid-template-columns: 1fr !important; row-gap: 18px; }
+  .asw-foot-links { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .asw-foot-links .asw-footlink { display: flex; align-items: center; min-height: 40px; font-size: 13px; line-height: 1.3; }
+  .asw-foot-legal a { min-height: 40px; }
+
+  .asw-partners { padding: 28px 16px; }
+  .asw-partner-pill { width: 112px; height: 76px; padding: 10px; }
+  .asw-partner-logo { max-width: 100%; max-height: 100%; }
+  /* fewer than six partners: a still, centred row — no marquee, no copies,
+     nothing cut by the screen edge */
+  .asw-partners-row.static { overflow: visible; flex-wrap: wrap; justify-content: center; }
+  .asw-partners-row.static .asw-partners-track { display: flex; flex-wrap: wrap; justify-content: center; width: auto; max-width: 100%; animation: none; }
+  .asw-partners-row.static .asw-partners-half { flex-wrap: wrap; justify-content: center; padding-right: 0; }
+
+  /* the fifth tile no longer sits alone: two across, last odd tile spans the row */
+  .content-notfound-links { grid-template-columns: 1fr 1fr; }
+  .content-notfound-links a:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* ── Federations list: one column template for every table on the page ─── */
+.fed-table { table-layout: fixed; }
+.fed-col-rank { width: 44px; }
+.fed-col-num { width: 130px; }
+.fed-col-medal { width: 72px; }
+.fed-name { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.fed-name a { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  /* the name column takes everything the figures do not need, so a two-word
+     name ("Saudi Arabia") stays on one line */
+  .fed-col-rank { width: 20px; }
+  .fed-col-num { width: 70px; }
+  .fed-col-num + .fed-col-num { width: 44px; }
+  .fed-col-medal { width: 24px; }
+  .fed-table th { font-size: 10px; letter-spacing: 0.04em; padding-left: 3px; padding-right: 3px; }
+  .fed-table td { padding-left: 3px; padding-right: 3px; }
+  .fed-name { gap: 8px; }
+  .fed-table .asw-flag-lg, .fed-table .fi.asw-flag-lg { width: 27px; height: 20px; line-height: 20px; }
+}
+
+/* ── Admin Edit / Delete: one small bordered button on News, Article, Media, Market ── */
+.content-adminbtn { min-height: 32px; padding: 4px 10px; font-size: 12px; gap: 5px; background: var(--color-bg); }
+.content-adminbtn-danger { border-color: var(--asw-slow); color: var(--asw-slow); }
+.content-adminbtn-danger:hover { background: color-mix(in srgb, var(--asw-slow) 8%, transparent); }
+
+/* ── News: lead story and wide cards (cover beside the text) ──────────── */
+.content-newsrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 20px; align-items: center; min-width: 0; }
+.content-newsrow-cover { display: block; min-width: 0; }
+.content-newsrow > .content-newscard > a { flex: none; }
+.content-newslead { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; }
+.content-newslead.no-cover { grid-template-columns: minmax(0, 1fr); }
+.content-newslead .content-news-meta { margin-top: 14px; }
+.content-newslead-title { font-size: 28px; }
+.content-newswide { display: grid; gap: 28px 32px; }
+/* a single remaining story does not stretch its cover across the page */
+.content-newswide > .content-newsrow:only-child { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+
+/* ── Article ──────────────────────────────────────────────────────────── */
+.content-article-wrap { max-width: 720px; margin: 0 auto; padding: 32px 24px 60px; }
+.content-article-h1 { font-size: 36px; }
+.content-article-h1.rtl { font-size: 34px; }
+
+/* ── Register ─────────────────────────────────────────────────────────── */
+.content-auth-wrap { max-width: 420px; margin: 0 auto; padding: 48px 24px 64px; }
+
+/* ── Media albums: two title lines reserved so "n items" lines up across a row ── */
+.content-album-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.4em; }
+
+@media (max-width: 900px) {
+  .content-newsrow, .content-newslead, .content-newswide > .content-newsrow:only-child { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .content-newswide { grid-template-columns: minmax(0, 1fr) !important; }
+  /* one phone heading scale: page H1 24px, article H1 the same, featured story below it */
+  .content-article-h1, .content-article-h1.rtl { font-size: 24px; }
+  .content-newslead-title { font-size: 20px; }
+  /* one 16px gutter */
+  .content-article-wrap { padding: 20px 16px 48px; }
+  .content-auth-wrap { padding: 28px 16px 48px; }
+}
+
+/* ── Federation profile on phone: the page is drawn at zoom 0.75, so a 16px
+   gutter came out as 12px. 16 / 0.75 puts it back on the site's 16px line. ── */
+@media (max-width: 900px) {
+  .fed-profile .m-pad,
+  .fed-profile .prof-tabs { padding-left: calc(16px / 0.75) !important; padding-right: calc(16px / 0.75) !important; }
+}
+
+/* ── Clean-up round ─────────────────────────────────────────────────── */
+/* active menu item: the underline marks it; one weight, so neighbours never shift */
+.asw-navcol a.active { font-weight: inherit; }
+/* a moving record row fades at both edges instead of cutting a card */
+.asw-ticker:has(.asw-ticker-track) {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
+}
+@media (max-width: 900px) {
+  /* partner tiles start under their label (Common Region) */
+  .asw-partners-row.static, .asw-partners-row.static .asw-partners-track, .asw-partners-row.static .asw-partners-half { justify-content: flex-start; }
+}

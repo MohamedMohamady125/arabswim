@@ -84,6 +84,33 @@ class RecomputeMedalsTests(TestCase):
         recompute_medals(self.champ)
         self.assertEqual(self._medals(), {('A', 'SILVER'), ('B', 'BRONZE')})
 
+    def _ranked(self, rows):
+        for name, t, rank in rows:
+            r = self._result(self._swimmer(name), t)
+            r.original_rank = rank
+            r.save()
+
+    def test_source_rank_dead_heat_numbered_1_2_shares_gold(self):
+        # the sheet numbered a dead heat 1, 2: two golds, no silver, and the
+        # swimmer the sheet placed 3rd keeps the bronze
+        self._ranked([('A', 2640, 1), ('B', 2640, 2), ('C', 2674, 3), ('D', 2700, 4)])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(),
+                         {('A', 'GOLD'), ('B', 'GOLD'), ('C', 'BRONZE')})
+
+    def test_source_rank_dead_heat_numbered_2_3_shares_silver(self):
+        self._ranked([('A', 2600, 1), ('B', 2640, 2), ('C', 2640, 3), ('D', 2700, 4)])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(),
+                         {('A', 'GOLD'), ('B', 'SILVER'), ('C', 'SILVER')})
+
+    def test_source_rank_dead_heat_outside_the_podium_awards_nothing_new(self):
+        self._ranked([('A', 2600, 1), ('B', 2610, 2), ('C', 2620, 3),
+                      ('D', 2700, 4), ('E', 2700, 5)])
+        recompute_medals(self.champ)
+        self.assertEqual(self._medals(),
+                         {('A', 'GOLD'), ('B', 'SILVER'), ('C', 'BRONZE')})
+
     def test_rows_without_source_rank_get_nothing_when_group_has_ranks(self):
         r1 = self._result(self._swimmer('A'), 5000)
         r1.original_rank = 4

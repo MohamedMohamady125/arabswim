@@ -58,6 +58,11 @@ export default function HallOfFame() {
   const firstFilled = CATEGORIES.find((c) => countOf(c.value) > 0)?.value || 'LEGEND'
   const category = picked && (!q || countOf(picked) > 0) ? picked : firstFilled
   const setCategory = setPicked
+  // Hick's Law: a visitor is not offered a category nobody is in yet (an open
+  // vote keeps the Awards tab). Admins see all three, to fill them.
+  const shownCategories = CATEGORIES.filter((c) => isAdmin || loading || c.value === category
+    || inductees.some((p) => (p.category || 'LEGEND') === c.value)
+    || (c.value === 'ARAB_WINNER' && openPolls.length > 0))
 
   const isAwards = category === 'ARAB_WINNER'
   const inCategory = useMemo(() => matches.filter((p) => (p.category || 'LEGEND') === category), [matches, category])
@@ -87,7 +92,7 @@ export default function HallOfFame() {
   }
 
   return (
-    <div>
+    <div className="ap-list">
       <PageHead
         title="Hall of Fame"
         sub="The swimmers who defined Arab swimming."
@@ -97,7 +102,7 @@ export default function HallOfFame() {
           share one bar. Each category shows how many it holds, so nobody
           opens an empty one to find out. */}
       <FilterBar count={loading ? null : sorted.length} noun={sorted.length === 1 ? 'inductee' : 'inductees'} active={!!q} onClear={() => setSearch('')}>
-        <Seg options={CATEGORIES.map((c) => ({ value: c.value, label: loading ? c.label : `${c.label} (${countOf(c.value)})` }))} value={category} onChange={setCategory} tabs />
+        <Seg options={shownCategories.map((c) => ({ value: c.value, label: loading ? c.label : `${c.label} (${countOf(c.value)})` }))} value={category} onChange={setCategory} tabs />
         {isAwards && years.length > 1 && (
           <select className="select" aria-label="Year" value={activeYear || ''} onChange={(e) => setYear(e.target.value)} style={{ flex: '0 0 auto', width: 'auto' }}>
             <option value="">All years</option>
@@ -156,7 +161,8 @@ export default function HallOfFame() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                   {p.inducted_year && <span className="tag tag-dark">Class of {p.inducted_year}</span>}
-                  {p.era && <span className="micro">{p.era}</span>}
+                  {/* a decade reads "2010s", not "2010S" */}
+                  {p.era && <span className="micro" style={{ textTransform: 'none' }}>{p.era}</span>}
                 </div>
                 <h2 style={{ margin: '0 0 8px', letterSpacing: '-0.02em' }}>
                   {p.swimmer ? <Link to={`/swimmers/${p.swimmer}`} style={{ color: 'inherit', textDecoration: 'none' }}>{p.name}</Link> : p.name}
@@ -171,9 +177,10 @@ export default function HallOfFame() {
                   </p>
                 )}
                 {(p.swimmer || isAdmin) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-divider)' }}>
+                /* the link has a row to itself; the admin actions sit on their own row under it */
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0 12px', flexWrap: 'wrap', marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-divider)' }}>
                   {p.swimmer && (
-                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40 }}>
+                    <Link to={`/swimmers/${p.swimmer}`} style={{ fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 40, flex: isAdmin ? '1 1 100%' : undefined }}>
                       Results, records and medals →
                     </Link>
                   )}

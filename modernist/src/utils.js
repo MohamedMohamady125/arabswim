@@ -248,3 +248,20 @@ export const nameOf = (x) => {
   return typeof v === 'string' ? v : ''
 }
 export const nameTie = (a, b) => nameOf(a).localeCompare(nameOf(b))
+
+// ── One wording for the same thing on every page ──────────────────────────
+// A meet's age-category name is shown as the source wrote it, except for the
+// misplaced apostrophe HY-TEK prints ("Boy's 13-14" → "Boys 13-14").
+export const displayCategory = (label) =>
+  String(label || '').replace(/\b(Boy|Girl)['‘’]s\b/gi, (_, w) => `${w}s`)
+
+// "LCM (50m)" / "SCM (25m)" — the one way a pool course is written.
+export const poolLabel = (pool) => {
+  const p = String(pool || '').toUpperCase()
+  if (p === 'LCM') return 'LCM (50m)'
+  if (p === 'SCM') return 'SCM (25m)'
+  return p
+}
+
+// "655 pts" — the one way a points score is written.
+export const formatPoints = (n) => (n || n === 0 ? `${formatNumber(Math.round(n))} pts` : '—')

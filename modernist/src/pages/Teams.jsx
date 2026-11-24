@@ -6,6 +6,7 @@ import { PageHead, Loading, notify, Empty, Pager, Modal, FilterBar, Seg } from '
 import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import Pic from '../components/Pic'
+import Flag from '../components/Flag'
 
 const PAGE_SIZE = 24 // fills whole rows at 2, 3 and 4 columns
 
@@ -38,7 +39,7 @@ function TeamLogo({ logo, name, size = 42 }) {
     )
   }
   return (
-    <div style={{ width: size, height: size, flex: 'none', border: '1px solid var(--color-divider)', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
+    <div className="ap-initials" style={{ width: size, height: size, flex: 'none', fontSize: 12 }}>
       {acronym(name)}
     </div>
   )
@@ -483,7 +484,7 @@ export default function Teams() {
   if (loading) return <Loading label="Loading clubs" />
 
   return (
-    <div>
+    <div className="ap-list">
       <PageHead title="Clubs" />
 
       {/* Common Region: everything that narrows or orders the list sits in one
@@ -575,15 +576,23 @@ export default function Teams() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {t.logo ? (
-                    <Pic kind="logo" w={96} src={t.logo} />
+                    <Pic kind="logo" w={96} src={t.logo} fallback={<span className="ap-initials-fill" style={{ fontSize: 16 }}>{acronym(t.name)}</span>} />
                   ) : (
-                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: 'var(--color-accent-800)' }}>{acronym(t.name)}</span>
+                    <span className="ap-initials-fill" style={{ fontSize: 16 }}>{acronym(t.name)}</span>
                   )}
                 </span>
-                <span style={{ minWidth: 0 }}>
+                <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-accent-800)', display: 'block', lineHeight: 1.3 }}>{t.name}</span>
-                  <span className="text-muted" style={{ fontSize: 12 }}>
-                    {[t.is_academy ? 'Academy' : null, t.country_detail?.name, t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : 'No swimmers yet'].filter(Boolean).join(' · ')}
+                  {/* Similarity: flag + country like swimmer and academy cards; the line never wraps
+                      (the country gives way first), and "Academy" is a chip, not a third phrase */}
+                  {/* two fixed lines on every card — country, then size — so rows stay even and nothing wraps mid-phrase */}
+                  <span className="ap-card-meta">
+                    {t.country_detail?.code && <Flag code={t.country_detail.code} name={t.country_detail.name} />}
+                    {t.country_detail?.name && <span className="ap-card-meta-grow">{t.country_detail.name}</span>}
+                  </span>
+                  <span className="ap-card-meta" style={{ marginTop: 2 }}>
+                    <span className="asw-num ap-card-meta-fixed">{t.swimmers_count > 0 ? `${t.swimmers_count} swimmer${t.swimmers_count === 1 ? '' : 's'}` : 'No swimmers yet'}</span>
+                    {t.is_academy && <span className="tag tag-accent ap-chip">Academy</span>}
                   </span>
                 </span>
               </Link>

@@ -26,7 +26,7 @@ import Flag from '../components/Flag'
 import { Loading, notify, Empty, Seg, Modal, BackLink } from '../components/ui'
 import LoadFailed from '../components/swimmer/LoadFailed'
 import { CropUpload } from '../components/ImageCropper'
-import { formatDate, mediaUrl, nameInitials } from '../utils'
+import { formatDate, formatPoints, mediaUrl, nameInitials, poolLabel } from '../utils'
 import SplitsBreakdown from '../components/swimmer/SplitsBreakdown'
 import CompareTab from '../components/swimmer/CompareTab'
 import ProgressionChart from '../components/charts/ProgressionChart'
@@ -37,15 +37,40 @@ import RecordsTab from '../components/swimmer/RecordsTab'
 import QualifyingTab from '../components/swimmer/QualifyingTab'
 import TransfersTab from '../components/swimmer/TransfersTab'
 import GalleryTab from '../components/swimmer/GalleryTab'
-import { MiniHBars, CHART_COLORS } from '../components/MiniCharts'
 import Pic, { SWIMMER_PHOTO_NOTE } from '../components/Pic'
 import OwnerWelcome from '../components/OwnerWelcome'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
-// Mental Model: say the pool the way swimmers do, not the federation code
-const POOL_WORDS = { LCM: '50m pool', SCM: '25m pool', OW: 'Open water' }
-const poolWord = (p) => POOL_WORDS[p] || p
+// One way to write a pool everywhere: "LCM (50m)" (utils.poolLabel)
+const poolWord = (p) => (p === 'OW' ? 'Open water' : poolLabel(p))
+
+// Specialty = the stroke the swimmer is strongest in against the Arab field
+// (the Swimmer DNA figure), with the distance range of the event that earned
+// it. Career Summary and Swimmer DNA both read it from here, so the two can
+// never disagree.
+const distanceRange = (eventName) => {
+  const m = parseInt(eventName, 10)
+  if (!m) return null
+  return m <= 100 ? 'Sprint' : m <= 400 ? 'Middle-distance' : 'Distance'
+}
+const dnaSpecialty = (dna) => {
+  const axis = dna?.specialty && (dna.axes || []).find((a) => a.stroke === dna.specialty && a.event_id)
+  return axis ? { stroke: axis.stroke, range: distanceRange(axis.event_name), event: axis.event_name } : null
+}
+// one rule for every percentage on the profile: whole numbers
+const pct = (n) => `${Math.round(Number(n) || 0)}%`
+
+/* One bar row for the Overall tab charts (Swimmer DNA, Competition Level Mix) */
+function BarRow({ label, value, max = 100, text }) {
+  return (
+    <div className="prof-bar">
+      <span className="prof-bar-label" title={label}>{label}</span>
+      <div className="prof-bar-track"><div style={{ width: `${Math.max(0, Math.min(100, (value / (max || 1)) * 100))}%` }} /></div>
+      <span className="asw-num prof-bar-val">{text}</span>
+    </div>
+  )
+}
 
 // Modal imported from ui.jsx — shared component with Escape key + ARIA
 
@@ -386,8 +411,8 @@ function EventList({ events, selected, onSelect, detail }) {
   // three courses are always offered; open water appears only for swimmers
   // who have open-water swims. Opens on the first course that has times.
   const groups = [
-    ['LCM', 'LCM', 'Long course · 50m pool', lcm],
-    ['SCM', 'SCM', 'Short course · 25m pool', scm],
+    ['LCM', 'LCM', `Long course · ${poolLabel('LCM')}`, lcm],
+    ['SCM', 'SCM', `Short course · ${poolLabel('SCM')}`, scm],
     ['SPLIT', 'Split time', 'Relay Splits', relays],
     ...(ow.length ? [['OW', 'Open water', 'Open water', ow]] : []),
   ]
@@ -630,8 +655,12 @@ function TimeHistoryPanel({ selectedEvent, history, loadingHistory, failed, onRe
 /* ── Swimmer DNA radar (custom SVG, brand tokens only) ─────────────────── */
 
 function DnaRadar({ axes, size = 260 }) {
-  const R = size / 2 - 50
-  const cx = size / 2
+  // The drawing is wider than it is tall: labels sit 14px outside the outer
+  // ring and are anchored AWAY from the chart, so a long word ("Backstroke",
+  // "Breaststroke") has its own room and never runs back over a data point.
+  const W = size + 120
+  const R = size / 2 - 44
+  const cx = W / 2
   const cy = size / 2
   const n = axes.length
   const pt = (i, r) => {
@@ -641,8 +670,8 @@ function DnaRadar({ axes, size = 260 }) {
   const poly = axes.map((a, i) => pt(i, R * (Math.max(0, a.percentile) / 100)).join(',')).join(' ')
   const rings = [0.25, 0.5, 0.75, 1]
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: '100%' }} role="img"
-      aria-label={`Stroke percentiles: ${axes.map((a) => `${a.stroke} ${Math.max(0, a.percentile)}%`).join(', ')}`}>
+    <svg width={W} height={size} viewBox={`0 0 ${W} ${size}`} style={{ maxWidth: '100%', height: 'auto' }} role="img"
+      aria-label={`Stroke percentiles: ${axes.map((a) => `${a.stroke} ${pct(Math.max(0, a.percentile))}`).join(', ')}`}>
       {rings.map((f) => (
         <polygon key={f} points={axes.map((_, i) => pt(i, R * f).join(',')).join(' ')}
           fill="none" stroke="var(--color-neutral-200)" strokeWidth="1" />
@@ -657,9 +686,10 @@ function DnaRadar({ axes, size = 260 }) {
         return <circle key={i} cx={x} cy={y} r="3.5" fill="var(--color-accent)" />
       })}
       {axes.map((a, i) => {
-        const [x, y] = pt(i, R + 20)
+        const [x, y] = pt(i, R + 14)
+        const side = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end'
         return (
-          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+          <text key={i} x={x} y={y + (Math.abs(x - cx) < 4 ? (y < cy ? -6 : 6) : 0)} textAnchor={side} dominantBaseline="middle"
             fontSize="11" fontWeight="700" fill="var(--color-text)">
             {a.stroke.replace('Individual Medley', 'IM')}
           </text>
@@ -679,18 +709,7 @@ function ChaseStat({ label, value, sub }) {
   )
 }
 
-function DnaSection({ swimmerId }) {
-  const [dna, setDna] = useState(null)
-
-  useEffect(() => {
-    let alive = true
-    setDna(null)
-    getSwimmerDna(swimmerId)
-      .then((r) => { if (alive) setDna(r.data) })
-      .catch(() => { if (alive) setDna(null) })
-    return () => { alive = false }
-  }, [swimmerId])
-
+function DnaSection({ dna }) {
   const hasDna = dna && dna.axes.some((a) => a.event_id)
   if (!hasDna) return null
 
@@ -700,21 +719,13 @@ function DnaSection({ swimmerId }) {
       <div>
         <div className="sect-head">
           <h4>Swimmer DNA</h4>
-          <span className="micro">Specialty {dna.specialty || '—'} · Versatility {dna.versatility}</span>
+          <span className="micro">Specialty {dna.specialty || '—'} · Versatility {pct(dna.versatility)}</span>
         </div>
         <div className="rule-t" style={{ paddingTop: 12, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <DnaRadar axes={dna.axes} />
           <div style={{ flex: '1 1 240px' }}>
             {dna.axes.map((a) => (
-              <div key={a.stroke} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0', borderBottom: '1px solid var(--color-neutral-200)' }}>
-                <span style={{ flex: '0 0 130px', fontWeight: 600, fontSize: 13 }}>{a.stroke}</span>
-                <div style={{ flex: 1, height: 8, background: 'var(--color-neutral-200)' }}>
-                  <div style={{ width: `${Math.max(0, a.percentile)}%`, height: '100%', background: 'var(--color-accent)' }} />
-                </div>
-                <span className="asw-num" style={{ flex: '0 0 46px', textAlign: 'right', fontSize: 12 }}>
-                  {a.event_id ? `${a.percentile}%` : '—'}
-                </span>
-              </div>
+              <BarRow key={a.stroke} label={a.stroke} value={Math.max(0, a.percentile)} text={a.event_id ? pct(a.percentile) : '—'} />
             ))}
           </div>
         </div>
@@ -775,7 +786,7 @@ export function ChaseSection({ swimmerId }) {
                 <ChaseStat label="National rank" value={`#${chase.national_rank}`} sub={`of ${chase.national_field_size}`} />
               )}
               {chase.percentile != null && (
-                <ChaseStat label="Percentile" value={`${chase.percentile}%`} sub="vs Arab field" />
+                <ChaseStat label="Percentile" value={pct(chase.percentile)} sub="vs Arab field" />
               )}
               <ChaseStat label="Best time" value={chase.my_time} />
               {chase.leader && (
@@ -863,10 +874,15 @@ function RankingsPreview({ swimmerId, onViewAll }) {
       best.push({ ...rk, scope, event_id: r.event_id, pool: r.pool, best_time: r.best_time })
     }
   }
-  best.sort((a, b) => a.rank - b.rank)
+  // A rank in a field of one or two is not a ranking ("1st out of 1"):
+  // those are left out here; the Rankings tab still lists every event.
+  const MIN_FIELD = 3
+  const ranked = best.filter((b) => (b.total || 0) >= MIN_FIELD)
+  // best rank first; between equal ranks the bigger field is the better one
+  ranked.sort((a, b) => a.rank - b.rank || (b.total || 0) - (a.total || 0))
   const seen = new Set()
   const top = []
-  for (const b of best) {
+  for (const b of ranked) {
     const key = `${b.event_id}-${b.pool}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -879,24 +895,22 @@ function RankingsPreview({ swimmerId, onViewAll }) {
 
   return (
     <div>
-      <div className="sect-head">
+      <div className="sect-head swimmer-top-head">
         <h4>Best Rankings</h4>
         <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={onViewAll}>View all →</button>
       </div>
       <div className="rule-t">
         {top.map((r, i) => (
           <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
-            <div style={{ background: 'var(--color-accent)', color: '#fff', minWidth: 48, height: 48, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
-              <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: r.rank >= 1000 ? 14 : r.rank >= 100 ? 16 : 22, lineHeight: 1 }}>{r.rank}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, marginTop: 1 }}>{ordSuffix(r.rank)}</span>
-            </div>
+            {/* Similarity: the same rank box as Top Personal Bests beside it */}
+            <span className="asw-num prof-rank" aria-label={`Ranked ${r.rank}${ordSuffix(r.rank)}`}>{r.rank}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {eventName(r)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
                 <span className="tag tag-accent">{scopeLabel[r.scope] || r.scope}</span>
-                <span className="micro asw-num">{poolWord(r.pool)}{r.total ? ` · out of ${Number(r.total).toLocaleString('en-US')}` : ''}</span>
+                <span className="micro asw-num" style={{ textTransform: 'none' }}>{poolWord(r.pool)}{r.total ? ` · ${r.rank}${ordSuffix(r.rank)} of ${Number(r.total).toLocaleString('en-US')}` : ''}</span>
               </div>
             </div>
             <span className="asw-time" style={{ fontSize: 16, flex: 'none' }}>{r.best_time}</span>
@@ -929,6 +943,17 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
     getHeldRecords({ swimmer: swimmerId })
       .then((r) => { if (alive) setHeldRecords(r.data || []) })
       .catch(() => { if (alive) setHeldRecords([]) })
+    return () => { alive = false }
+  }, [swimmerId])
+  // One Swimmer DNA request feeds both the DNA chart and the Career Summary
+  // specialty. undefined = still loading, null = none / failed.
+  const [dna, setDna] = useState(undefined)
+  useEffect(() => {
+    let alive = true
+    setDna(undefined)
+    getSwimmerDna(swimmerId)
+      .then((r) => { if (alive) setDna(r.data || null) })
+      .catch(() => { if (alive) setDna(null) })
     return () => { alive = false }
   }, [swimmerId])
   if (!stats) return <LoadFailed what="This swimmer's statistics" onRetry={onRetry} />
@@ -966,10 +991,8 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
         <button type="button" className="swimmer-stat-link" style={cardStyle} onClick={() => onGoTab('medals')} aria-label={`${md.total} medals, open the Medals tab`}>
           <span className="asw-num" style={{ ...cardNum, color: 'var(--asw-gold)' }}>{md.total}</span>
           <span style={cardLabel}>Medals →</span>
-          <span className="asw-num" style={{ fontSize: 11, display: 'flex', gap: 6 }}>
-            <span style={{ color: 'var(--asw-gold)', fontWeight: 700 }}>{md.gold}G</span>
-            <span style={{ color: 'var(--asw-silver)', fontWeight: 700 }}>{md.silver}S</span>
-            <span style={{ color: 'var(--asw-bronze)', fontWeight: 700 }}>{md.bronze}B</span>
+          <span className="asw-num" style={{ fontSize: 11, fontWeight: 700 }}>
+            <span style={{ color: 'var(--asw-gold)' }}>{md.gold}G</span> · <span style={{ color: 'var(--asw-silver)' }}>{md.silver}S</span> · <span style={{ color: 'var(--asw-bronze)' }}>{md.bronze}B</span>
           </span>
         </button>
         <button type="button" className="swimmer-stat-link" style={cardStyle} onClick={() => onGoTab('records')} aria-label={`${recordsTotal} records, open the Records tab`}>
@@ -988,7 +1011,8 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
           {season_best_fina?.event_name && <span style={cardSub}>{season_best_fina.event_name}</span>}
         </div>
         <div style={cardStyle}>
-          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: '#fff', lineHeight: 1.2, textTransform: 'uppercase' }}>
+          {/* a long event name ("400 M Individual Medley") stays on two lines at most, so the row never grows */}
+          <span className="swimmer-stat-event" title={best_event || undefined} style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: '#fff', lineHeight: 1.2, textTransform: 'uppercase' }}>
             {best_event || '—'}
           </span>
           <span style={cardLabel}>Fastest Event</span>
@@ -1002,13 +1026,11 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
         {/* Top personal bests */}
         {top_personal_bests?.length > 0 && (
           <div>
-            <div className="sect-head"><h4>Top Personal Bests</h4></div>
+            <div className="sect-head swimmer-top-head"><h4>Top Personal Bests</h4></div>
             <div className="rule-t">
               {top_personal_bests.map((pb, i) => (
                 <div key={i} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
-                  <span className="asw-num" style={{ width: 30, height: 30, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13 }}>
-                    {i + 1}
-                  </span>
+                  <span className="asw-num prof-rank">{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase' }}>{pb.event_name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1021,7 +1043,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
                   </div>
                   <div style={{ textAlign: 'right', flex: 'none' }}>
                     <div className="asw-time" style={{ fontSize: 16 }}>{pb.time}</div>
-                    <div className="micro asw-num" style={{ color: 'var(--color-accent)' }}>{pb.fina_points} pts</div>
+                    <div className="asw-num" style={{ fontSize: 11, color: 'var(--color-accent)' }}>{formatPoints(pb.fina_points)}</div>
                   </div>
                 </div>
               ))}
@@ -1058,13 +1080,22 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
               : { name: any.name, medal: 'Bronze', count: any.bronze, color: 'var(--asw-bronze)' })
             : null
         const multiYear = cs.years_active >= 2
+        // Specialty: the Swimmer DNA figure when there is one (so this tile and
+        // the DNA chart below always name the same stroke); only a swimmer with
+        // no DNA chart falls back to the most-raced stroke, and says so.
+        const fromDna = dnaSpecialty(dna)
+        const specialty = dna === undefined ? null
+          : fromDna ? { value: [fromDna.range, fromDna.stroke].filter(Boolean).join(' · '), sub: `strongest stroke vs the Arab field · ${fromDna.event}` }
+            : (cs.specialty_stroke && cs.total_swims >= 10)
+              ? { value: [cs.specialty_range, cs.specialty_stroke].filter(Boolean).join(' · '), sub: 'most-raced stroke and its usual distance' }
+              : null
         return (
           <div>
             <div className="sect-head">
               <h4>Career Summary</h4>
               {multiYear && <span className="micro">{fmtDate(cs.first_date)} → {fmtDate(cs.last_date)}</span>}
             </div>
-            <div className="rule-t" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 12 }}>
+            <div className="rule-t swimmer-career-grid" style={{ paddingTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 12 }}>
               <div style={tile}>
                 <span style={tLabel}>Debut</span>
                 <span style={tVal}>{fmtDate(cs.debut?.date)}</span>
@@ -1084,11 +1115,11 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
                   <span style={tSub}>won ×{biggest.count} · highest-level medal</span>
                 </div>
               )}
-              {cs.specialty_stroke && cs.total_swims >= 10 && (
+              {specialty && (
                 <div style={tile}>
                   <span style={tLabel}>Specialty</span>
-                  <span style={tVal}>{cs.specialty_range} · {cs.specialty_stroke}</span>
-                  <span style={tSub}>most-raced distance &amp; stroke</span>
+                  <span style={tVal}>{specialty.value}</span>
+                  <span style={tSub}>{specialty.sub}</span>
                 </div>
               )}
               {cs.top_meet && cs.top_meet.medals >= 3 && (
@@ -1103,7 +1134,7 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
                   <span style={tLabel}>Career Drop · {cs.improvement.event_name}</span>
                   <span className="asw-num" style={{ ...tVal, color: 'var(--asw-fast)' }}>−{cs.improvement.seconds}s</span>
                   <span style={tSub}>
-                    {cs.improvement.from_time} ({cs.improvement.from_year}) → {cs.improvement.to_time} · {cs.improvement.percent}% faster
+                    {cs.improvement.from_time} ({cs.improvement.from_year}) → {cs.improvement.to_time} · {pct(cs.improvement.percent)} faster
                     {cs.pb_age != null ? ` · best form at age ${cs.pb_age}` : ''}
                   </span>
                 </div>
@@ -1114,12 +1145,12 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
       })()}
 
       {/* Swimmer DNA (The Chase lives in the Rankings tab) */}
-      <DnaSection swimmerId={swimmerId} />
+      <DnaSection dna={dna} />
 
       {/* Performance index */}
       {(best_fina?.points || 0) > 0 && (
         <div>
-          <div className="sect-head"><h4>Performance Index</h4><span className="micro">FINA points · career best {best_fina.points} · swims per level</span></div>
+          <div className="sect-head"><h4>Performance Index</h4><span className="micro" style={{ textTransform: 'none' }}>Career best {formatPoints(best_fina.points)} · swims per level</span></div>
           <div className="rule-t" style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {PERFORMANCE_TIERS.map((t) => {
               const isCurrent = best_fina.points >= t.min && (t.max == null || best_fina.points < t.max)
@@ -1132,18 +1163,18 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
               // Goal-Gradient: the next tier up shows how close it is
               const toGo = !reached && t.max != null && best_fina.points >= t.min - 100 ? t.min - best_fina.points : null
               return (
-                <div key={t.min} style={{
+                <div key={t.min} className="perf-tier" style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px',
                   background: isCurrent ? 'var(--color-accent)' : 'transparent',
                   color: isCurrent ? '#fff' : 'inherit',
-                  borderLeft: `4px solid ${isCurrent ? 'var(--asw-gold)' : reached ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                  borderLeft: `4px solid ${isCurrent ? 'var(--color-accent-800)' : reached ? 'var(--color-accent)' : 'var(--color-divider)'}`,
                 }}>
                   <span className="asw-num" style={{ width: 52, flex: 'none', fontWeight: 800, fontSize: 14, opacity: reached ? 1 : 0.5 }}>{t.min}+</span>
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
-                  {isCurrent && <span className="tag" style={{ background: 'var(--asw-gold)', color: '#fff', border: 0 }}>CAREER BEST</span>}
-                  {isSeason && <span className="tag tag-accent">THIS SEASON</span>}
-                  {toGo != null && <span className="asw-num micro" style={{ color: 'var(--color-accent)', fontWeight: 800 }}>Next · {toGo} pts to go</span>}
-                  {count > 0 && <span className="asw-num micro" style={{ opacity: isCurrent ? 1 : 0.6, color: isCurrent ? 'rgba(255,255,255,0.9)' : undefined }}>{count} swim{count !== 1 ? 's' : ''}</span>}
+                  <span className="perf-tier-label" style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: reached ? 1 : 0.5 }}>{t.label}</span>
+                  {isCurrent && <span className="tag perf-tier-chip" style={{ background: '#fff', color: 'var(--color-accent-800)', border: 0, fontWeight: 800 }}>CAREER BEST</span>}
+                  {isSeason && <span className="tag tag-accent perf-tier-chip">THIS SEASON</span>}
+                  {toGo != null && <span className="asw-num micro perf-tier-next" style={{ color: 'var(--color-accent)', fontWeight: 800, textTransform: 'none' }}>Next · {formatPoints(toGo)} to go</span>}
+                  {count > 0 && <span className="asw-num micro perf-tier-count" style={{ opacity: isCurrent ? 1 : 0.6, color: isCurrent ? 'rgba(255,255,255,0.9)' : undefined }}>{count} swim{count !== 1 ? 's' : ''}</span>}
                 </div>
               )
             })}
@@ -1193,7 +1224,8 @@ function OverallTab({ stats, swimmerId, onViewRankings, onGoTab, onRetry }) {
           <div>
             <div className="sect-head"><h4>Competition Level Mix</h4><span className="micro">Meets entered per competition level</span></div>
             <div className="rule-t" style={{ paddingTop: 14 }}>
-              <MiniHBars rows={rows} color={CHART_COLORS.NAVY} labelWidth={130} />
+              {/* Similarity: the same bar as Swimmer DNA above */}
+              {rows.map((r) => <BarRow key={r.label} label={r.label} value={r.value} max={rows[0].value} text={r.value} />)}
             </div>
           </div>
         )
@@ -1269,7 +1301,7 @@ function ProgressionTab({ swimmerId }) {
     <div>
       <div style={{ marginBottom: 20 }}>
         <Seg
-          options={[{ value: 'LCM', label: 'Long course · 50m pool' }, { value: 'SCM', label: 'Short course · 25m pool' }]}
+          options={[{ value: 'LCM', label: `Long course · ${poolLabel('LCM')}` }, { value: 'SCM', label: `Short course · ${poolLabel('SCM')}` }]}
           value={pool}
           onChange={(v) => { autoSwitched.current = true; setPool(v) }}
         />
@@ -1572,21 +1604,33 @@ export default function SwimmerProfile() {
             {swimmer.is_retired && <span className="tag tag-dark">Retired</span>}
           </div>
           {/* All swimmer details on ONE line (phone especially): country · born · age · sex */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+          <div className="sw-meta-row" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap', fontSize: 13, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} flagUrl={swimmer.nationality_detail?.flag_url} />
-            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
-            {[
+            {(() => {
+              const parts = [
               swimmer.date_of_birth
                 ? `Born ${isAdmin ? formatDate(swimmer.date_of_birth) : swimmer.date_of_birth.split('-')[0]}`
                 : swimmer.birth_year ? `Born ${swimmer.birth_year}` : null,
               swimmer.age != null ? `Age ${swimmer.age}` : null,
               swimmer.sex ? (swimmer.sex === 'M' ? 'Male' : 'Female') : null,
-            ].filter(Boolean).map((part) => (
-              <span key={part} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: 'var(--color-neutral-400)' }}>·</span>
-                <span className="asw-num" style={{ fontWeight: 600 }}>{part}</span>
-              </span>
-            ))}
+              ].filter(Boolean)
+              // the dot belongs to the item BEFORE it, so a wrapped line never starts with a separator
+              const dot = <span aria-hidden="true" style={{ color: 'var(--color-neutral-400)' }}>·</span>
+              return (
+                <>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{swimmer.nationality_detail?.name}</span>
+                    {parts.length > 0 && dot}
+                  </span>
+                  {parts.map((part, i) => (
+                    <span key={part} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span className="asw-num" style={{ fontWeight: 600 }}>{part}</span>
+                      {i < parts.length - 1 && dot}
+                    </span>
+                  ))}
+                </>
+              )
+            })()}
           </div>
           {/* social chips on their OWN line (phone and desktop) — navy filled, white icons */}
           {(swimmer.instagram_url || swimmer.facebook_url || swimmer.youtube_url || swimmer.tiktok_url || swimmer.x_url || isAdmin) && (
@@ -1753,7 +1797,7 @@ export default function SwimmerProfile() {
       />
 
       {/* ── Tabs ── */}
-      <div className="rule-b tabbar tabbar-sticky" style={{ padding: '16px 32px', overflowX: 'auto' }}>
+      <div className="rule-b tabbar tabbar-sticky ap-fade" style={{ padding: '16px 32px', overflowX: 'auto' }}>
         <Seg tabs options={barTabs.map(tabOption)} value={effectiveTab} onChange={setActiveTab} />
       </div>
 

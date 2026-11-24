@@ -1,0 +1,149 @@
+/* Audit polish — profiles. Brand tokens only (see theme.css). */
+
+/* ── One rank box (swimmer + club profiles): square, navy, 30px ───────── */
+.prof-rank {
+  flex: none; box-sizing: border-box; min-width: 30px; height: 30px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-accent-800); color: var(--color-bg);
+  font-family: var(--font-heading); font-weight: 800; font-size: 13px; line-height: 1;
+}
+
+/* ── One initials tile wherever a photo or logo is missing ────────────── */
+.ap-initials, .swimmers-item-photo, .ap-initials-fill {
+  background: var(--color-accent-800); color: var(--color-bg);
+  font-family: var(--font-heading); font-weight: 800; letter-spacing: 0.04em;
+}
+.ap-initials { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.ap-initials > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* inside a round logo badge: fills the badge, whatever its own background */
+.ap-initials-fill { flex: 1; align-self: stretch; display: flex; align-items: center; justify-content: center; line-height: 1; }
+
+/* ── Swimmer profile: Overall tab ─────────────────────────────────────── */
+/* "Top Personal Bests" and "Best Rankings" sit side by side: same header height, rules on one line */
+.swimmer-top-head { height: 32px; margin-bottom: 12px; align-items: center; flex-wrap: nowrap; }
+.swimmer-top-head .btn { min-height: 0; height: 32px; padding-top: 0; padding-bottom: 0; }
+
+/* hero tiles: one fixed height, so a long "Fastest event" name cannot stretch the row */
+.swimmer-stat-cards > * { height: 108px; box-sizing: border-box; overflow: hidden; }
+.swimmer-stat-event {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  font-size: 14px !important; overflow-wrap: anywhere;
+}
+
+/* Performance Index rows */
+.perf-tier-chip, .perf-tier-count, .perf-tier-next { white-space: nowrap; flex: none; }
+
+/* one bar style for Swimmer DNA and Competition Level Mix */
+.prof-bar { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--color-neutral-200); }
+.prof-bar-label { flex: 0 0 130px; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prof-bar-track { flex: 1; min-width: 0; height: 8px; background: var(--color-neutral-200); }
+.prof-bar-track > div { height: 100%; background: var(--color-accent); }
+.prof-bar-val { flex: 0 0 46px; text-align: right; font-size: 12px; font-weight: 700; }
+
+/* ── Club profile: the swimmer profile's stat tiles ───────────────────── */
+.prof-stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.prof-stat {
+  box-sizing: border-box; width: 100%; height: 108px; padding: 16px 12px; border: 0; font: inherit;
+  background: var(--color-accent-800); color: var(--color-bg); text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.prof-stat-num { font-family: var(--font-heading); font-weight: 800; font-size: 24px; line-height: 1.1; }
+.prof-stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-bg) 70%, transparent); }
+.prof-stat-sub { font-size: 11px; margin-top: 2px; color: color-mix(in srgb, var(--color-bg) 60%, transparent); }
+
+/* ── Not-found state (academy, club): a heading, a sentence, a way back ─ */
+.ap-notfound .empty { padding: 72px 16px; text-transform: none; letter-spacing: 0; }
+.ap-notfound-title { margin: 0; font-size: 24px; letter-spacing: -0.01em; text-transform: none; color: var(--color-text); }
+.ap-notfound .empty-hint { max-width: 46ch; margin: 10px auto 0; font-size: 14px; line-height: 1.5; }
+.ap-notfound .empty-action { margin-top: 20px; }
+
+/* ── List pages (Swimmers, Clubs, Academies, Coaches, Referees, Hall of Fame) ─ */
+/* names may take two lines; the second line is reserved so rows stay even */
+.swimmers-item-name {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  min-height: 2.5em; overflow-wrap: anywhere;
+}
+/* card meta: flag · country · count on ONE line — the country gives way, the count never wraps */
+.ap-card-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; min-width: 0; font-size: 12px; color: var(--color-neutral-700); white-space: nowrap; }
+.ap-card-meta-grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ap-card-meta-fixed, .ap-chip { flex: none; }
+.ap-chip { font-size: 11px; padding: 1px 6px; }
+/* coaches / referees: cards in columns; an opened card takes the full row */
+.ap-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; align-items: start; }
+.ap-person { min-width: 0; background: var(--color-surface); }
+.ap-person.open { grid-column: 1 / -1; }
+/* the photo picker's native control, dressed as a secondary button */
+.ap-list input[type="file"] { max-width: 100%; font: inherit; font-size: 12px; color: var(--color-neutral-700); }
+.ap-list input[type="file"]::file-selector-button {
+  min-height: 40px; margin-right: 10px; padding: 0 14px; border-radius: 0;
+  border: 1px solid var(--color-divider); background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+
+/* ── Phone ────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* club page: same scale and 16px gutter as the swimmer profile; tab strip edge to edge like its tab bar */
+  .team-page .prof-tabs { padding: 0; }
+  /* its table-heavy tabs stay zoomed out (0.75); their gutter is set so it still lands on 16px */
+  .team-dense .pad, .team-dense .pad-lg, .team-dense .m-pad, .team-dense.pad-lg { padding-left: 21.34px !important; padding-right: 21.34px !important; }
+  .prof-stat-cards { grid-template-columns: repeat(2, 1fr); }
+
+  /* hero tiles 3 across: narrower, so the event name gets a third line and smaller type */
+  .swimmer-stat-cards > * { height: 116px; padding-left: 8px !important; padding-right: 8px !important; }
+  .swimmer-stat-event { font-size: 12px !important; -webkit-line-clamp: 3; }
+
+  /* admin buttons stay inside the content edge */
+  .swimmer-hero-actions { flex: 1 1 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .swimmer-hero-actions .btn { max-width: 100%; }
+
+  /* Fitts's Law: 40px targets for the A–Z letters and every filter control */
+  .swimmers-az button { min-width: 40px; min-height: 40px; }
+  .ap-list .filterbar .input, .ap-list .filterbar .select, .ap-list .filterbar .btn { min-height: 40px; }
+  .ap-list .filterbar .seg:not(.seg-tabs) .seg-opt { min-height: 40px; }
+  /* search fields take the full width */
+  .ap-list .filterbar-controls input[type="search"] { flex: 1 1 100% !important; width: 100% !important; max-width: none !important; }
+
+  /* a strip that scrolls sideways fades out at the edge, so it reads as "more this way" */
+  .swimmers-az, .ap-list .seg-tabs, .ap-fade .seg-tabs, .team-page .seg-tabs {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 10px, black calc(100% - 32px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, black 10px, black calc(100% - 32px), transparent 100%);
+  }
+  /* room to scroll the last item clear of the fade */
+  .swimmers-az::after, .ap-list .seg-tabs::after, .ap-fade .seg-tabs::after, .team-page .seg-tabs::after { content: ''; flex: 0 0 24px; }
+
+  .ap-people { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  /* Career Summary: one column, no orphan tile */
+  .swimmer-career-grid { grid-template-columns: 1fr !important; }
+  /* Performance Index: "Next · n pts to go" on its own line under the level name */
+  .perf-tier { flex-wrap: wrap; row-gap: 2px; }
+  .perf-tier-label { min-width: 0; }
+  .perf-tier-next { order: 5; flex: 1 1 100%; padding-left: 64px; }
+  .prof-bar-label { flex-basis: 104px; }
+}
+
+/* club Highlights card: titles wrap only when they must, and are never cut with an ellipsis */
+.team-hl .hl-title { white-space: normal; overflow: visible; }
+
+/* ── Clean-up round ─────────────────────────────────────────────────── */
+/* club cards: nothing is cut — the line wraps when it has to, chip stays inside */
+.ap-card-meta { flex-wrap: wrap; row-gap: 2px; }
+.ap-card-meta-grow { overflow: visible; text-overflow: clip; }
+/* two-line swimmer names: a little air above the flag row */
+.ap-list .ap-card-meta { margin-top: 6px; }
+@media (max-width: 760px) {
+  /* hero tiles: equal height by row, never clipping a long event name */
+  .swimmer-stat-cards > * { height: auto; min-height: 116px; overflow: visible; }
+  /* the detail row fits one line, so no separator is left hanging */
+  .sw-meta-row { font-size: 12px !important; gap: 5px !important; }
+  .sw-meta-row > span { gap: 5px !important; }
+}
+
+/* training calendar on phone: the whole week fits the screen — no hidden days
+   behind a sideways scroll (the dot marks a practice day; tap for details) */
+@media (max-width: 760px) {
+  .tc-grid { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; min-width: 0 !important; gap: 3px !important; }
+  .tc-grid > * { min-height: 52px !important; padding: 3px !important; min-width: 0; }
+  .tc-grid .tc-label { display: none; }
+}

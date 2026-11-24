@@ -223,7 +223,7 @@ export default function Referees() {
     .filter(([, , n]) => n > 0 || !directory), [directory])
 
   return (
-    <div>
+    <div className="ap-list">
       <PageHead title="Referees" sub="Officials working across Arab swimming." />
 
       {/* Common Region: search, country and role in one bar with the result
@@ -292,14 +292,16 @@ export default function Referees() {
           </Empty>
         )
       ) : (
-        <div className="pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        /* Proximity: cards in a 2–3 column grid instead of full-width rows with an empty middle;
+           an opened card takes the whole row */
+        <div className="pad ap-people">
           {rows.map((c) => {
             const isExpanded = expandedId === c.id
             const specializations = splitComma(c.specializations)
             const certifications = splitLines(c.certifications)
             const achievements = splitLines(c.achievements)
             return (
-              <div key={c.id} style={{ border: '1px solid var(--color-divider)', opacity: c.is_active === false ? 0.6 : 1 }}>
+              <div key={c.id} className={`ap-person${isExpanded ? ' open' : ''}`} style={{ border: '1px solid var(--color-divider)', opacity: c.is_active === false ? 0.6 : 1 }}>
                 {/* main row */}
                 <div
                   className="row-link"
@@ -313,22 +315,17 @@ export default function Referees() {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : c.id) }
                   }}
                 >
-                  {c.photo ? (
-                    <div className="grayscale" style={{ width: 64, height: 64, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-                      <Pic kind="person" w={160} src={c.photo} />
-                    </div>
-                  ) : (
-                    <div style={{ width: 64, height: 64, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>
-                      {initials(c.name)}
-                    </div>
-                  )}
+                  {/* no photo, or one that fails to load: the initials tile, never an empty outlined square */}
+                  <div className="grayscale ap-initials" style={{ width: 64, height: 64, flex: 'none', fontSize: 18 }}>
+                    <Pic kind="person" w={160} src={c.photo} fallback={<span aria-hidden="true">{initials(c.name)}</span>} />
+                  </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, fontSize: 16 }}>{c.name}</span>
-                      {c.level && <span className="tag tag-dark">{ROLE_LABELS[c.level] || c.level}</span>}
+                      {c.level && <span className="tag tag-accent">{ROLE_LABELS[c.level] || c.level}</span>}
                       {c.is_available && <span className="tag tag-accent">Open to appointments</span>}
-                      {c.is_active === false && <span className="tag tag-neutral">Inactive</span>}
+                      {c.is_active === false && <span className="tag tag-accent">Inactive</span>}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6, fontSize: 13, color: 'var(--color-neutral-700)', flexWrap: 'wrap' }}>
@@ -352,7 +349,7 @@ export default function Referees() {
                     {specializations.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                         {specializations.map((s, i) => (
-                          <span key={i} className="tag tag-neutral">{s}</span>
+                          <span key={i} className="tag tag-accent">{s}</span>
                         ))}
                       </div>
                     )}

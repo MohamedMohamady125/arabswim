@@ -12,7 +12,7 @@ import { getCountries, getEvents } from '../api/core'
 import { searchSwimmers } from '../api/swimmers'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, FilterBar, ShowMore } from '../components/ui'
-import { formatDate, formatTime } from '../utils'
+import { formatDate, formatTime, poolLabel } from '../utils'
 
 // ── Filter 1: the eight report categories ────────────────────────────────────
 const CATEGORIES = [
@@ -44,11 +44,11 @@ const PLAIN_YEARS = (() => {
   return yrs
 })()
 
-const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]
+const GENDER_OPTS = [{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]
 // Mental Model: pool codes carry the length swimmers actually say
-const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]
+const POOL_OPTS = [{ value: '', label: 'All pools' }, { value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]
 
-const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 36 }
+const CTRL = { flex: '0 1 auto', width: 'auto', minWidth: 0, height: 40 } // Fitts's Law: 40px controls
 // standard navy box (same as the swimmer Overall tiles — site-wide box rule)
 const statCard = { background: 'var(--color-accent-800)', color: '#fff', borderRadius: 0, padding: '16px 16px' }
 
@@ -156,7 +156,7 @@ function YearSelect({ value, onChange }) {
 
 function ExportButton({ onClick }) {
   return (
-    <button type="button" className="btn btn-secondary" style={{ height: 32, marginLeft: 'auto' }} onClick={onClick}>
+    <button type="button" className="btn btn-secondary" style={{ height: 40, marginLeft: 'auto' }} onClick={onClick}>
       Export CSV
     </button>
   )
@@ -215,7 +215,7 @@ function SwimmerSearch({ country, gender, onPick }) {
     <div ref={box} style={{ position: 'relative', flex: '1 1 260px' }}>
       <input
         className="input"
-        style={{ width: '100%', height: 36 }}
+        style={{ width: '100%', height: 40 }}
         placeholder="Search a swimmer…"
         aria-label="Search a swimmer"
         autoComplete="off"
@@ -237,7 +237,7 @@ function SwimmerSearch({ country, gender, onPick }) {
               className="row-link"
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click() } }}
               onClick={() => { onPick({ id: s.id, name: s.name }); setQ(s.name); setOpen(false) }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', minHeight: 36, cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', minHeight: 40, cursor: 'pointer' }}
               onMouseDown={(e) => e.preventDefault()}
             >
               {(s.nationality_code || s.country_code) && <Flag code={s.nationality_code || s.country_code} name={s.name} />}
@@ -319,7 +319,7 @@ function SwimmersReport({ countries }) {
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 {data.best_times.length > 0 && <ExportButton onClick={exportBest} />}
               </div>
-              {data.best_times.length === 0 ? <Empty label="No timed swims" /> : (
+              {data.best_times.length === 0 ? <Empty label="No timed swims for this swimmer yet" hint="Best times appear here once a result with an official time is imported." /> : (
                 <div className="table-scroll">
                   <table className="table">
                     <thead><tr><th>Event</th><th className="time">Best</th><th className="num">FINA</th><th className="num hide-mobile">Age</th><th className="hide-mobile">Meet</th><th className="hide-mobile">Date</th></tr></thead>
@@ -348,7 +348,9 @@ function SwimmersReport({ countries }) {
                 {data.championships.map((c) => <option key={c.id} value={c.id}>{c.name} ({formatDate(c.date)})</option>)}
               </select>
               {!champ ? <Empty label="Choose a championship to see results" hint="Use the menu above." />
-                : data.results_in_championship.length === 0 ? <Empty label="No results at this meet" /> : (
+                : data.results_in_championship.length === 0 ? <Empty label="No results at this meet" hint="Choose another championship from the menu above.">
+                    <button type="button" className="btn btn-secondary" onClick={() => setChamp('')}>Choose another championship</button>
+                  </Empty> : (
                   <div className="table-scroll">
                     <table className="table">
                       <thead><tr><th>Event</th><th className="time">Time</th><th className="num">FINA</th><th className="hide-mobile">Round</th><th className="num hide-mobile">Age</th></tr></thead>
@@ -661,7 +663,7 @@ function RecordsReport({ countries, championships }) {
         {scope === 'national' && <CountrySelect byId countries={countries} value={country} onChange={setCountry} label="Pick a country" />}
         <AgeGroupSelect value={ageGroup} onChange={setAgeGroup} />
         <Seg options={GENDER_OPTS} value={gender} onChange={setGender} />
-        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]} value={pool} onChange={setPool} />
         <MoreFilters on={[year, champ, classification, subClass]}>
           <YearSelect value={year} onChange={setYear} />
           <ChampionshipSelect championships={championships} value={champ} onChange={setChamp} />
@@ -1129,13 +1131,13 @@ export default function Reports() {
   const ref = { countries, eventGroups, championships }
 
   return (
-    <div className="reports-page">
+    <div className="reports-page at-empty">
       <PageHead
         title="Reports"
         sub="Pick a report, then narrow it with the filters below. Every view exports to CSV."
       />
 
-      <div className="tabbar rule-b">
+      <div className="tabbar rule-b at-fade-x">
         <Seg options={CATEGORIES} value={category} onChange={setCategory} tabs />
       </div>
 

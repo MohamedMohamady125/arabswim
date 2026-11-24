@@ -1063,8 +1063,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 if all_time_lookup.get(key) != pb['meet_best']:
                     continue
                 # equalling a previous time is not a NEW personal best
+                # …and a first-ever swim has nothing to beat. Same rule as
+                # quick-stats' personal_bests count, so the Overview tile and
+                # this list agree (and the top-50 cut is not spent on
+                # first-ever swims).
                 prev = prev_lookup.get(key)
-                if prev is not None and prev <= pb['meet_best']:
+                if prev is None or prev <= pb['meet_best']:
                     continue
                 pb_keys.add(key)
             if pb_keys:
@@ -1282,25 +1286,40 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         medals_total = sum(r['total'] for r in medal_table)
 
         # ---------- records ----------
-        rec_qs = Record.objects.filter(result__championship=champ)
-        records_total = rec_qs.count()
-        type_labels = dict(Record.RECORD_TYPE_CHOICES)
+        # Same definition as the meet's Records tab (records-broken): a swim
+        # that beat an existing pre-meet best, one per scope/event/gender.
+        # Counting Record rows instead also counted first-ever times and
+        # every age-category record, so the tile said 215 where the tab
+        # listed 22.
+        breaks, _prev = self._record_breaks(champ)
+        records_total = len(breaks)
+        scope_labels = {'arab': ('ARAB', 'Arab'), 'gcc': ('GCC', 'GCC'),
+                        'national': ('NATIONAL', 'National')}
+        scope_counts, country_counts = {}, {}
+        for (scope, *_k), (r, _old) in breaks.items():
+            scope_counts[scope] = scope_counts.get(scope, 0) + 1
+            nat = r.nationality or r.swimmer.nationality
+            ck = (nat.code, nat.flag_url)
+            country_counts[ck] = country_counts.get(ck, 0) + 1
         records_by_type = [{
-            'type': r['record_type'], 'label': type_labels.get(r['record_type'], r['record_type']),
-            'count': r['count'],
-        } for r in rec_qs.values('record_type').annotate(count=Count('id')).order_by('-count')]
+            'type': scope_labels[sc][0], 'label': scope_labels[sc][1], 'count': n,
+        } for sc, n in sorted(scope_counts.items(), key=lambda kv: -kv[1])]
         records_by_country = [{
-            'code': r['result__nationality__code'], 'flag_url': r['result__nationality__flag_url'],
-            'count': r['count'],
-        } for r in rec_qs.filter(result__nationality__isnull=False).values(
-            'result__nationality__code', 'result__nationality__flag_url',
-        ).annotate(count=Count('id')).order_by('-count')[:6]]
+            'code': code, 'flag_url': flag, 'count': n,
+        } for (code, flag), n in sorted(country_counts.items(),
+                                        key=lambda kv: (-kv[1], kv[0][0]))[:6]]
+        # Day of each record via the meet program (event -> day)
+        prog = list(ProgramItem.objects.filter(championship=champ).values('event_id', 'day', 'session'))
+        day_of_event = {}
+        for it in prog:
+            if it['event_id'] not in day_of_event or it['session'] == 'FINALS':
+                day_of_event[it['event_id']] = it['day']
         records_by_day = None
         if n_days > 1:
             day_counts = {}
-            for rd in rec_qs.values_list('result_date', flat=True):
-                d = (rd - champ.date).days + 1
-                if 1 <= d <= n_days:
+            for (_scope, event_id, *_k) in breaks:
+                d = day_of_event.get(event_id)
+                if d and 1 <= d <= n_days:
                     day_counts[d] = day_counts.get(d, 0) + 1
             if len(day_counts) > 1:
                 cum, records_by_day = 0, []
@@ -1379,7 +1398,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'flag_url': mg['nationality__flag_url'] or '', 'count': mg['count'],
             }
 
-        # Personal bests: meet best equals all-time best (same pool)
+        # Personal bests: the meet best is the swimmer's all-time best (same
+        # pool) AND beats a time they had before this meet. A first-ever swim
+        # in an event is not a personal best "achieved" — the same rule the
+        # Personal bests tab applies (`previous_best` present), so the tile
+        # and the list always agree.
         pb_total, pb_by_swimmer, best_improvement = 0, {}, None
         pb_candidates = list(athletes.filter(time_centiseconds__gt=0)
                              .values('swimmer_id', 'event_id').annotate(meet_best=Min('time_centiseconds')))
@@ -1397,7 +1420,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 if all_time.get(key) == p['meet_best']:
                     # equalling a previous time is not a NEW personal best
                     pv0 = prev.get(key)
-                    if pv0 is not None and pv0 <= p['meet_best']:
+                    if pv0 is None or pv0 <= p['meet_best']:
                         continue
                     pb_total += 1
                     pb_by_swimmer[p['swimmer_id']] = pb_by_swimmer.get(p['swimmer_id'], 0) + 1
@@ -1433,12 +1456,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
 
         # Average points per day via the meet program (event -> day)
         points_by_day = None
-        prog = list(ProgramItem.objects.filter(championship=champ).values('event_id', 'day', 'session'))
         if prog and n_days > 1:
-            day_of_event = {}
-            for it in prog:
-                if it['event_id'] not in day_of_event or it['session'] == 'FINALS':
-                    day_of_event[it['event_id']] = it['day']
             sums, cnts = {}, {}
             for r in scored.values('event_id').annotate(avg=Avg('fina_points'), n=Count('id')):
                 d = day_of_event.get(r['event_id'])
@@ -1740,7 +1758,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'events': results.values('event').distinct().count(),
                 'results': results.count(),
                 'medals': Medal.objects.filter(championship=champ).count(),
-                'records_broken': Record.objects.filter(result__championship=champ).count(),
+                # same definition as the Records tab and the Overview tile
+                'records_broken': len(self._record_breaks(champ)[0]),
                 'avg_age': round(avg_age, 1) if avg_age else None,
                 'best_fina': best.fina_points if best else None,
                 'best_fina_swimmer': best.swimmer.name if best else None,
@@ -1822,20 +1841,15 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             })
         return Response(data)
 
-    @action(detail=True, methods=['get'], url_path='records-broken')
-    def records_broken(self, request, pk=None):
-        """Records broken during this meet, computed from existing data.
+    @staticmethod
+    def _record_breaks(championship):
+        """The one definition of "records broken at this meet", shared by
+        the Records tab (records-broken) and the Overview/Home counters
+        (quick-stats) so the two can never disagree.
 
-        For every scope (arab / gcc / national per country), compare the
-        fastest swim of the meet per event+gender against the best time
-        recorded before the meet (same pool, OPEN age). A record is
-        "broken" only when a strictly faster swim beats an existing
-        pre-meet best — first-ever times are not listed. When several
-        swimmers beat the old record, the fastest (the record at meet
-        end) is shown.
-        """
+        Returns ({(scope, event_id, gender, *national_id): (result, old_cs)},
+        pre-meet results queryset)."""
         from django.db.models import Min
-        championship = self.get_object()
         pool = championship.pool
 
         meet_rows = list(
@@ -1845,7 +1859,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             .select_related('swimmer', 'swimmer__nationality', 'nationality', 'event')
         )
         if not meet_rows:
-            return Response([])
+            return {}, Result.objects.none()
 
         def gender_key(r):
             # Mixed relays carry one placeholder swimmer whose sex is
@@ -1903,6 +1917,25 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                     check('gcc', gcc_best)
             check('national', national_best,
                   key_extra=(r.nationality_id or r.swimmer.nationality_id,))
+
+        return best_break, prev
+
+    @action(detail=True, methods=['get'], url_path='records-broken')
+    def records_broken(self, request, pk=None):
+        """Records broken during this meet, computed from existing data.
+
+        For every scope (arab / gcc / national per country), compare the
+        fastest swim of the meet per event+gender against the best time
+        recorded before the meet (same pool, OPEN age). A record is
+        "broken" only when a strictly faster swim beats an existing
+        pre-meet best — first-ever times are not listed. When several
+        swimmers beat the old record, the fastest (the record at meet
+        end) is shown.
+        """
+        championship = self.get_object()
+        best_break, prev = self._record_breaks(championship)
+        if not best_break:
+            return Response([])
 
         # Resolve previous holders and build the payload
         def fmt(cs):

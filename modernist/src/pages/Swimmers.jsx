@@ -10,7 +10,8 @@ import { mediaUrl, nameInitials } from '../utils'
 import { useAuth } from '../context/AuthContext'
 import Pic from '../components/Pic'
 
-const PAGE_SIZE = 50
+// 48 fills whole rows at 2, 3, 4 and 6 columns (50 left two orphans)
+const PAGE_SIZE = 48
 
 const initials = (name) => nameInitials(name)
 
@@ -18,16 +19,10 @@ function Avatar({ photo, name, size = 34 }) {
   // portrait 4:5 box — the natural shape of a headshot, so faces are not
   // cropped into a tight square
   const h = Math.round(size * 1.25)
-  if (photo) {
-    return (
-      <div className="grayscale" style={{ width: size, height: h, flex: 'none', overflow: 'hidden', border: '1px solid var(--color-divider)' }}>
-        <Pic kind="person" w={160} src={photo} />
-      </div>
-    )
-  }
+  // one look for a missing (or broken) photo everywhere: the initials tile
   return (
-    <div style={{ width: size, height: h, flex: 'none', background: 'var(--color-neutral-200)', color: 'var(--color-neutral-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11 }}>
-      {initials(name)}
+    <div className="grayscale ap-initials" style={{ width: size, height: h, flex: 'none', fontSize: 11 }}>
+      <Pic kind="person" w={160} src={photo} fallback={<span aria-hidden="true">{initials(name)}</span>} />
     </div>
   )
 }
@@ -348,7 +343,7 @@ export default function Swimmers() {
   const from = (page - 1) * PAGE_SIZE + 1
 
   return (
-    <div ref={topRef}>
+    <div ref={topRef} className="ap-list">
       <PageHead title="Swimmers" />
 
       {/* Common Region: every way to narrow the list sits in one bar with the count */}
@@ -423,7 +418,8 @@ export default function Swimmers() {
         <div className="pad" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s ease' }} aria-busy={loading}>
           {count > PAGE_SIZE && (
             <div className="swimmers-range asw-num">
-              Showing {from.toLocaleString('en-US')}–{(from + rows.length - 1).toLocaleString('en-US')} of {count.toLocaleString('en-US')}, A to Z
+              {/* the total is in the filter bar and in the pager below: said once here would be a third time */}
+              Showing {from.toLocaleString('en-US')}–{(from + rows.length - 1).toLocaleString('en-US')}, A to Z
             </div>
           )}
           <div className="swimmers-list">
@@ -434,11 +430,8 @@ export default function Swimmers() {
                 <div key={s.id} className="swimmers-item">
                   <Link to={`/swimmers/${s.id}`} state={{ list: searchParams.toString() }} className="swimmers-item-link">
                     <span className="swimmers-item-photo">
-                      {s.photo ? (
-                        <Pic kind="person" w={64} className="grayscale" src={s.photo} />
-                      ) : (
-                        <span aria-hidden="true">{initials(s.name)}</span>
-                      )}
+                      {/* no photo, or one that fails to load: the initials tile, never a blank box */}
+                      <Pic kind="person" w={64} className="grayscale" src={s.photo} fallback={<span aria-hidden="true">{initials(s.name)}</span>} />
                     </span>
                     <span className="swimmers-item-body">
                       <span className="swimmers-item-name">

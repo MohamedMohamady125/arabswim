@@ -290,16 +290,64 @@ export default function News() {
       )}
       {isAdmin && (
         <span className="content-news-admin">
-          <button type="button" className="btn btn-ghost" aria-label={`Edit ${a.title}`} onClick={() => setEditArticle(a)}>
+          <button type="button" className="btn btn-secondary content-adminbtn" aria-label={`Edit ${a.title}`} onClick={() => setEditArticle(a)}>
             <Edit3 size={13} /> Edit
           </button>
-          <button type="button" className="btn btn-ghost" aria-label={`Delete ${a.title}`} onClick={() => handleDelete(a)}>
+          <button type="button" className="btn btn-secondary content-adminbtn content-adminbtn-danger" aria-label={`Delete ${a.title}`} onClick={() => handleDelete(a)}>
             <Trash2 size={13} /> Delete
           </button>
         </span>
       )}
     </div>
   )
+
+  // A row with one or two stories uses wide cards (cover beside the text) so
+  // the row is filled instead of one narrow card in an empty three-column grid.
+  const wideCard = (a) => {
+    const rtlT = isRTLText(a.title)
+    const rtlB = isRTLText(a.body)
+    return (
+      <article key={a.id} className="content-newsrow">
+        {/* the cover repeats the title link, so it is skipped by keyboard and screen readers */}
+        <Link to={`/news/${a.id}`} tabIndex={-1} aria-hidden="true" className="content-newsrow-cover">
+          {a.cover_image ? (
+            <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
+              <Pic kind="cover" w={640} className="news-cover-img" src={a.cover_image} style={{ position: 'relative' }} />
+            </div>
+          ) : (
+            <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="micro">ArabSwim</span>
+            </div>
+          )}
+        </Link>
+        <div className="content-newscard">
+          <Link to={`/news/${a.id}`}>
+            <h2 className="content-news-title" dir={rtlT ? 'rtl' : 'ltr'} style={{
+              fontFamily: rtlT ? AR_FONT : 'var(--font-heading)',
+              fontWeight: rtlT ? 700 : 800,
+              fontSize: rtlT ? 20 : 18,
+              lineHeight: rtlT ? 1.6 : 1.18,
+              letterSpacing: rtlT ? 0 : '-0.015em',
+              marginTop: 0,
+            }}>
+              {a.title}
+            </h2>
+            {a.body && (
+              <p dir={rtlB ? 'rtl' : 'ltr'} style={{
+                fontSize: rtlB ? 16 : 13,
+                lineHeight: rtlB ? 1.8 : 1.5,
+                color: 'var(--color-accent-800)', margin: '0 0 8px',
+                fontFamily: rtlB ? AR_FONT : 'inherit',
+              }}>
+                {excerpt(a.body, 220)}
+              </p>
+            )}
+          </Link>
+          {meta(a, 12)}
+        </div>
+      </article>
+    )
+  }
 
   const card = (a) => {
     const rtlT = isRTLText(a.title)
@@ -313,7 +361,7 @@ export default function News() {
             </div>
           ) : (
             <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--color-neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="micro">ArabSwiM</span>
+              <span className="micro">ArabSwim</span>
             </div>
           )}
           <h2 className="content-news-title" dir={rtlT ? 'rtl' : 'ltr'} style={{
@@ -386,19 +434,24 @@ export default function News() {
       ) : (
         <div className="pad-lg" aria-busy={loading} style={{ opacity: loading ? 0.55 : 1 }}>
           {lead && (
-            <article className="content-newscard content-newslead">
-              <Link to={`/news/${lead.id}`} className="grid-2" style={{ display: 'grid', gridTemplateColumns: lead.cover_image ? '1.4fr 1fr' : '1fr', gap: 32, alignItems: 'start' }}>
-                {lead.cover_image && (
+            // Proximity: the lead's flag, date, status and admin tools sit in the
+            // text column, which is centred against the cover, not in a strip
+            // under the picture with the column above it half empty
+            <article className={`content-newsrow content-newslead${lead.cover_image ? '' : ' no-cover'}`}>
+              {lead.cover_image && (
+                <Link to={`/news/${lead.id}`} tabIndex={-1} aria-hidden="true" className="content-newsrow-cover">
                   <div className="news-cover" style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: 'var(--color-accent-800)' }}>
-                    <Pic kind="cover" w={640} className="news-cover-img" src={lead.cover_image} style={{ position: 'relative' }} />
+                    <Pic kind="cover" w={768} className="news-cover-img" src={lead.cover_image} style={{ position: 'relative' }} />
                   </div>
-                )}
+                </Link>
+              )}
+              <div className="content-newscard">
+              <Link to={`/news/${lead.id}`}>
                 <div>
                   <div className="card-kicker">Latest story</div>
-                  <h2 className="content-news-title" dir={leadRtlT ? 'rtl' : 'ltr'} style={{
+                  <h2 className="content-news-title content-newslead-title" dir={leadRtlT ? 'rtl' : 'ltr'} style={{
                     fontFamily: leadRtlT ? AR_FONT : 'var(--font-heading)',
                     fontWeight: leadRtlT ? 700 : 800,
-                    fontSize: 28,
                     lineHeight: leadRtlT ? 1.7 : 1.06,
                     letterSpacing: leadRtlT ? 0 : '-0.025em',
                     margin: '8px 0 12px',
@@ -420,15 +473,22 @@ export default function News() {
                 </div>
               </Link>
               {meta(lead, 13)}
+              </div>
             </article>
           )}
 
           {groups.map((g, gi) => g.items.length > 0 && (
             <section key={g.key} className={lead || gi > 0 ? 'rule-t' : undefined} style={lead || gi > 0 ? { marginTop: 28, paddingTop: 24 } : undefined}>
               {g.label && <div className="kicker" style={{ marginBottom: 14 }}>{g.label}</div>}
-              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px 24px' }}>
-                {g.items.map(card)}
-              </div>
+              {g.items.length < 3 ? (
+                <div className="content-newswide" style={{ gridTemplateColumns: `repeat(${g.items.length}, minmax(0, 1fr))` }}>
+                  {g.items.map(wideCard)}
+                </div>
+              ) : (
+                <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px 24px' }}>
+                  {g.items.map(card)}
+                </div>
+              )}
             </section>
           ))}
 

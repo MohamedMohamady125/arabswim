@@ -20,7 +20,7 @@ const toLocal = (iso) => {
 }
 const errText = (e, fallback) => e.response?.data?.error || Object.values(e.response?.data || {}).flat().join(' ') || fallback
 
-/** Admin: the Arabswim Awards votes — create one, add nominees, share its link, announce the winner. */
+/** Admin: the ArabSwim Awards votes — create one, add nominees, share its link, announce the winner. */
 export default function AwardVotes({ onAnnounced }) {
   const [polls, setPolls] = useState(null)
   const [form, setForm] = useState({ title: '', year: String(new Date().getFullYear()) })
@@ -56,8 +56,8 @@ export default function AwardVotes({ onAnnounced }) {
   const announce = async (p) => {
     const top = p.nominees[0]
     if (!top || !p.total_votes) { notify('Nobody has voted yet', 'error'); return }
-    if (!window.confirm(`Announce ${top.name} as the winner of "${p.title}"?\n\nThe vote closes and ${top.name} is added to the Arabswim Awards.`)) return
-    try { await announcePoll(p.id); await load(); onAnnounced?.(); notify(`${top.name} is in the Arabswim Awards`, 'success') }
+    if (!window.confirm(`Announce ${top.name} as the winner of "${p.title}"?\n\nThe vote closes and ${top.name} is added to the ArabSwim Awards.`)) return
+    try { await announcePoll(p.id); await load(); onAnnounced?.(); notify(`${top.name} is in the ArabSwim Awards`, 'success') }
     catch (e) { notify(errText(e, 'Could not announce the winner'), 'error') }
   }
 

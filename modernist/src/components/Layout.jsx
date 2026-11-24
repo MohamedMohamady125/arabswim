@@ -246,15 +246,10 @@ function Header() {
         </div>
       )}
       {/* brand bar — flat navy, same color as the footer */}
-      <div
-        className="rule-b"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 24, padding: '16px 32px',
-          background: 'var(--color-accent-800)',
-        }}
-      >
+      <div className="rule-b asw-brandbar">
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
-          <img src="/logo.png" alt="ArabSwiM" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+          {/* the emblem is a navy roundel: a light tile behind it keeps it readable on the navy bar */}
+          <img src="/logo.png" alt="ArabSwim" className="asw-emblem" style={{ width: 40, height: 40 }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '0.02em', color: '#ffffff' }}>ARABSWIM</span>
           <span className="micro hide-mobile" style={{ color: 'var(--color-accent-2-300)' }}>Arab Swimming Database</span>
         </Link>
@@ -262,7 +257,7 @@ function Header() {
         {/* Jakob's Law: account entry sits top right; Serial Position: last item in the bar */}
         {!isAuthed && <Link to="/login" className="hide-mobile content-signin">Sign in</Link>}
         <button
-          className="btn btn-icon show-mobile-flex"
+          className="btn btn-icon show-mobile-flex asw-burger"
           style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.4)', color: '#fff' }}
           onClick={() => setOpen(!open)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open}
         >
@@ -270,22 +265,21 @@ function Header() {
         </button>
       </div>
 
-      {/* nav areas (desktop). Proximity: each group is one column; groups with
-          more than four links use two sub-columns read top to bottom */}
-      <nav aria-label="Sections" className="hide-mobile rule-b content-nav">
-        {nav.map((group) => {
-          const cols = group.links.length > 4 ? 2 : 1
-          return (
-            <div key={group.label} className="asw-navcol content-nav-group" style={{ flexGrow: cols === 2 ? 1.7 : 1 }}>
-              <div className="kicker" style={{ marginBottom: 6 }}>{group.label}</div>
-              <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: `repeat(${Math.ceil(group.links.length / cols)}, auto)`, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: '0 16px' }}>
-                {group.links.map(([label, to]) => (
-                  <NavLink key={to} to={to} className={navClass(to, location.pathname)}>{label}</NavLink>
-                ))}
-              </div>
+      {/* nav areas (desktop), always open. Proximity: each group is one of
+          five equal columns, the same grid as the footer; its links run in
+          rows across the column, so the block is two or three lines tall
+          instead of a seven-line list pushing every page down */}
+      <nav aria-label="Sections" className="hide-mobile rule-b content-nav" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
+        {nav.map((group) => (
+          <div key={group.label} className="asw-navcol content-nav-group">
+            <div className="kicker">{group.label}</div>
+            <div className="content-nav-links">
+              {group.links.map(([label, to]) => (
+                <NavLink key={to} to={to} className={navClass(to, location.pathname)}>{label}</NavLink>
+              ))}
             </div>
-          )
-        })}
+          </div>
+        ))}
       </nav>
 
       {/* mobile drawer */}
@@ -312,19 +306,25 @@ function Header() {
 }
 
 function Footer() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isAuthed } = useAuth()
   const nav = useNav()
   return (
-    <footer className="rule-t" style={{ background: 'var(--color-accent-800)', color: '#ffffff', padding: '32px' }}>
+    <footer className="rule-t asw-foot">
+      {/* Common Region: brand left, social right, on one row across the full
+          width (the brand block used to leave most of the row empty) */}
+      <div className="asw-foot-top">
+      <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-        <img src="/logo.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+        <img src="/logo.png" alt="" className="asw-emblem" style={{ width: 36, height: 36 }} />
         <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>ARABSWIM</span>
       </div>
-      <p style={{ fontSize: 13, color: 'var(--color-accent-2-300)', maxWidth: 480 }}>
-        Results, records and rankings for Arab swimming — every meet, every swimmer, one home.
+      <p className="asw-foot-tagline">
+        Results, records and rankings for Arab swimming — every meet, every swimmer, one&nbsp;home.
       </p>
+      </div>
+      <div>
       {/* social row — one place to edit the handles */}
-      <div className="kicker" style={{ color: 'var(--color-accent-2-400)', margin: '14px 0 10px' }}>Follow Arab Swim</div>
+      <div className="kicker" style={{ color: 'var(--color-accent-2-400)', margin: '0 0 10px' }}>Follow ArabSwim</div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {[
           ['Instagram', 'https://instagram.com/arab.swim', IconInstagram],
@@ -339,28 +339,32 @@ function Footer() {
             href={href}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Arab Swim on ${label}`}
+            aria-label={`ArabSwim on ${label}`}
             title={label}
           >
             {icon}
           </a>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 24, marginTop: 24 }}>
+      </div>
+      </div>
+      <div className="asw-foot-cols" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
         {nav.map((group) => (
           <div key={group.label}>
             <div className="kicker" style={{ color: 'var(--color-accent-2-400)', marginBottom: 8 }}>{group.label}</div>
-            {group.links.map(([label, to]) => (
-              <Link key={to} to={to} className="asw-footlink">{label}</Link>
-            ))}
+            <div className="asw-foot-links">
+              {group.links.map(([label, to]) => (
+                <Link key={to} to={to} className="asw-footlink">{label}</Link>
+              ))}
+            </div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 28, paddingTop: 16, borderTop: '1px solid var(--color-accent-700)', fontSize: 12, color: 'var(--color-accent-2-400)' }}>
-        <span>© {new Date().getFullYear()} ArabSwiM — Arab Swim</span>
-        <Link to={isAdmin ? '/import' : '/login'} style={{ color: 'var(--color-accent-2-400)', marginLeft: 16, fontSize: 12 }}>
-          {isAdmin ? 'Import data' : 'Sign in'}
-        </Link>
+      <div className="asw-foot-legal">
+        <span>© {new Date().getFullYear()} ArabSwim</span>
+        {/* "Import data" is for admins only; a signed-in non-admin gets no link here */}
+        {isAdmin && <Link to="/import">Import data</Link>}
+        {!isAuthed && <Link to="/login">Sign in</Link>}
       </div>
     </footer>
   )
@@ -386,7 +390,7 @@ export default function Layout() {
       <div className="shell">
         <LockedHeader ownPath={ownPath} />
         <main id="main" className="shell-main">{body}</main>
-        <footer className="prelaunch-foot">© {new Date().getFullYear()} Arab Swim</footer>
+        <footer className="prelaunch-foot">© {new Date().getFullYear()} ArabSwim</footer>
       </div>
     )
   }
@@ -409,7 +413,7 @@ function LockedHeader({ ownPath }) {
   return (
     <header className="prelaunch-head">
       <span className="prelaunch-brand">
-        <img src="/logo.png" alt="" width="34" height="34" />
+        <img src="/logo.png" alt="" width="34" height="34" className="asw-emblem" />
         <span>ARABSWIM</span>
       </span>
       {isAuthed ? (
@@ -429,11 +433,11 @@ function ComingSoon({ signedIn }) {
   return (
     <div className="prelaunch-soon">
       <img src="/logo.png" alt="" width="72" height="72" />
-      <h1>Arab Swim is launching soon</h1>
+      <h1>ArabSwim is launching soon</h1>
       <p>
         {signedIn
-          ? 'Your account is not linked to a page yet. Contact Arab Swim to get your invitation link.'
-          : 'The site is being prepared. If Arab Swim sent you an invitation link, open it to create your account.'}
+          ? 'Your account is not linked to a page yet. Contact ArabSwim to get your invitation link.'
+          : 'The site is being prepared. If ArabSwim sent you an invitation link, open it to create your account.'}
       </p>
       {!signedIn && <Link to="/login" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', height: 44 }}>Sign in</Link>}
     </div>

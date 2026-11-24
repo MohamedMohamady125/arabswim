@@ -311,8 +311,10 @@ figure { margin: 0; }
 
 /* ═══ ArabSwiM specifics (from theme) ═══ */
 /* 4:3 boxes matching the flag-icons SVG set exactly — no cropping, no blur */
-.asw-flag { display: block; width: 24px; height: 18px; flex: none; object-fit: cover; border-radius: 3px; outline: 1px solid rgba(20, 24, 31, 0.15); outline-offset: -1px; box-shadow: 0 1px 2px rgba(20, 24, 31, 0.14); }
-.asw-flag-lg { display: block; width: 36px; height: 27px; flex: none; object-fit: cover; border-radius: 4px; outline: 1px solid rgba(20, 24, 31, 0.15); outline-offset: -1px; box-shadow: 0 1px 3px rgba(20, 24, 31, 0.16); }
+.asw-flag { display: block; width: 24px; height: 18px; flex: none; object-fit: cover; border-radius: 0; outline: 1px solid var(--color-divider); outline-offset: -1px; }
+.asw-flag-lg { display: block; width: 36px; height: 27px; flex: none; object-fit: cover; border-radius: 0; outline: 1px solid var(--color-divider); outline-offset: -1px; }
+/* no country: the footprint is kept so rows line up, but nothing is drawn */
+.asw-flag-none { outline: 0; background: none; }
 /* beat .fi's em-based sizing regardless of CSS import order */
 .fi.asw-flag { width: 24px; height: 18px; line-height: 18px; background-size: cover; }
 .fi.asw-flag-lg { width: 36px; height: 27px; line-height: 27px; background-size: cover; }.asw-time { font-variant-numeric: tabular-nums; font-family: var(--font-heading); font-weight: 800; }
@@ -1176,7 +1178,7 @@ div.results-group-row { padding: 6px 8px !important; margin-top: 6px; }
 .content-album > a:hover .content-album-title { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 640px) { .content-albums { grid-template-columns: 1fr 1fr; gap: 20px 12px; } }
 /* Zeigarnik Effect: unfinished admin work is stated, with a gold edge (Media, Marketplace, Dashboard) */
-.content-todo { margin-bottom: 20px; padding: 10px 14px; font-size: 13px; border: 1px solid var(--color-divider); border-left: 4px solid var(--asw-gold); background: var(--color-neutral-100); }
+.content-todo { margin-bottom: 20px; padding: 10px 14px; font-size: 13px; border: 1px solid var(--color-divider); border-left: 4px solid var(--color-accent-2); background: var(--color-neutral-100); }
 /* album photo viewer — Fitts's Law: 48px controls at the screen edges */
 .content-lightbox { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 56px 64px; background: color-mix(in srgb, var(--color-accent-900) 94%, transparent); }
 .content-lightbox-btn { position: absolute; width: 48px; height: 48px; display: grid; place-items: center; background: color-mix(in srgb, var(--color-accent-900) 60%, transparent); border: none; color: var(--color-bg); cursor: pointer; }

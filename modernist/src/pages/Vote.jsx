@@ -38,7 +38,7 @@ export default function Vote() {
     return () => { alive = false }
   }, [slug])
 
-  useEffect(() => { if (poll) document.title = `${poll.title} ${poll.year} — Arabswim Awards` }, [poll])
+  useEffect(() => { if (poll) document.title = `${poll.title} ${poll.year} — ArabSwim Awards` }, [poll])
 
   if (missing) return <Empty label="This vote does not exist" hint="Check the link you were sent." />
   if (!poll) return <Loading label="Loading the vote" />
@@ -67,7 +67,7 @@ export default function Vote() {
   const share = async () => {
     const url = window.location.href
     try {
-      if (navigator.share) await navigator.share({ title: `${poll.title} — Arabswim Awards ${poll.year}`, url })
+      if (navigator.share) await navigator.share({ title: `${poll.title} — ArabSwim Awards ${poll.year}`, url })
       else { await navigator.clipboard.writeText(url); notify('Link copied', 'success') }
     } catch { /* closed the share sheet */ }
   }
@@ -81,7 +81,7 @@ export default function Vote() {
   return (
     <div className="vote">
       <header className="vote-head">
-        <div className="kicker">Arabswim Awards {poll.year}</div>
+        <div className="kicker">ArabSwim Awards {poll.year}</div>
         <h1>{poll.title}</h1>
         {poll.description && <p className="vote-desc">{poll.description}</p>}
         <div className={`vote-status${voted || winner ? ' is-done' : ''}`} role="status">

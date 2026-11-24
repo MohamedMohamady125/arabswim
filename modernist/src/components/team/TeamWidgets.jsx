@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Flag from '../Flag'
 import { Loading, Empty, Seg, MedalIcon } from '../ui'
-import { nameTie, formatDate, formatTime, mediaUrl, imgUrl, recordEventLabel } from '../../utils'
+import { nameTie, formatDate, formatPoints, formatTime, mediaUrl, imgUrl, poolLabel, recordEventLabel } from '../../utils'
 import Pic from '../Pic'
 
 const INK = 'var(--color-accent-800)'
@@ -87,7 +87,7 @@ export function ClubLogo({ src, name, size = 148, ring = 'var(--color-accent-900
           onError={(e) => { if (e.currentTarget.src !== url) e.currentTarget.src = url }}
           style={{ width: `${fit.scale * 100}%`, height: `${fit.scale * 100}%`, objectFit: 'contain', display: 'block' }} />
       ) : (
-        <span style={{ fontFamily: HEAD, fontWeight: 800, fontSize: size * 0.23, color: INK }}>{acronym(name)}</span>
+        <span className="ap-initials-fill" style={{ fontSize: size * 0.23 }}>{acronym(name)}</span>
       )}
     </div>
   )
@@ -156,7 +156,7 @@ export function SwimmerMedalsByMeet({ medals }) {
                         {[m.category, m.round_type, m.is_relay ? 'Relay' : null].filter(Boolean).join(' · ') || ' '}
                       </span>
                     </span>
-                    {m.fina_points ? <span className="asw-num" style={{ fontSize: 12, fontWeight: 700, color: MUTED, flex: 'none' }}>{m.fina_points} pts</span> : null}
+                    {m.fina_points ? <span className="asw-num" style={{ fontSize: 12, fontWeight: 700, color: MUTED, flex: 'none' }}>{formatPoints(m.fina_points)}</span> : null}
                     <span className="asw-num asw-time" style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 16, color: INK, flex: 'none', minWidth: 64, textAlign: 'right' }}>{m.time || '—'}</span>
                   </div>
                 ))}
@@ -256,7 +256,7 @@ export function DepthTab({ id, kind = 'club' }) {
       </div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', margin: '16px 0 20px' }}>
         <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }, { value: '', label: 'Everyone' }]} value={gender} onChange={(v) => { setGender(v); setGenderPicked(true); setFocus(null) }} />
-        <Seg options={[{ value: 'LCM', label: `50m pool${data ? ` · ${data.LCM.length} events` : ''}` }, { value: 'SCM', label: `25m pool${data ? ` · ${data.SCM.length} events` : ''}` }]} value={pool || 'LCM'} onChange={(v) => { setPool(v); setFocus(null) }} />
+        <Seg options={[{ value: 'LCM', label: `${poolLabel('LCM')}${data ? ` · ${data.LCM.length} events` : ''}` }, { value: 'SCM', label: `${poolLabel('SCM')}${data ? ` · ${data.SCM.length} events` : ''}` }]} value={pool || 'LCM'} onChange={(v) => { setPool(v); setFocus(null) }} />
       </div>
 
       {!rows ? <Loading label="Loading squad depth" /> : rows.length === 0 ? (data.failed
@@ -332,7 +332,7 @@ export function DepthTab({ id, kind = 'club' }) {
                     <span className="asw-num" style={{ width: 16, fontWeight: 800, color: SOFT, flex: 'none' }}>{i + 1}</span>
                     {/* Fitts's Law: the name fills the row's height without making the row taller */}
                     <Link to={`/swimmers/${s.swimmer_id}`} style={{ flex: 1, minWidth: 0, padding: '8px 0', margin: '-7px 0', color: INK, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Link>
-                    <span className="asw-num" style={{ width: 58, textAlign: 'right', fontSize: 12, color: MUTED, flex: 'none' }}>{i ? gapStr(s.time_cs - lead) : (s.fina_points ? `${s.fina_points} pts` : '')}</span>
+                    <span className="asw-num" style={{ width: 58, textAlign: 'right', fontSize: 12, color: MUTED, flex: 'none' }}>{i ? gapStr(s.time_cs - lead) : (s.fina_points ? formatPoints(s.fina_points) : '')}</span>
                     <span className="asw-num asw-time" style={{ width: 66, textAlign: 'right', fontWeight: 800, color: INK, flex: 'none' }}>{s.time}</span>
                   </div>
                 ))}
@@ -404,7 +404,7 @@ export function RecordsTab({ records, photoById, sexById, typeOrder, typeLabels,
         )}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
           <Seg options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
-          <Seg options={[{ value: '', label: 'Both pools' }, { value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
+          <Seg options={[{ value: '', label: 'Both pools' }, { value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]} value={pool} onChange={setPool} />
           {agesPresent.length > 1 && (
             <Seg options={[{ value: '', label: 'All ages' }, ...agesPresent.map((a) => ({ value: a, label: ageLabel(a) }))]} value={age} onChange={setAge} />
           )}

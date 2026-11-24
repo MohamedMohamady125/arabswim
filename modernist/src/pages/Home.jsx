@@ -7,7 +7,7 @@ import QuickStatsView from '../components/QuickStatsView'
 import Flag from '../components/Flag'
 import { Loading, Empty, SectHead } from '../components/ui'
 import { useFeatures } from '../context/FeaturesContext'
-import { formatDate, formatDateRange } from '../utils'
+import { formatDate, formatDateRange, poolLabel } from '../utils'
 
 const GOLD = 'var(--asw-gold)'
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
@@ -41,16 +41,16 @@ export default function Home() {
     <div className="asw-fade-up">
       {/* ── LIVE strip ── */}
       {liveMeets.length > 0 && (
-        <Link to={liveMeets.length === 1 ? `/meets/${liveMeets[0].id}` : '/live'} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-          background: 'var(--asw-slow)', color: '#fff', textDecoration: 'none',
-          padding: '10px 16px', fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
-        }}>
-          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />
-          LIVE NOW: {liveMeets.length === 1
-            ? liveMeets[0].name
-            : `${liveMeets.length} meets in progress`}
-          <span style={{ opacity: 0.85, fontWeight: 600 }}>— follow the results →</span>
+        /* on a phone the meet name and the call to action stack (link on its
+           own line) instead of wrapping side by side in two narrow columns */
+        <Link className="am-live-strip" to={liveMeets.length === 1 ? `/meets/${liveMeets[0].id}` : '/live'}>
+          <span className="am-live-what">
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.4s ease-in-out infinite', flex: 'none' }} />
+            <span>LIVE NOW: {liveMeets.length === 1
+              ? liveMeets[0].name
+              : `${liveMeets.length} meets in progress`}</span>
+          </span>
+          <span className="am-live-cta"><span className="hide-mobile" aria-hidden="true">— </span>Follow the results →</span>
         </Link>
       )}
 
@@ -58,7 +58,7 @@ export default function Home() {
       {/* flat standard blue — user: no light-to-dark gradient, top and bottom identical */}
       <header style={{ background: 'var(--color-accent-800)', color: '#fff', padding: '34px 0 26px', textAlign: 'center' }}>
         <div className="container" style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD }}>Arab Swim</div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: GOLD }}>ArabSwim</div>
           <h1 style={{ margin: 0, fontSize: 'clamp(28px, 5vw, 40px)', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#fff' }}>Quick Statistics</h1>
           <Link to={`/meets/${champ.id}`} style={{ padding: '8px 0', margin: '-7px 0' /* Fitts's Law: taller hit area, header height unchanged */, color: GOLD, textDecoration: 'none', fontSize: 'clamp(13px, 2.5vw, 16px)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {champ.name}
@@ -73,7 +73,7 @@ export default function Home() {
               </span>
             )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Droplets size={13} /> {champ.pool === 'SCM' ? 'SCM (25m)' : 'LCM (50m)'}
+              <Droplets size={13} /> {poolLabel(champ.pool)}
             </span>
           </div>
           {/* Von Restorff + Pareto: the one thing most visitors came for is the
@@ -114,7 +114,7 @@ export default function Home() {
                     </div>
                     {/* wraps instead of cutting the date off on narrow cards */}
                     <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, lineHeight: 1.35 }}>
-                      {r.swimmer_detail?.sex === 'F' ? "Women's " : r.swimmer_detail?.sex === 'M' ? "Men's " : ''}{r.event_detail?.name}{r.pool ? ` · ${r.pool}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
+                      {r.event_detail?.name}{r.swimmer_detail?.sex === 'F' ? ' · Women' : r.swimmer_detail?.sex === 'M' ? ' · Men' : ''}{r.pool ? ` · ${poolLabel(r.pool)}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
                     </div>
                   </div>
                   <div className="asw-time" style={{ flex: 'none', fontSize: 16, fontWeight: 800, color: 'var(--color-accent-800)' }}>{r.formatted_time}</div>

@@ -4,7 +4,7 @@ import { getRecords, getComputedRecords } from '../api/records'
 import { getCountries } from '../api/core'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, FilterBar } from '../components/ui'
-import { AGE_GROUPS, formatDate } from '../utils'
+import { AGE_GROUPS, formatDate, poolLabel } from '../utils'
 
 // Computed scopes are calculated live from the results database;
 // the rest are curated manual record books.
@@ -104,7 +104,9 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
     <>
       {/* Desktop table */}
       <div className="table-scroll hide-mobile">
-        <table className="table">
+        {/* Law of Similarity: Individual and Relay tables share one fixed column template (.at-rec-table) */}
+        <table className="table at-rec-table">
+          <colgroup><col className="at-rec-c-event" /><col className="at-rec-c-who" /><col className="at-rec-c-time" /><col /></colgroup>
           <thead>
             <tr>
               <th>Event</th>
@@ -141,7 +143,7 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
                   </div>
                 </td>
                 <td className="time asw-time">{r.time}</td>
-                <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>
+                <td className="at-rec-meet">
                   {r.meet || '—'}
                   {detail && (whereWhen(r) || r.fromSplit) && (
                     <span className="results-sub">
@@ -198,7 +200,7 @@ export function RecordTable({ rows, grouped = false, detail = false }) {
 export function Section({ label, pool, rows, last, grouped = false, detail = false }) {
   return (
     <div className={last ? 'pad' : 'rule-b pad'}>
-      <div className="kicker" style={{ marginBottom: 12 }}>{label} · {pool}</div>
+      <div className="kicker" style={{ marginBottom: 12 }}>{label} · {poolLabel(pool)}</div>
       {rows.length === 0 ? (
         <div className="text-muted" style={{ fontSize: 14 }}>No records yet.</div>
       ) : (
@@ -317,6 +319,7 @@ export default function Records() {
       {/* Common Region: one bar — which book (first, it decides everything
           else), whose, which pool; then the narrowing dropdowns. Same order
           as Rankings so the two pages are learned once. */}
+      <div className="at-fb-end">
       <FilterBar count={showRows ? rows.length : null} noun={rows.length === 1 ? 'record' : 'records'} active={filtersChanged} onClear={() => setSp({}, { replace: true })}>
         {/* Proximity + Common Region: each filter is a labelled group; the record
             book (it decides everything else) has its own full row, the narrowing
@@ -330,7 +333,7 @@ export default function Records() {
             <div className="recfilters-group">
               <span className="recfilters-label">Gender</span>
               <Seg
-                options={[{ value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
                 value={gender}
                 onChange={setGender}
               />
@@ -338,7 +341,7 @@ export default function Records() {
             <div className="recfilters-group">
               <span className="recfilters-label">Pool</span>
               <Seg
-                options={[{ value: 'LCM', label: 'LCM 50m' }, { value: 'SCM', label: 'SCM 25m' }]}
+                options={[{ value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]}
                 value={pool}
                 onChange={setPool}
               />
@@ -371,6 +374,7 @@ export default function Records() {
           </div>
         </div>
       </FilterBar>
+      </div>
 
       {needsCountry && !country ? (
         <Empty label="Select a country to view national records" hint="Pick a federation from the country list above, or switch to the Arab book." />
@@ -378,7 +382,7 @@ export default function Records() {
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
         <Empty
-          label={`No ${bookName} ${gender === 'F' ? "women's" : "men's"} ${pool} records${isComputed && ageGroup !== 'OPEN' ? ` for ${ageGroup}` : ''} yet`}
+          label={`No ${bookName} ${gender === 'F' ? 'women' : 'men'} ${poolLabel(pool)} records${isComputed && ageGroup !== 'OPEN' ? ` for ${ageGroup}` : ''} yet`}
           hint={isComputed ? 'Try the other pool or another age category.' : 'This book has not been published here yet. The Arab, GCC and National books are always available.'}
         >
           {filtersChanged && <button type="button" className="btn btn-secondary" onClick={() => setSp({}, { replace: true })}>Back to Arab records</button>}

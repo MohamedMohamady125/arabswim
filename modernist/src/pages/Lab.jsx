@@ -8,6 +8,7 @@ import {
 } from '../api/lab'
 import Flag from '../components/Flag'
 import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
+import { poolLabel } from '../utils'
 
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 const STROKE_ORDER = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
@@ -267,7 +268,7 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <Flag code={swimmer.nationality_detail?.code} name={swimmer.nationality_detail?.name} />
             <Link to={`/swimmers/${swimmer.id}`} style={{ fontWeight: 700, color: 'inherit' }}>{swimmer.name}</Link>
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 32 }} onClick={() => { setSwimmer(null); onPickSwimmer(null) }}>Clear</button>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, minHeight: 40 }} onClick={() => { setSwimmer(null); onPickSwimmer(null) }}>Clear</button>
           </div>
         )}
       </div>
@@ -275,7 +276,8 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
       {!swimmer && !loading ? (
         // Paradox of the Active User: say what the Lab gives before asking for a name
         <div className="pad">
-          <div className="lab-intro">
+          {/* a plain description list: these four are what the Lab shows, not buttons (no card affordance) */}
+          <dl className="at-lab-list">
             {[
               ['Swimmer DNA', 'Strength in each stroke against the Arab field.'],
               ['The Chase', 'Current rank, who is next ahead and who is closing in.'],
@@ -283,11 +285,11 @@ function SwimmerLab({ swimmerId, onPickSwimmer, onOpenEvents }) {
               ['Rivals', 'Win and loss record against the swimmers raced most.'],
             ].map(([t, d]) => (
               <div key={t}>
-                <div className="kicker">{t}</div>
-                <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 4 }}>{d}</div>
+                <dt>{t}</dt>
+                <dd>{d}</dd>
               </div>
             ))}
-          </div>
+          </dl>
           <Empty label="Search a swimmer to open their Lab" hint="Type a name in the search box above and pick a swimmer from the list.">
             <button type="button" className="btn btn-secondary" onClick={onOpenEvents}>Or explore an event</button>
           </Empty>
@@ -509,7 +511,7 @@ function EventLab() {
           ))}
         </select>
         <Seg options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={gender} onChange={setGender} />
-        <Seg options={[{ value: 'LCM', label: '50m pool' }, { value: 'SCM', label: '25m pool' }]} value={pool} onChange={setPool} />
+        <Seg options={[{ value: 'LCM', label: poolLabel('LCM') }, { value: 'SCM', label: poolLabel('SCM') }]} value={pool} onChange={setPool} />
         <Seg options={[{ value: 'arab', label: 'All Arab' }, { value: 'gcc', label: 'GCC only' }]} value={scope} onChange={setScope} />
       </div>
 
@@ -629,7 +631,7 @@ export default function Lab() {
     return next
   }, { replace: true })
   return (
-    <div>
+    <div className="at-empty">
       <PageHead title="ArabSwim Lab" sub="Dig into the numbers behind every swim." />
       <div className="lab-modes" style={{ padding: '12px 32px 0' }}>
         <Seg

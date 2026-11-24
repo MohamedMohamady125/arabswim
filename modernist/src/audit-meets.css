@@ -1,0 +1,140 @@
+/* Audit polish — meets. Brand tokens only (see theme.css). */
+
+/* ── Meet header ─────────────────────────────────────────────────────
+   Logo + title are one block with a real basis, so the (admin) button row
+   wraps below it instead of squeezing the title. The title breaks at
+   spaces only — `anywhere` let a squeezed H1 split mid-word. */
+.am-head-main { display: flex; align-items: center; gap: 16px; flex: 1 1 560px; min-width: 0; }
+.am-head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; max-width: 100%; }
+.meets-head .meet-title { overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+
+/* ── Results table: club name ────────────────────────────────────────
+   One line + ellipsis (rows keep one height), but the cap follows the
+   room there is: the old fixed 160px cut names beside an empty row. */
+.am-team { display: inline-block; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+@media (min-width: 1100px) { .am-team { max-width: 440px; } }
+
+/* ── Top performances list ───────────────────────────────────────── */
+.am-top-list { display: flex; flex-direction: column; gap: 12px; }
+.am-top-row { display: grid; grid-template-columns: 22px auto minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 16px; margin-bottom: 4px; }
+.am-top-name { font-weight: 600; overflow-wrap: anywhere; }
+.am-top-event { overflow-wrap: anywhere; }
+.am-top-pts { font-weight: 800; text-align: right; white-space: nowrap; }
+@media (min-width: 1100px) {
+  /* two balanced columns: 1–15 beside 16–30 */
+  .am-top-list { display: block; columns: 2; column-gap: 40px; }
+  .am-top-item { break-inside: avoid; margin-bottom: 12px; }
+}
+@media (max-width: 640px) {
+  /* event on its own line under the name — neither is cut */
+  .am-top-row { grid-template-columns: 22px auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 0; font-size: 15px; }
+  .am-top-event { grid-column: 3; grid-row: 2; font-size: 13px; }
+  .am-top-pts { grid-column: 4; grid-row: 1; }
+}
+
+/* ── Overview: performance cards ─────────────────────────────────────
+   As many equal columns as there are cards (5 or 6) — no empty sixth
+   track. Phone: two across, an odd last card spans the row. */
+.am-perf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.am-perf-card { background: var(--color-accent-800); color: #fff; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* two-line title slot: the figure and the name start at the same height in every card */
+.am-perf-title { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.75); line-height: 1.35; min-height: calc(2 * 1.35em); }
+.am-perf-who { margin-top: 4px; font-size: 12px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.am-perf-sub { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); }
+@media (max-width: 900px) {
+  .am-perf { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-perf > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* ── Overview: record tiles — equal columns filling the width ─────── */
+.am-rec { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.am-rec-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); margin-top: 2px; line-height: 1.3; text-wrap: balance; }
+@media (max-width: 900px) {
+  .am-rec { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-rec > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* ── Overview: "Top 5" bars — label takes half the card and wraps ──── */
+.am-hbar-label { flex: 0 0 46%; min-width: 0; display: flex; flex-direction: column; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--color-text); overflow-wrap: anywhere; }
+.am-hbar-sub { font-size: 11px; font-weight: 500; color: var(--color-neutral-700); }
+
+/* ── Overview: nations / clubs standings with real column headers ──── */
+.am-standings-row { display: grid; grid-template-columns: 24px minmax(120px, 260px) minmax(40px, 1fr) 84px 72px; align-items: center; gap: 12px; min-height: 40px; border-top: 1px solid var(--color-neutral-200); font-size: 13px; }
+.am-standings-head { min-height: 28px; border-top: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.am-st-rank { text-align: right; font-weight: 800; color: var(--color-neutral-700); }
+.am-st-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+.am-standings-head .am-st-name { font-weight: 700; }
+.am-st-name > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.am-st-bar { display: block; height: 16px; background: var(--color-neutral-200); }
+.am-st-bar > i { display: block; height: 100%; min-width: 6px; }
+.am-standings-head .am-st-bar { background: none; }
+.am-st-num { text-align: right; }
+@media (max-width: 900px) {
+  .am-standings-row { grid-template-columns: 20px minmax(0, 1.4fr) minmax(0, 1fr) 76px; gap: 8px; }
+}
+
+/* ── Overview: age profile — chart + youngest + oldest in one row ──── */
+.am-age-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+.am-age-grid > * { min-width: 0; }
+@media (max-width: 900px) {
+  .am-age-grid { grid-template-columns: 1fr 1fr; }
+  .am-age-grid > :first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) { .am-age-grid { grid-template-columns: 1fr; } }
+
+/* ── Program tab: a one-day meet uses the page width, races in two columns ── */
+@media (min-width: 900px) {
+  .am-prog-single .am-prog-items { columns: 2; column-gap: 0; column-rule: 1px solid var(--color-divider); }
+  .am-prog-single .am-prog-items > div > div { break-inside: avoid; }
+  .am-prog-single .am-prog-items > div > .micro { break-after: avoid; }
+}
+
+/* ── Home: live strip ────────────────────────────────────────────── */
+.am-live-strip { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 12px; min-height: 44px; padding: 10px 16px; background: var(--asw-slow); color: #fff; text-decoration: none; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+.am-live-strip:hover { color: #fff; }
+.am-live-what { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.am-live-cta { font-weight: 600; opacity: 0.85; white-space: nowrap; }
+@media (max-width: 640px) {
+  /* stacked: the meet name, then the link on its own line */
+  .am-live-strip { flex-direction: column; gap: 2px; }
+  .am-live-what { align-items: baseline; }
+  .am-live-cta { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+}
+
+/* ── Live page ───────────────────────────────────────────────────── */
+/* podium names wrap instead of being cut */
+.lv-pod-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }
+.lv-pod-row { padding-top: 3px; padding-bottom: 3px; }
+/* room for "795 pts" */
+.lv-res-pts { width: 52px; white-space: nowrap; }
+
+/* ── Medal table expand chevron: square, like every other control ──── */
+.medal-expand-btn { border-radius: 0; }
+
+/* ── Phone: scroll cue + tap targets (Fitts's Law: 40px minimum) ───── */
+@media (max-width: 900px) {
+  /* the tab strip scrolls sideways: fade both edges so a cut tab reads as
+     "more this way"; the padding lets the first/last tab clear the fade */
+  .am-tabbar .seg-tabs {
+    padding-left: 16px; padding-right: 32px;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 36px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 36px), transparent 100%);
+  }
+  .am-meet .seg-opt, .live-filters .seg-opt { min-height: 40px; }
+  .am-meet .select, .live-filters .select { min-height: 40px; height: auto; }
+  .am-head-actions .btn { min-height: 40px; }
+  /* the whole medal row is the tap target */
+  .medals-table tbody tr[aria-expanded] > td { height: 44px; }
+  .medal-expand-btn { width: 32px; height: 32px; }
+}
+
+/* a lone card in the two-up performance row takes the whole row */
+.qs-perf-2 > :only-child { grid-column: 1 / -1; }
+
+/* ── Clean-up round ─────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* the three Highlights lists stay on one row, edge to edge */
+  .meets-subtabs { padding-right: 16px; -webkit-mask-image: none; mask-image: none; }
+  .meets-subtabs .seg { display: flex; flex-wrap: nowrap; width: 100%; }
+  .meets-subtabs .seg-opt { flex: 1 1 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+}

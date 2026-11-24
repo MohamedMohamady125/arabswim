@@ -246,7 +246,7 @@ export default function Medals() {
 
       {/* Classification tab bar — same 32px gutter as the rest of the page;
           phone keeps the edge-to-edge swipe strip via the mobile .tabbar rule */}
-      <div className="rule-b tabbar" style={{ padding: '16px 32px', overflowX: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="rule-b tabbar at-fade-x" style={{ padding: '16px 32px', overflowX: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
         <Seg tabs options={classificationTabs} value={category} onChange={(v) => { touched.current = true; setCategory(v); setCountry('') }} />
         {hiddenCats > 0 && (
           <button type="button" className="btn btn-ghost showmore" style={{ flex: 'none', whiteSpace: 'nowrap' }} aria-expanded={moreCats} onClick={() => setMoreCats((o) => !o)}>
@@ -257,10 +257,11 @@ export default function Medals() {
 
       {/* Common Region: every filter of the table in one bar, with the result
           count and a way back to the default (Working Memory) */}
+      <div className="at-medals-fb">
       <FilterBar count={loading || loadFailed || failed ? null : found.length} noun={found.length === 1 ? noun.replace(/ies$/, 'y').replace(/s$/, '') : noun} active={filtersActive} onClear={clearAll}>
         <Seg options={scopeOptions} value={scope} onChange={setScope} />
         <Seg
-          options={[{ value: '', label: 'All' }, { value: 'M', label: "Men's" }, { value: 'F', label: "Women's" }]}
+          options={[{ value: '', label: 'All' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
           value={gender}
           onChange={setGender}
         />
@@ -284,6 +285,7 @@ export default function Medals() {
           />
         )}
       </FilterBar>
+      </div>
 
       {loadFailed ? (
         <Empty label="Medal tables could not be loaded" hint="Reload the page or try again in a moment." />
@@ -307,7 +309,7 @@ export default function Medals() {
           <button type="button" className="btn btn-secondary" onClick={() => setQuery('')}>Clear search</button>
         </Empty>
       ) : (
-        <div className="pad">
+        <div className="pad at-medals">
           {/* Working Memory: say what the table covers and how it is ordered */}
           <div className="micro" style={{ marginBottom: 12 }}>
             {selectedMeet ? selectedMeet.name : `All ${category} championships`}
@@ -317,6 +319,7 @@ export default function Medals() {
           <MedalStandings
             rows={capped ? found.slice(0, FIRST_ROWS) : found}
             showPodium={!q}
+            stackPodiumOnPhone={scope !== 'country'}
             rankOf={(row) => row._rank}
             entityHeader={scope === 'country' ? 'Country' : scope === 'club' ? 'Club' : 'Swimmer'}
             rowKey={(row, i) => (scope === 'country'

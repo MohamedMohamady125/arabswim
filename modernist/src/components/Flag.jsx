@@ -30,7 +30,8 @@ const AQUATICS_LOGO_CODES = new Set([
 // Custom curated images first; the bundled flag-icons SVG set as fallback —
 // every flag cropped to the same 4:3 box so rows line up perfectly.
 // With `placeholder`, swimmers without a nationality still reserve the flag's
-// footprint (empty bordered box) so names line up across every row.
+// footprint so names line up across every row — as blank space, never as an
+// empty bordered box (that reads as a flag that failed to load).
 // Resolve a curated flag image URL for a country code (or null if none).
 // Used by the federation hero, which needs the raw image to fill its circle.
 export function flagImage(code) {
@@ -55,17 +56,17 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
         alt={name || upper || 'World Aquatics'}
         title={name || upper || 'World Aquatics'}
         loading="lazy"
-        style={{ objectFit: 'contain', background: '#fff', padding: '2px' }}
+        style={{ objectFit: 'contain', background: 'var(--color-bg)', padding: '2px' }}
       />
     )
   }
   // Custom flag: try alpha2 first, then the 3-letter IOC code (e.g. 'roc')
   const customKey = (alpha2 && CUSTOM_FLAGS[alpha2]) ? alpha2
     : CUSTOM_FLAGS[upper.toLowerCase()] ? upper.toLowerCase() : null
-  if (customKey) {
+  if (customKey && !failed) {
     return (
       <img className={cls} src={CUSTOM_FLAGS[customKey]} alt={name || code || ''}
-        title={name || undefined} loading="lazy" />
+        title={name || undefined} loading="lazy" onError={() => setFailed(true)} />
     )
   }
   if (alpha2) {
@@ -85,5 +86,5 @@ export default function Flag({ code, name, large = false, flagUrl, placeholder =
     )
   }
   if (!placeholder) return null
-  return <span className={cls} style={{ background: 'var(--color-neutral-100)' }} aria-hidden="true" />
+  return <span className={`${cls} asw-flag-none`} aria-hidden="true" />
 }

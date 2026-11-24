@@ -286,3 +286,74 @@ button.md-name:hover > span:first-child, a.md-name:hover > span:first-child { te
   .medals-table th.medal-total-col { width: 36px !important; min-width: 36px; padding-left: 0 !important; padding-right: 0 !important; }
   .md-row { grid-template-columns: minmax(0, 1fr) 32px 32px 32px 36px; }
 }
+
+/* ═══ Proportional columns ═══════════════════════════════════════════════
+   Wide tables no longer park a name at the left edge and its figures at the
+   far right. Each column takes a share of the width, so the eye makes a
+   short, even step from one to the next (Proximity). */
+
+/* Championships list */
+.ch-row { display: flex; align-items: center; gap: 16px; padding: 16px 32px; flex-wrap: wrap; }
+.ch-name { flex: 1; min-width: 160px; }
+.ch-col { display: none; }
+@media (min-width: 901px) {
+  .ch-row { display: grid; grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 0.9fr); column-gap: 20px; flex-wrap: nowrap; }
+  .ch-row-admin { grid-template-columns: 40px minmax(0, 2.4fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr); }
+  .ch-name { min-width: 0; }
+  .ch-meta { display: none; }
+  .ch-col { display: block; min-width: 0; font-size: 13px; color: var(--color-neutral-800); }
+  .ch-sub { display: block; margin-top: 2px; font-size: 11px; color: var(--color-neutral-700); }
+  .ch-date { font-weight: 600; }
+  .ch-admin { min-width: 0 !important; }
+}
+
+/* Medal tables: rank 8% · name 38% · gold / silver / bronze 14% each · total 12% */
+@media (min-width: 901px) {
+  .at-medals > * { max-width: none; }
+  .medals-table { table-layout: fixed; }
+  .medals-table th:first-child, .at-medals .medals-table th:first-child { width: 8% !important; }
+  .medals-table th.medal-col, .at-medals .medals-table th.medal-col { width: 14% !important; min-width: 0; }
+  .medals-table th.medal-total-col, .at-medals .medals-table th.medal-total-col { width: 12% !important; min-width: 0; }
+  .medals-table td:first-child:not([colspan]), .medals-table th:first-child { text-align: center !important; padding-right: 12px !important; }
+  .md-panel { text-align: left; }
+  .md-row, .at-medals .md-row { grid-template-columns: minmax(0, 1fr) 14% 14% 14% 12%; }
+}
+
+/* Rankings · Records · Federations · Personal bests */
+@media (min-width: 901px) {
+  .rankings-table { table-layout: fixed; width: 100%; }
+  .rankings-table th:nth-child(1) { width: 6%; } .rankings-table th:nth-child(2) { width: 27%; }
+  .rankings-table th:nth-child(3) { width: 9%; } .rankings-table th:nth-child(4) { width: 12%; }
+  .rankings-table th:nth-child(5) { width: 10%; } .rankings-table th:nth-child(7) { width: 12%; }
+  .rankings-table td.swimmer-cell { width: auto; max-width: none; }
+  .rankings-table td.at-rank-meet { max-width: none; }
+  .rankings-table th:nth-child(3), .rankings-table td:nth-child(3) { text-align: center; }
+
+  .at-rec-table th:nth-child(1) { width: 22% !important; } .at-rec-table th:nth-child(2) { width: 28% !important; }
+  .at-rec-table th:nth-child(3) { width: 15% !important; }
+
+  .pb-row { grid-template-columns: 52px minmax(0, 26fr) minmax(0, 20fr) minmax(0, 13fr) minmax(0, 13fr) minmax(0, 13fr) minmax(0, 11fr); }
+  .pb-r { text-align: center; }
+  .pb-pts { text-align: right; }
+}
+@media (min-width: 901px) {
+  /* Federations: # 6% · name · swimmers / clubs 15% each · medals 9% each */
+  .fed-col-rank { width: 6%; }
+  .fed-col-num { width: 15%; }
+  .fed-col-medal { width: 9%; }
+  .fed-table th.num, .fed-table td.num { text-align: center; }
+  .fed-table th:first-child, .fed-table td:first-child { text-align: center; }
+}
+
+/* Swimmer · Meets list and Calendar list: the facts sit beside the name */
+.mt-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.mt-name { flex: 1; min-width: 0; }
+.mt-col { display: none; }
+@media (min-width: 901px) {
+  .mt-row { display: grid; grid-template-columns: 32px minmax(0, 2.6fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.8fr) 24px; column-gap: 16px; }
+  .mt-meta { display: none !important; }
+  .mt-col { display: block; min-width: 0; font-size: 13px; color: var(--color-neutral-800); }
+  .mt-arrow { justify-self: end; }
+  .cal-row.row-link > div:nth-child(2), .cal-row.hair-b > div:nth-child(2), .cal-row > div:nth-child(2) { flex: 0 1 46% !important; }
+  .cal-row > .micro:last-child, .cal-row > .btn:last-child { margin-left: auto; }
+}

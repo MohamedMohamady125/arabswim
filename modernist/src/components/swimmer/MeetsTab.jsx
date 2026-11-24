@@ -36,7 +36,6 @@ export default function MeetsTab({ stats }) {
       <div>
         <div className="sect-head">
           <h4>Participation</h4>
-          <span className="micro asw-num">{championships.length} meets</span>
         </div>
         {/* self-sized cards — no grid filler tracks behind them */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -68,22 +67,25 @@ export default function MeetsTab({ stats }) {
           <div key={year} style={{ marginBottom: 20 }}>
             <div className="rule-b" style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, marginBottom: 0 }}>
               <span className="tag tag-dark asw-num" style={{ fontWeight: 700 }}>{year}</span>
-              <span className="micro asw-num">{byYear[year].length} meet{byYear[year].length !== 1 ? 's' : ''}</span>
             </div>
             {byYear[year].map((c) => (
-              <Link key={c.id} to={`/meets/${c.id}`} className="hair-b"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', textDecoration: 'none', color: 'inherit' }}>
+              <Link key={c.id} to={`/meets/${c.id}`} className="hair-b mt-row"
+                style={{ textDecoration: 'none', color: 'inherit' }}>
                 <Flag code={c.country_code} name={c.country} flagUrl={c.flag_url} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="mt-name">
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <div className="mt-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <span className="asw-num" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
                       {c.country ? `${c.country} · ` : ''}{formatDate(c.date)}
                     </span>
                     <span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`} style={{ fontSize: 11 }}>{c.pool}</span>
                   </div>
                 </div>
-                <span aria-hidden="true" style={{ color: 'var(--color-neutral-500)' }}>→</span>
+                {/* desktop: country, date and pool as columns beside the name */}
+                <span className="mt-col">{c.country}</span>
+                <span className="mt-col asw-num">{formatDate(c.date)}</span>
+                <span className="mt-col"><span className={`tag ${c.pool === 'SCM' ? 'tag-accent-2' : 'tag-accent'}`} style={{ fontSize: 11 }}>{c.pool}</span></span>
+                <span aria-hidden="true" className="mt-arrow" style={{ color: 'var(--color-neutral-500)' }}>→</span>
               </Link>
             ))}
           </div>

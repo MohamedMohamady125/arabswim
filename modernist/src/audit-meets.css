@@ -391,3 +391,24 @@ a.hr-name:hover { text-decoration: underline; }
   .pb-who { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; row-gap: 2px; align-items: center; }
   .pb-ev-m { grid-column: 1 / -1; }
 }
+
+/* ── Meet · Records tab: an aligned table per record level ───────────── */
+.rb-row { display: grid; grid-template-columns: minmax(0, 24fr) minmax(0, 24fr) minmax(0, 24fr) minmax(0, 14fr) minmax(0, 12fr); align-items: center; column-gap: 16px; min-height: 56px; padding: 8px 12px; border-bottom: 1px solid var(--color-divider); }
+.rb-row.row-link:hover { background: var(--color-accent-100); }
+.rb-headrow { min-height: 36px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); border-bottom-color: var(--color-neutral-300); }
+.rb-c { text-align: center; }
+.rb-ev { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.rb-ev-name { font-family: var(--font-heading); font-size: 15px; font-weight: 800; color: var(--color-accent-800); }
+.rb-who { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; font-weight: 700; color: var(--color-accent-800); }
+.rb-who > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.rb-prev { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--color-neutral-800); }
+.rb-prev-who { font-size: 12px; font-weight: 400; color: var(--color-neutral-700); overflow-wrap: anywhere; }
+.rb-new { font-size: 18px; font-weight: 800; color: var(--asw-fast); }
+@media (max-width: 900px) {
+  .rb-headrow { display: none; }
+  .rb-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "ev new" "who gain" "prev prev"; row-gap: 6px; padding: 12px 0; }
+  .rb-ev { grid-area: ev; } .rb-who { grid-area: who; } .rb-prev { grid-area: prev; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .rb-prev::before { content: 'Previous'; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+  .rb-new { grid-area: new; text-align: right; }
+  .rb-row > .rb-c:last-child { grid-area: gain; text-align: right; }
+}

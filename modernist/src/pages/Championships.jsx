@@ -255,30 +255,34 @@ export default function Championships() {
                 {/* the whole row IS the link — no expander, no extra chrome */}
                 <Link
                   to={`/meets/${m.id}`}
-                  className="meet-row"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 16, padding: '16px 32px',
-                    flexWrap: 'wrap', cursor: 'pointer',
-                    color: 'inherit', textDecoration: 'none',
-                  }}
+                  className={`meet-row ch-row${isAdmin ? ' ch-row-admin' : ''}`}
+                  style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}
                 >
                   {/* List rows show the host flag only — the meet's own
                       logo/photo lives inside the meet page header. */}
                   <Flag code={m.country_detail?.code} name={m.country_detail?.name} large placeholder />
-                  <div style={{ flex: 1, minWidth: 160 }}>
+                  <div className="ch-name">
                     <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>
                       {m.name}
                       {isAdmin && m.is_published === false && <span className="tag tag-neutral" style={{ marginLeft: 8, fontSize: 11, verticalAlign: 'middle' }}>Unpublished</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
+                    {/* phone: where and when sit under the name */}
+                    <div className="ch-meta" style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 3 }}>
                       {isAdmin && m.location ? `${m.location}, ` : ''}
                       {m.country_detail?.name || ''}
                       {' · '}{formatDateRange(m.date, m.end_date)}
                       {isAdmin && m.classification_name ? ` · ${m.classification_name}` : ''}
                     </div>
                   </div>
+                  {/* desktop: where and when are columns of their own, a short step
+                      from the name instead of one long empty row (Proximity) */}
+                  <div className="ch-col ch-where">
+                    {[isAdmin && m.location, m.country_detail?.name].filter(Boolean).join(', ')}
+                    {isAdmin && m.classification_name ? <span className="ch-sub">{m.classification_name}</span> : null}
+                  </div>
+                  <div className="ch-col ch-date asw-num">{formatDateRange(m.date, m.end_date)}</div>
                   {/* Status first, pool second — the two facts people scan for. */}
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 'none' }}>
+                  <div className="ch-tags" style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 'none' }}>
                     {m.is_live
                       ? <span className="tag tag-outline" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)' }}>Live</span>
                       : running ? <span className="tag tag-neutral">In progress</span>
@@ -286,7 +290,7 @@ export default function Championships() {
                     {POOL_LABEL[m.pool] && <span className="tag tag-neutral" title={m.pool === 'LCM' ? 'Long course (50m pool)' : 'Short course (25m pool)'}>{POOL_LABEL[m.pool]}</span>}
                   </div>
                   {isAdmin && (
-                    <div className="micro hide-mobile" style={{ textAlign: 'right', minWidth: 150 }}>
+                    <div className="micro hide-mobile ch-admin" style={{ textAlign: 'right', minWidth: 150 }}>
                       {hasResults ? (
                         <>
                           <span className="asw-num" style={{ color: 'var(--color-text)' }}>{formatNumber(m.results_count ?? 0)}</span> results

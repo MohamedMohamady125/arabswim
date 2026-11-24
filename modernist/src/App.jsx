@@ -45,8 +45,10 @@ import CountryProfile from './pages/CountryProfile'
 import { Loading } from './components/ui'
 
 function RequireAdmin({ children }) {
-  const { isAdmin, authLoading } = useAuth()
+  const { isAdmin, authLoading, visitorView } = useAuth()
   if (authLoading) return <Loading />
+  // an admin previewing the visitor view is sent home, as a visitor would be
+  if (visitorView) return <Navigate to="/" replace />
   return isAdmin ? children : <Navigate to="/login" replace />
 }
 

@@ -17,10 +17,10 @@ const AJ_HEADING_FONTS = AJ_FONTS
 export default function Article() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAdmin: siteAdmin } = useAuth()
+  const { isAdmin: siteAdmin, visitorView } = useAuth()
   const [article, setArticle] = useState(null)
   // the club / academy / federation that wrote the article edits it like an admin
-  const isAdmin = siteAdmin || !!article?.can_edit
+  const isAdmin = siteAdmin || (!visitorView && !!article?.can_edit)
   // pre-launch: an owner may open their own articles only
   const { locked, ownPath } = usePrelaunch()
   const [loading, setLoading] = useState(true)

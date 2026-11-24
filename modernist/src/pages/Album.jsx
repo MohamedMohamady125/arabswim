@@ -23,10 +23,10 @@ export const SIZE_RATIOS = { SQUARE: '1 / 1', PORTRAIT: '4 / 5', LANDSCAPE: '16 
 
 export default function Album() {
   const { id } = useParams()
-  const { isAdmin: siteAdmin } = useAuth()
+  const { isAdmin: siteAdmin, visitorView } = useAuth()
   const [album, setAlbum] = useState(null)
   // the club / academy / federation that owns the album manages it like an admin
-  const isAdmin = siteAdmin || !!album?.can_edit
+  const isAdmin = siteAdmin || (!visitorView && !!album?.can_edit)
   // pre-launch: an owner may open their own albums only
   const { locked, ownPath } = usePrelaunch()
   const [items, setItems] = useState([])

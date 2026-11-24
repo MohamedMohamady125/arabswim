@@ -208,14 +208,14 @@ function SearchBox({ compact = false, onDone }) {
 function Header() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
-  const { isAdmin, isAuthed, user, logout } = useAuth()
+  const { isAdmin, isAuthed, user, logout, visitorView, setVisitorView } = useAuth()
   const nav = useNav()
   const navigate = useNavigate()
   useEffect(() => { setOpen(false) }, [location])
 
   return (
     <header>
-      {isAuthed && (
+      {isAuthed && !visitorView && (
         <div className="rule-b content-userbar">
           <span className="kicker">{isAdmin ? 'Admin' : user?.username || 'Account'}</span>
           {isAdmin && <NavLink to="/admin" end>Dashboard</NavLink>}
@@ -236,14 +236,31 @@ function Header() {
           {user?.role === 'FEDERATION' && user?.country && (
             <NavLink to={`/countries/${user.country}`}>My federation</NavLink>
           )}
+          {isAdmin && (
+            <button
+              className="btn btn-secondary"
+              style={{ height: 32, minHeight: 32, marginLeft: 'auto', fontSize: 12 }}
+              title="See the site exactly as a visitor does — no admin bar or edit buttons"
+              onClick={() => { setVisitorView(true); if (/^\/(admin|import|reports)/.test(location.pathname)) navigate('/') }}
+            >
+              View as visitor
+            </button>
+          )}
           <button
             className="btn btn-secondary"
-            style={{ height: 32, minHeight: 32, marginLeft: 'auto', fontSize: 12 }}
+            style={{ height: 32, minHeight: 32, marginLeft: isAdmin ? 0 : 'auto', fontSize: 12 }}
             onClick={() => { logout(); navigate('/') }}
           >
             Sign out
           </button>
         </div>
+      )}
+      {/* the one way back: small, out of the page's way (Tesler's Law — the
+          system remembers the mode; one click undoes it) */}
+      {visitorView && (
+        <button type="button" className="asw-visitor-exit" onClick={() => setVisitorView(false)} title="You are viewing the site as a visitor">
+          Back to admin
+        </button>
       )}
       {/* brand bar — flat navy, same color as the footer */}
       <div className="rule-b asw-brandbar">

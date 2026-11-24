@@ -20,10 +20,12 @@ export function ownPagePath(user) {
 }
 
 export function usePrelaunch() {
-  const { isAdmin, isAuthed, user, authLoading } = useAuth()
+  const { realAdmin, isAuthed, user, authLoading } = useAuth()
   const { features, loaded } = useFeatures()
   const on = features.prelaunch !== false
-  const locked = on && !isAdmin
+  // the lock reads the account's true role, so an admin previewing the
+  // visitor view can still browse
+  const locked = on && !realAdmin
   const ownPath = ownPagePath(user)
   return { locked, ownPath, isAuthed, ready: loaded && !authLoading && (!isAuthed || !!user) }
 }

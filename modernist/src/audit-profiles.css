@@ -147,3 +147,9 @@
   .tc-grid > * { min-height: 52px !important; padding: 3px !important; min-width: 0; }
   .tc-grid .tc-label { display: none; }
 }
+
+@media (max-width: 760px) {
+  /* phone: the details are spaced, not dotted — a wrapped line never ends on a separator */
+  .sw-meta-row [aria-hidden="true"] { display: none; }
+  .sw-meta-row { gap: 4px 12px !important; }
+}

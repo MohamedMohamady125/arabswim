@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('refresh_token')
     setToken(null)
     setUser(null)
+    try { sessionStorage.removeItem('asw_visitor_view') } catch { /* private mode */ }
   }
 
   const refreshUser = async () => {
@@ -46,7 +47,20 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const isAdmin = user?.role === 'ADMIN'
+  // "View as visitor": an admin sees the site exactly as a visitor does (no
+  // admin bar, no edit buttons, hidden sections hidden) while staying signed
+  // in. `realAdmin` is the account's true role — only the pre-launch lock and
+  // the "back to admin" control read it.
+  const realAdmin = user?.role === 'ADMIN'
+  const [visitorView, setVisitorViewState] = useState(() => {
+    try { return sessionStorage.getItem('asw_visitor_view') === '1' } catch { return false }
+  })
+  const setVisitorView = (on) => {
+    try { on ? sessionStorage.setItem('asw_visitor_view', '1') : sessionStorage.removeItem('asw_visitor_view') } catch { /* private mode */ }
+    setVisitorViewState(!!on)
+  }
+  const asVisitor = realAdmin && visitorView
+  const isAdmin = realAdmin && !visitorView
   const managesTeam = (team) => {
     if (!user || !team) return false
     if (isAdmin) return true
@@ -63,6 +77,9 @@ export function AuthProvider({ children }) {
         authLoading,
         isAuthed: !!token,
         isAdmin,
+        realAdmin,
+        visitorView: asVisitor,
+        setVisitorView,
         mySwimmerId: user?.swimmer ?? null,
         managesTeam,
         refreshUser,

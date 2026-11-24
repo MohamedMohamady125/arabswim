@@ -1295,19 +1295,36 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         records_total = len(breaks)
         scope_labels = {'arab': ('ARAB', 'Arab'), 'gcc': ('GCC', 'GCC'),
                         'national': ('NATIONAL', 'National')}
-        scope_counts, country_counts = {}, {}
+        # The meet's own level leads: Arab records first at an Arab
+        # championship, GCC first at a GCC one, national first at a national
+        # meet — then the wider levels before the narrower ones.
+        cls_low = cls_name.lower()
+        lead = 'gcc' if 'gcc' in cls_low or 'gulf' in cls_low else (
+            'national' if medals_by_club else 'arab')
+        scope_order = [lead] + [sc for sc in ('arab', 'gcc', 'national') if sc != lead]
+        # Who broke them, and WHICH records: one row per country — per club
+        # at a one-nation meet, where a country row would be a single bar —
+        # split by level, so a bar is never just "records".
+        scope_counts, holder_counts = {}, {}
         for (scope, *_k), (r, _old) in breaks.items():
             scope_counts[scope] = scope_counts.get(scope, 0) + 1
             nat = r.nationality or r.swimmer.nationality
-            ck = (nat.code, nat.flag_url)
-            country_counts[ck] = country_counts.get(ck, 0) + 1
+            if medals_by_club:
+                club = (r.team or r.swimmer.club or '').strip()
+                hk = (club or 'Unattached', '', '')
+            else:
+                hk = (nat.name, nat.code, nat.flag_url)
+            row = holder_counts.setdefault(hk, {'arab': 0, 'gcc': 0, 'national': 0})
+            row[scope] += 1
         records_by_type = [{
-            'type': scope_labels[sc][0], 'label': scope_labels[sc][1], 'count': n,
-        } for sc, n in sorted(scope_counts.items(), key=lambda kv: -kv[1])]
+            'type': scope_labels[sc][0], 'label': scope_labels[sc][1], 'count': scope_counts[sc],
+        } for sc in scope_order if scope_counts.get(sc)]
         records_by_country = [{
-            'code': code, 'flag_url': flag, 'count': n,
-        } for (code, flag), n in sorted(country_counts.items(),
-                                        key=lambda kv: (-kv[1], kv[0][0]))[:6]]
+            'name': name, 'code': code, 'flag_url': flag, 'count': sum(row.values()),
+            'arab': row['arab'], 'gcc': row['gcc'], 'national': row['national'],
+        } for (name, code, flag), row in sorted(
+            holder_counts.items(),
+            key=lambda kv: (-sum(kv[1].values()), *(-kv[1][sc] for sc in scope_order), kv[0][0]))[:8]]
         # Day of each record via the meet program (event -> day)
         prog = list(ProgramItem.objects.filter(championship=champ).values('event_id', 'day', 'session'))
         day_of_event = {}
@@ -1325,7 +1342,8 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 cum, records_by_day = 0, []
                 for d in range(1, n_days + 1):
                     cum += day_counts.get(d, 0)
-                    records_by_day.append({'day': d, 'cumulative': cum})
+                    # `count` is that day alone; `cumulative` stays for older clients
+                    records_by_day.append({'day': d, 'count': day_counts.get(d, 0), 'cumulative': cum})
 
         # ---------- participation ----------
         by_country = [{
@@ -1466,6 +1484,22 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             if len(cnts) > 1:
                 points_by_day = [{'day': d, 'avg': round(sums[d] / cnts[d])} for d in sorted(cnts)]
 
+        # Strongest nations (clubs at a one-nation meet): how many swims each
+        # brought at a high points level. The bar starts at 600 and steps
+        # down for a younger field, so the chart is never empty.
+        strongest = None
+        hold = 'team' if medals_by_club else 'nationality__code'
+        for floor in (600, 500, 400):
+            rows = list(scored.filter(fina_points__gte=floor)
+                        .exclude(**({'team': ''} if medals_by_club else {'nationality__isnull': True}))
+                        .values(hold).annotate(n=Count('id')).order_by('-n', hold)[:8])
+            if len(rows) >= 3 or floor == 400:
+                if rows:
+                    strongest = {'floor': floor,
+                                 'scope': 'club' if medals_by_club else 'country',
+                                 'rows': [{'label': r[hold], 'count': r['n']} for r in rows]}
+                break
+
         # ---------- progress ----------
         events_done = results.values('event').distinct().count()
         prog_events = len({it['event_id'] for it in prog}) if prog else 0
@@ -1516,10 +1550,12 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
                 'most_golds': most_golds, 'most_pbs': most_pbs,
                 'biggest_improvement': biggest_improvement,
                 'top5': top5, 'points_by_day': points_by_day,
+                'strongest': strongest,
             },
             'records': {
                 'total': records_total, 'by_type': records_by_type,
                 'by_day': records_by_day, 'by_country': records_by_country,
+                'holder_scope': 'club' if medals_by_club else 'country',
             },
             'progress': {
                 'percent': round(100 * events_done / events_total) if events_total else 0,

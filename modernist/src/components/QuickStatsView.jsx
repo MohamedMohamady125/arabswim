@@ -143,6 +143,50 @@ function MedalStack({ rows, wide = false }) {
   )
 }
 
+/* Records per country (or club), split by level — a bar says WHICH records:
+   "TUN  3 Arab · 2 National", in the order the meet's level sets. */
+const LEVEL_FILL = {
+  ARAB: [NAVY_DARK, '#fff'], GCC: ['var(--color-accent-500)', '#fff'], NATIONAL: ['var(--color-accent-300)', NAVY_DARK],
+}
+function RecordStack({ rows, levels }) {
+  const keys = levels.map((l) => l.type).filter((t) => LEVEL_FILL[t])
+  // older payloads carry a bare count per country
+  const split = rows.some((r) => keys.some((k) => r[k.toLowerCase()] != null))
+  if (!split) return <HBars rows={rows.map((r) => ({ label: r.code || r.name, value: r.count }))} color="var(--color-accent-500)" />
+  const max = Math.max(...rows.map((r) => r.count), 1)
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+        {levels.filter((l) => LEVEL_FILL[l.type]).map((l) => (
+          <span key={l.type} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
+            <span style={{ width: 10, height: 10, background: LEVEL_FILL[l.type][0], flex: 'none' }} />
+            {l.label} records
+          </span>
+        ))}
+      </div>
+      {rows.map((r) => (
+        <div key={r.code || r.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span title={r.name} className="am-recstack-label">{r.name || r.code}</span>
+          <div style={{ flex: 1, display: 'flex', height: 18, minWidth: 0 }}>
+            <div style={{ display: 'flex', width: `${(r.count / max) * 100}%`, minWidth: 18 }}>
+              {keys.map((k) => {
+                const n = r[k.toLowerCase()] || 0
+                return n > 0 ? (
+                  <div key={k} title={`${n} ${k.toLowerCase()} record${n === 1 ? '' : 's'}`}
+                    style={{ flex: n, background: LEVEL_FILL[k][0], display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 16 }}>
+                    <span className="asw-num" style={{ fontSize: 11, lineHeight: 1, fontWeight: 800, color: LEVEL_FILL[k][1] }}>{n}</span>
+                  </div>
+                ) : null
+              })}
+            </div>
+          </div>
+          <span className="asw-num" style={{ width: 24, flex: 'none', textAlign: 'right', fontSize: 12, fontWeight: 800, color: NAVY_DARK }}>{r.count}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ── Layout bits ────────────────────────────────────────────────────── */
 
 /* `center`: the content sits in the middle of the panel when a taller
@@ -243,7 +287,9 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
   const recCounters = [{ label: 'Total Records', count: records.total, color: NAVY_DARK }].concat(
     records.by_type.slice(0, 5).map((t, i) => ({
       label: `${t.label} Records`, count: t.count,
-      color: [NAVY, BLUE, GOLD, 'var(--color-accent-500)', BRONZE][i % 5],
+      // the same colour a level has in the chart below (gold stays for medals)
+      color: { ARAB: NAVY_DARK, GCC: 'var(--color-accent-500)', NATIONAL: 'var(--color-accent-300)' }[t.type]
+        || [NAVY, BLUE, 'var(--color-accent-400)'][i % 3],
     })))
 
   const chips = [
@@ -461,7 +507,7 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
           )
         })()}
       </div>
-      {(perf.top5.length > 0 || perf.points_by_day) && (
+      {(perf.top5.length > 0 || perf.strongest) && (
         <div className="qs-perf-2">
           {perf.top5.length > 0 && (
             <Panel title="Top 5 Performances (by Points)">
@@ -471,9 +517,11 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
               }))} />
             </Panel>
           )}
-          {perf.points_by_day && (
-            <Panel title="Average Points by Day">
-              <LineChart points={perf.points_by_day.map((p) => ({ label: `Day ${p.day}`, value: p.avg }))} />
+          {/* who brought the quality: swims at a high points level per nation
+              (per club at a one-nation meet) — individuals on the left, teams here */}
+          {perf.strongest && (
+            <Panel title={`Strongest ${perf.strongest.scope === 'club' ? 'Clubs' : 'Nations'} — Swims of ${perf.strongest.floor}+ Points`}>
+              <HBars color={NAVY} rows={perf.strongest.rows.map((r) => ({ label: r.label, value: r.count }))} />
             </Panel>
           )}
         </div>
@@ -498,13 +546,17 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
             /* single chart → single column, no dead half */
             <div className="qs-rec-charts" style={records.by_day && records.by_country.length > 0 ? undefined : { gridTemplateColumns: '1fr' }}>
               {records.by_day && (
-                <Panel title="Records by Day (Cumulative)">
-                  <LineChart points={records.by_day.map((p) => ({ label: `Day ${p.day}`, value: p.cumulative }))} />
+                <Panel title="Records Broken Each Day">
+                  <VBars color="var(--color-accent-500)" data={records.by_day.map((p, i, all) => ({
+                    label: `Day ${p.day}`,
+                    // older payloads only carry the running total
+                    value: p.count ?? (p.cumulative - (i ? all[i - 1].cumulative : 0)),
+                  }))} />
                 </Panel>
               )}
               {records.by_country.length > 0 && (
-                <Panel title="Records by Country">
-                  <HBars rows={records.by_country.map((r) => ({ label: r.code, value: r.count }))} color="var(--color-accent-500)" />
+                <Panel title={`Records by ${records.holder_scope === 'club' ? 'Club' : 'Country'}`}>
+                  <RecordStack rows={records.by_country} levels={records.by_type} />
                 </Panel>
               )}
             </div>

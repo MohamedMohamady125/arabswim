@@ -12,6 +12,8 @@ import { formatDate, formatDateRange, poolLabel } from '../utils'
 const GOLD = 'var(--asw-gold)'
 const list = (d) => (Array.isArray(d) ? d : d?.results || [])
 
+const RECORD_NAME = { ARAB: 'Arab record', GCC: 'GCC record', NATIONAL: 'National record' }
+
 export default function Home() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +38,18 @@ export default function Home() {
   )
 
   const champ = data.championship
+
+  // newest first, one entry per swim, with every record level it set
+  const latestSwims = (() => {
+    const order = ['ARAB', 'GCC', 'NATIONAL']
+    const groups = new Map()
+    for (const r of newRecords) {
+      const key = r.result ? `r${r.result}` : `${r.swimmer}-${r.event}-${r.pool}-${r.time_centiseconds}-${r.age_category}`
+      const g = groups.get(key)
+      if (g) { if (!g.types.includes(r.record_type)) g.types.push(r.record_type) } else groups.set(key, { key, rec: r, types: [r.record_type] })
+    }
+    return [...groups.values()].slice(0, 8).map((g) => ({ ...g, types: g.types.sort((x, y) => order.indexOf(x) - order.indexOf(y)) }))
+  })()
 
   return (
     <div className="asw-fade-up">
@@ -93,32 +107,39 @@ export default function Home() {
           <SectHead title="Latest Records Broken" to={flag('new_records') ? '/new-records' : undefined} linkLabel="All new records">
             <span className="micro hide-mobile" style={{ marginRight: 'auto' }}>Most recent national &amp; regional records across Arab swimming</span>
           </SectHead>
-          <div className="rule-t" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, paddingTop: 14 }}>
-            {newRecords.slice(0, 8).map((r) => {
+          {/* One card per swim. A swim that set two records (Arab and national)
+              is one card with both tags, not two near-identical cards.
+              Each card reads top to bottom: which record, the race, the time,
+              then who and where (Chunking + Proximity). */}
+          <div className="rule-t hr-grid">
+            {latestSwims.map((g) => {
+              const r = g.rec
               const sw = r.swimmer_detail || {}
               const code = sw.nationality_detail?.code || r.country_detail?.code
-              // contrast (WCAG AA) + Similarity: three books, three distinct pills —
-              // Arab navy, GCC mid blue (both white text), National pale blue with navy text
-              const pill = r.record_type === 'ARAB' ? { background: 'var(--color-accent-800)', color: '#fff' }
-                : r.record_type === 'GCC' ? { background: 'var(--color-accent-500)', color: '#fff' }
-                : { background: 'var(--color-accent-2-200)', color: 'var(--color-accent-800)' }
+              const cName = sw.nationality_detail?.name || r.country_detail?.name
+              const who = sw.sex === 'F' ? 'Women' : sw.sex === 'M' ? 'Men' : ''
+              const age = r.age_category && r.age_category !== 'OPEN' ? r.age_category : ''
               return (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 13px', border: '1px solid var(--color-divider)', borderRadius: 0, background: '#fff' }}>
-                  <span style={{ flex: 'none', minWidth: 42, textAlign: 'center', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', ...pill, borderRadius: 0, padding: '4px 4px' }}>{r.record_type}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
-                      <Flag code={code} name={sw.nationality_detail?.name} />
-                      {sw.id
-                        ? <Link to={`/swimmers/${sw.id}`} style={{ padding: '6px 0', margin: '-6px 0' /* Fitts's Law: 32px hit area, card height unchanged */, color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</Link>
-                        : <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw.name || '—'}</span>}
-                    </div>
-                    {/* wraps instead of cutting the date off on narrow cards */}
-                    <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 2, lineHeight: 1.35 }}>
-                      {r.event_detail?.name}{r.swimmer_detail?.sex === 'F' ? ' · Women' : r.swimmer_detail?.sex === 'M' ? ' · Men' : ''}{r.pool ? ` · ${poolLabel(r.pool)}` : ''}{r.result_date ? ` · ${formatDate(r.result_date)}` : ''}
-                    </div>
+                <article key={g.key} className="hr-card">
+                  <div className="hr-top">
+                    <span className="hr-tags">
+                      {g.types.map((t) => <span key={t} className={`hr-tag hr-tag-${t.toLowerCase()}`}>{RECORD_NAME[t] || t}</span>)}
+                    </span>
                   </div>
-                  <div className="asw-time" style={{ flex: 'none', fontSize: 16, fontWeight: 800, color: 'var(--color-accent-800)' }}>{r.formatted_time}</div>
-                </div>
+                  <div className="hr-event">{r.event_detail?.name}</div>
+                  <div className="hr-sub">{[who, age, r.pool ? poolLabel(r.pool) : ''].filter(Boolean).join(' · ')}</div>
+                  <div className="hr-time asw-time">{r.formatted_time}</div>
+                  <div className="hr-who">
+                    <Flag code={code} name={cName} />
+                    {sw.id && !sw.is_relay_team
+                      ? <Link to={`/swimmers/${sw.id}`} className="hr-name">{sw.name}</Link>
+                      : <span className="hr-name">{sw.name || cName || '—'}</span>}
+                  </div>
+                  {(r.meet_name || r.location) && (
+                    <div className="hr-meet">{[r.meet_name, r.location].filter(Boolean).join(' · ')}</div>
+                  )}
+                  {r.result_date && <div className="hr-meet asw-num" style={{ marginTop: 2 }}>{formatDate(r.result_date)}</div>}
+                </article>
               )
             })}
           </div>

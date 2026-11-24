@@ -32,6 +32,45 @@ function parseMeetDate(d) {
   return Number.isNaN(dt.getTime()) ? null : dt
 }
 
+const poolShort = (p) => (p === 'LCM' ? '50m' : p === 'SCM' ? '25m' : p)
+const poolTitle = (p) => (p === 'LCM' ? 'Long course (50m pool)' : p === 'SCM' ? 'Short course (25m pool)' : undefined)
+const placeOf = (c) => [c.location, c.country_detail?.name].filter(Boolean).join(', ')
+
+// Status from the dates the row already has: live colour while it is on,
+// "Upcoming" before it starts, nothing once it is over.
+function statusOf(d, endDate) {
+  if (!d) return null
+  const t = new Date()
+  t.setHours(0, 0, 0, 0)
+  const end = parseMeetDate(endDate) || d
+  // a row under the "Upcoming" heading does not repeat the word
+  if (d > t) return null
+  if (end < t) return null
+  return { label: end > d ? 'In progress' : 'Today', cls: 'tag cal-live' }
+}
+
+/* mini calendar tile: navy month strip over the day (Similarity: one tile on every list) */
+function DateTile({ d }) {
+  return (
+    <div className="cal-tile">
+      <div className="cal-tile-m">{MONTH_SHORT[d.getMonth()]}</div>
+      <div className="cal-tile-d">{d.getDate()}</div>
+    </div>
+  )
+}
+
+function Chevron() {
+  return (
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M2 4.5 6 8.5l4-4" /></svg>
+  )
+}
+
+function CalGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M3.5 5.5h17v15h-17zM3.5 10h17M8 3v5M16 3v5" /></svg>
+  )
+}
+
 /* Live countdown to a target date (1-second tick) */
 function Countdown({ target }) {
   const [now, setNow] = useState(() => Date.now())
@@ -47,11 +86,11 @@ function Countdown({ target }) {
   const sec = Math.floor((diff % 60000) / 1000)
   const cells = [[days, 'Days'], [String(hrs).padStart(2, '0'), 'Hrs'], [String(min).padStart(2, '0'), 'Min'], [String(sec).padStart(2, '0'), 'Sec']]
   return (
-    <div style={{ display: 'flex', gap: 2, background: 'var(--color-divider)', border: '1px solid var(--color-divider)', marginTop: 14, maxWidth: 420 }}>
+    <div className="cal-count" role="timer" aria-label="Time until the start">
       {cells.map(([v, l]) => (
-        <div key={l} style={{ flex: 1, background: 'var(--color-bg)', padding: '8px 10px' }}>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24 }}>{v}</div>
-          <div className="micro" style={{ fontSize: 11 }}>{l}</div>
+        <div key={l}>
+          <div className="cal-count-n">{v}</div>
+          <div className="cal-count-l">{l}</div>
         </div>
       ))}
     </div>
@@ -87,8 +126,6 @@ function Modal({ open, title, onClose, children }) {
     </div>
   )
 }
-
-const LINK_STYLE = { flex: '1 1 140px', textAlign: 'center' }
 
 /* Admin: edit everything on a meet — same fields as creation, plus links/files */
 function MeetEditModal({ meet, countries, onClose, onSaved }) {
@@ -270,45 +307,49 @@ function MeetEditModal({ meet, countries, onClose, onSaved }) {
 function MeetExpandedPanel({ meet: c, isAdmin, onDelete, onEditLinks }) {
   const showAny = c.live_results_url || c.meet_guide_pdf || c.registration_url || c.website || c.policy_pdf
   return (
-    <div className="cal-row" style={{ padding: '16px 32px 20px', background: 'var(--color-surface)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: showAny || isAdmin ? 16 : 0 }}>
+    // Common Region + Proximity: the open row and its panel share one tint,
+    // and the facts start under the name column they belong to
+    <div className="cal-panel">
+      <dl className="cal-facts">
         <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Country</div>
-          <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {c.country_detail ? (<><Flag code={c.country_detail.code} name={c.country_detail.name} />{c.country_detail.name}</>) : '—'}
-          </div>
+          <dt>Country</dt>
+          <dd>{c.country_detail ? (<><Flag code={c.country_detail.code} name={c.country_detail.name} />{c.country_detail.name}</>) : '—'}</dd>
         </div>
         <div>
-          <div className="micro" style={{ marginBottom: 3 }}>Pool</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</div>
+          <dt>Pool</dt>
+          <dd>{c.pool === 'SCM' ? 'Short Course (25m)' : 'Long Course (50m)'}</dd>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {c.live_results_url && (
-          <a className="btn btn-primary" style={LINK_STYLE} href={c.live_results_url} target="_blank" rel="noopener noreferrer">Live results</a>
-        )}
-        {c.meet_guide_pdf && (
-          <a className="btn btn-secondary" style={LINK_STYLE} href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer">Entry pack</a>
-        )}
-        {c.registration_url && (
-          <a className="btn btn-secondary" style={LINK_STYLE} href={c.registration_url} target="_blank" rel="noopener noreferrer">Registration</a>
-        )}
-        {c.website && (
-          <a className="btn btn-secondary" style={LINK_STYLE} href={c.website} target="_blank" rel="noopener noreferrer">Website</a>
-        )}
-        {c.policy_pdf && (
-          <a className="btn btn-secondary" style={LINK_STYLE} href={c.policy_pdf} target="_blank" rel="noopener noreferrer">Nashra (policy)</a>
-        )}
-        {(c.results_count ?? 0) > 0 && (
-          <Link className="btn btn-secondary" style={LINK_STYLE} to={`/meets/${c.id}`}>Meet page</Link>
-        )}
-        {isAdmin && (
-          <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => onEditLinks(c)}>Edit meet</button>
-        )}
-        {isAdmin && c.is_calendar_only && (
-          <button className="btn btn-ghost" style={{ color: 'var(--asw-slow)' }} onClick={() => onDelete(c)}>Delete meet</button>
-        )}
-      </div>
+      </dl>
+      {(showAny || isAdmin || (c.results_count ?? 0) > 0) && (
+        <div className="cal-links">
+          {c.live_results_url && (
+            <a className="btn btn-primary" href={c.live_results_url} target="_blank" rel="noopener noreferrer">Live results</a>
+          )}
+          {c.meet_guide_pdf && (
+            <a className="btn btn-secondary" href={c.meet_guide_pdf} target="_blank" rel="noopener noreferrer">Entry pack</a>
+          )}
+          {c.registration_url && (
+            <a className="btn btn-secondary" href={c.registration_url} target="_blank" rel="noopener noreferrer">Registration</a>
+          )}
+          {c.website && (
+            <a className="btn btn-secondary" href={c.website} target="_blank" rel="noopener noreferrer">Website</a>
+          )}
+          {c.policy_pdf && (
+            <a className="btn btn-secondary" href={c.policy_pdf} target="_blank" rel="noopener noreferrer">Nashra (policy)</a>
+          )}
+          {(c.results_count ?? 0) > 0 && (
+            <Link className="btn btn-secondary" to={`/meets/${c.id}`}>Meet page</Link>
+          )}
+          {isAdmin && (
+            <div className="cal-links-admin">
+              <button className="btn btn-ghost" onClick={() => onEditLinks(c)}>Edit meet</button>
+              {c.is_calendar_only && (
+                <button className="btn btn-ghost cal-danger" onClick={() => onDelete(c)}>Delete meet</button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -370,9 +411,10 @@ function BirthdaysTab() {
   const daysAhead = allDays.filter((d) => d >= now.getDate())
   const daysEarlier = allDays.filter((d) => d < now.getDate())
   const birthdayRow = (b) => (
-    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 32 }}>
-      <Link to={`/swimmers/${b.id}`} style={{ padding: '8px 0', color: 'inherit', textDecoration: 'none', fontSize: 13, flex: 1, minWidth: 0 }}>{b.name}</Link>
-      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', flex: 'none' }}>
+    // Fitts's Law: the name is a 40px-tall target; nationality and age sit beside it
+    <div key={b.id} className="cal-bd-row">
+      <Link to={`/swimmers/${b.id}`}>{b.name}</Link>
+      <span>
         {b.nationality}{b.age > 0 ? ` · ${b.age}` : ''}
       </span>
     </div>
@@ -380,12 +422,12 @@ function BirthdaysTab() {
   const dayBlock = (day) => {
     const arr = byDay.get(day)
     return (
-      <div key={day} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-divider)' }}>
-        <div style={{ width: 40, flex: 'none', textAlign: 'center' }}>
-          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1.1, color: 'var(--color-accent)' }}>{day}</div>
-          <div className="micro" style={{ fontSize: 11 }}>{day === now.getDate() ? 'Today' : MONTH_SHORT[now.getMonth()]}</div>
+      <div key={day} className="cal-bd-day">
+        <div className="cal-bd-date">
+          <div className="cal-tile-d">{day}</div>
+          <span>{day === now.getDate() ? 'Today' : MONTH_SHORT[now.getMonth()]}</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ minWidth: 0 }}>
           {arr.slice(0, 6).map(birthdayRow)}
           {arr.length > 6 && (
             <ShowMore label={`${arr.length - 6} more`}>
@@ -398,14 +440,14 @@ function BirthdaysTab() {
   }
 
   return (
-    <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 380px' }}>
+    <div className="cal-bd">
       <div className="rule-r">
         <div className="rule-b pad">
           <SectHead title="Birthdays Today" />
           {today.length === 0 ? (
-            <div className="text-muted" style={{ fontSize: 13 }}>No birthdays today.</div>
+            <div className="cal-empty-inline"><Empty label="No birthdays today" hint="The coming week is listed below." /></div>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="cal-bd-chips">
               {/* Miller's Law: a dozen names up front, the rest on request */}
               {today.slice(0, 12).map(todayChip)}
               {today.length > 12 && <ShowMore label={`${today.length - 12} more today`}>{today.slice(12).map(todayChip)}</ShowMore>}
@@ -415,9 +457,9 @@ function BirthdaysTab() {
         <div className="pad">
           <SectHead title="Next 7 Days" />
           {upcoming.length === 0 ? (
-            <div className="text-muted" style={{ fontSize: 13 }}>No birthdays in the coming week.</div>
+            <div className="cal-empty-inline"><Empty label="No birthdays in the coming week" hint="Later dates are in the month list." /></div>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="cal-bd-chips">
               {upcoming.slice(0, 12).map(weekChip)}
               {upcoming.length > 12 && <ShowMore label={`${upcoming.length - 12} more this week`}>{upcoming.slice(12).map(weekChip)}</ShowMore>}
             </div>
@@ -427,15 +469,15 @@ function BirthdaysTab() {
       <div className="pad">
         <SectHead title={`All Birthdays · ${MONTHS_FULL[now.getMonth()]}`} />
         {thisMonth.length === 0 ? (
-          <div className="text-muted" style={{ fontSize: 13 }}>No birthdays this month.</div>
+          <div className="cal-empty-inline"><Empty label="No birthdays this month" hint="Next month's birthdays appear here when the month begins." /></div>
         ) : (
           <>
             {/* Chunking: one block per day, in date order, starting today;
                 days already gone wait behind "Earlier this month" */}
-            <div className="micro" style={{ marginBottom: 12, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>
+            <div className="cal-bd-note">
               <span className="asw-num">{thisMonth.length}</span> swimmers · from today to the end of the month
             </div>
-            {daysAhead.length === 0 && <div className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>No more birthdays this month.</div>}
+            {daysAhead.length === 0 && <div className="cal-empty-inline"><Empty label="No more birthdays this month" hint="Days already gone are under Earlier this month." /></div>}
             {daysAhead.map(dayBlock)}
             {daysEarlier.length > 0 && (
               <ShowMore label={`Earlier this month (${daysEarlier.reduce((n, d) => n + byDay.get(d).length, 0)})`} lessLabel="Hide earlier days">
@@ -717,68 +759,117 @@ export default function Calendar() {
   if (loading) return <Loading label="Loading calendar" />
 
   const isUpcomingFeatured = featured && featured.d && featured.d.getTime() > Date.now()
+  // Feature band: its action goes where the page already sends that item
+  const featuredMeetId = featured ? (featured.kind === 'meet' ? featured.item.id : featured.item.championship) : null
+  const featuredTo = featuredMeetId ? `/meets/${featuredMeetId}` : null
+  const featuredPlace = featured && featured.kind === 'meet' ? placeOf(featured.item) : ''
+  // Miller's Law: the next three after the featured one, not the whole list again
+  const alsoComing = featured
+    ? meetGroups.filter((g) => g.part === 'u').flatMap((g) => g.items)
+      .filter((x) => !(x.kind === featured.kind && x.item.id === featured.item.id)
+        && !(featuredMeetId && (x.kind === 'meet' ? x.item.id : x.item.championship) === featuredMeetId))
+      .slice(0, 3)
+    : []
 
   return (
     <div>
-      {/* phone: let the filter row wrap instead of clipping, and match the 16px page gutter on list rows */}
-      <style>{`
-        @media (max-width: 900px) {
-          .records-filters.cal-filters { flex-wrap: wrap !important; overflow-x: visible; }
-          .cal-row { padding-left: 16px !important; padding-right: 16px !important; }
-        }
-      `}</style>
-      <PageHead title="Calendar">
+      <PageHead title="Calendar" sub="Meets, birthdays and other dates across Arab swimming">
         {isAdmin && (
-          <div style={{ marginTop: 14 }}>
+          <div className="cal-head-actions">
             <button className="btn btn-primary" onClick={() => setShowAddEvent(true)}>Add event</button>
           </div>
         )}
       </PageHead>
 
       {notice && (
-        <div role={notice.bad ? 'alert' : 'status'} className="rule-b cal-row" style={{ padding: '10px 32px', fontSize: 13, fontWeight: 700, color: notice.bad ? 'var(--asw-slow)' : 'var(--asw-fast)' }}>
+        <div role={notice.bad ? 'alert' : 'status'} className="rule-b cal-notice" style={{ color: notice.bad ? 'var(--asw-slow)' : 'var(--asw-fast)' }}>
           {notice.text}
         </div>
       )}
 
-      {/* featured next meet + countdown */}
+      {/* featured next meet + countdown.
+          Von Restorff: the one standout block of the page. Proximity: photo,
+          facts, countdown and action sit together; the rest of the width
+          carries what comes after it instead of standing empty. */}
       {featured && (
-        <div className="rule-b" style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {featured.item.meet_photo && (
-            <div className="hide-mobile" style={{ width: 300, flex: 'none', borderRight: '2px solid var(--color-divider)', background: 'var(--color-accent-800)' }}>
-              <Pic kind="meet" w={320}
-                src={featured.item.meet_photo}
-                alt={featured.item.name || featured.item.title}
-                className="grayscale"
-                style={{ width: '100%', height: '100%', minHeight: 160 }}
-              />
-            </div>
-          )}
-          <div className="pad-lg" style={{ flex: 1, minWidth: 260 }}>
-            <div className="kicker" style={{ marginBottom: 8 }}>{isUpcomingFeatured ? 'Next up' : 'Featured competition'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {featured.kind === 'meet' && (
+        <section className={`cal-next${alsoComing.length ? '' : ' cal-next--solo'}`} aria-label={isUpcomingFeatured ? 'Next up' : 'Featured competition'}>
+          <div className="cal-next-media">
+            {/* the photo covers its frame edge to edge; no photo (or a broken
+                file) leaves the navy panel with the host flag or a calendar glyph */}
+            <Pic kind="meet" w={480} eager
+              src={featured.item.meet_photo}
+              alt={featured.item.name || featured.item.title}
+              className="grayscale"
+              fallback={featured.kind === 'meet' && featured.item.country_detail?.code
+                ? <Flag code={featured.item.country_detail.code} name={featured.item.country_detail.name} large />
+                : <CalGlyph />}
+              style={{ position: 'absolute', inset: 0, objectFit: 'cover', objectPosition: '50% 35%' }}
+            />
+          </div>
+          <div className="cal-next-body">
+            <div className="kicker">{isUpcomingFeatured ? 'Next up' : 'Featured competition'}</div>
+            <h2 className="cal-next-title">
+              {featured.kind === 'meet' && featured.item.meet_photo && (
                 <Flag code={featured.item.country_detail?.code} name={featured.item.country_detail?.name} large />
               )}
-              {featured.kind === 'meet' ? (
-                <Link to={`/meets/${featured.item.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  <h2 style={{ margin: 0, letterSpacing: '-0.02em' }}>{featured.item.name}</h2>
-                </Link>
+              {featuredTo ? (
+                <Link to={featuredTo}>{featured.item.name || featured.item.title}</Link>
               ) : (
-                <h2 style={{ margin: 0, letterSpacing: '-0.02em' }}>{featured.item.title}</h2>
+                <span>{featured.item.title}</span>
               )}
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 6 }}>
-              {featured.kind === 'meet' && featured.item.location ? `${featured.item.location}` : ''}
-              {featured.kind === 'meet' && featured.item.country_detail ? `${featured.item.location ? ', ' : ''}${featured.item.country_detail.name}` : ''}
-              {featured.kind === 'meet' && (featured.item.location || featured.item.country_detail) ? ' · ' : ''}
-              {formatDateRange(featured.item.date, featured.item.end_date)}
-              {featured.kind === 'meet' && featured.item.pool ? ` · ${featured.item.pool === 'LCM' ? '50m pool' : featured.item.pool === 'SCM' ? '25m pool' : featured.item.pool}` : ''}
-              {featured.kind === 'event' && featured.item.description ? ` · ${featured.item.description}` : ''}
-            </div>
+            </h2>
+            {featured.kind === 'event' && featured.item.description && (
+              <p className="cal-next-note">{featured.item.description}</p>
+            )}
+            {/* Chunking: each fact under its own label instead of one dotted line */}
+            <dl className="cal-facts">
+              <div>
+                <dt>Dates</dt>
+                <dd>{formatDateRange(featured.item.date, featured.item.end_date)}</dd>
+              </div>
+              {featuredPlace && (
+                <div>
+                  <dt>Place</dt>
+                  <dd>{featuredPlace}</dd>
+                </div>
+              )}
+              {featured.kind === 'meet' && featured.item.pool && (
+                <div>
+                  <dt>Pool</dt>
+                  <dd title={poolTitle(featured.item.pool)}>{featured.item.pool === 'LCM' ? '50m pool' : featured.item.pool === 'SCM' ? '25m pool' : featured.item.pool}</dd>
+                </div>
+              )}
+            </dl>
             {isUpcomingFeatured && <Countdown target={featured.d.getTime()} />}
+            {/* Fitts's Law: one large primary action, full width on phone */}
+            {featuredTo && <Link className="btn btn-primary cal-next-cta" to={featuredTo}>Open meet</Link>}
           </div>
-        </div>
+          {alsoComing.length > 0 && (
+            <aside className="cal-next-aside">
+              <div className="kicker">Also coming up</div>
+              <ul className="cal-also">
+                {alsoComing.map(({ kind, item, d }) => {
+                  const to = kind === 'meet' ? `/meets/${item.id}` : item.championship ? `/meets/${item.championship}` : null
+                  const place = kind === 'meet' ? placeOf(item) : item.description
+                  const inner = (
+                    <>
+                      <span className="cal-also-date">{d.getDate()} {MONTH_SHORT[d.getMonth()]}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="cal-also-name">{kind === 'meet' ? item.name : item.title}</span>
+                        {place && <span className="cal-also-place">{place}</span>}
+                      </span>
+                    </>
+                  )
+                  return (
+                    <li key={`${kind}-${item.id}`}>
+                      {to ? <Link className="cal-also-row" to={to}>{inner}</Link> : <div className="cal-also-row">{inner}</div>}
+                    </li>
+                  )
+                })}
+              </ul>
+            </aside>
+          )}
+        </section>
       )}
 
       {/* Similarity: section tabs look like tabs; the filters get a bar of
@@ -796,22 +887,30 @@ export default function Calendar() {
         />
       </div>
       {tab !== 'birthdays' && (
-        <div className="meets-fb">
+        // Common Region: one bar; every control carries its label and the same
+        // 40px height, and the count sits on the controls' own line
+        <div className="cal-fb">
           <FilterBar
             count={tab === 'meets' ? (meetsFailed ? null : meetCount) : otherEvents.length}
             noun={tab === 'meets' ? (meetCount === 1 ? 'meet' : 'meets') : (otherEvents.length === 1 ? 'event' : 'events')}
             active={filtersActive}
             onClear={clearFilters}
           >
-            <select className="select" aria-label="Year" style={{ width: 130 }} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
-              <option value="">All years</option>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            {tab === 'meets' && (
-              <select className="select" aria-label="Country" style={{ width: 190 }} value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}>
-                <option value="">All countries</option>
-                {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <label className="cal-field">
+              <span>Year</span>
+              <select className="select" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+                <option value="">All years</option>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
+            </label>
+            {tab === 'meets' && (
+              <label className="cal-field cal-field--wide">
+                <span>Country</span>
+                <select className="select" value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)}>
+                  <option value="">All countries</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
             )}
           </FilterBar>
         </div>
@@ -839,93 +938,94 @@ export default function Calendar() {
               </div>
             </Empty>
           ))}
-          {meetGroups.map((g) => (
-            <div key={g.key} className="rule-b">
-              {g.section && (
-                <div className="pad" style={{ paddingBottom: 0 }}>
-                  <h2 className="kicker" style={{ margin: 0 }}>{g.section}</h2>
-                </div>
-              )}
-              <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', display: 'inline-block' }}>
-                  {MONTHS_FULL[g.month]} {g.year}
-                </div>
-              </div>
-              {g.items.map(({ kind, item, d }, i) => {
-                if (kind === 'meet') {
-                  const c = item
-                  const isExpanded = expandedMeetId === c.id
-                  return (
-                    <div key={`m-${c.id}`} className={i < g.items.length - 1 || isExpanded ? 'hair-b' : ''}>
-                      <div
-                        className="cal-row row-link"
-                        onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
-                        role="button" tabIndex={0} aria-expanded={isExpanded}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedMeetId(isExpanded ? null : c.id) } }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 32px', background: isExpanded ? 'var(--color-surface)' : undefined }}
-                      >
-                        {/* mini calendar tile: navy month strip over the day */}
-                        <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                          <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
-                          <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{c.name}</span>
-                          <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                            {c.location}
-                            {c.country_detail ? `${c.location ? ', ' : ''}${c.country_detail.name}` : ''}
-                            {' · '}{formatDateRange(c.date, c.end_date)}
+          {/* One hierarchy (Similarity): section heading, then month band, then
+              rows. Every row sits on the same column grid as the header above
+              it (Proximity: a meet's facts stay beside its name). */}
+          <div className="cal-list">
+            {meetGroups.map((g, gi) => (
+              <div key={g.key} className="cal-group">
+                {g.section && (
+                  <div className="cal-sect-head">
+                    <h2>{g.section}</h2>
+                  </div>
+                )}
+                {(g.section || gi === 0) && (
+                  <div className="cal-grid cal-cols" aria-hidden="true">
+                    <span>Date</span><span>Meet</span><span>Place</span><span>Dates</span><span>Pool and status</span><span />
+                  </div>
+                )}
+                <h3 className="cal-month">{MONTHS_FULL[g.month]} {g.year}</h3>
+                {g.items.map(({ kind, item, d }) => {
+                  const status = statusOf(d, item.end_date)
+                  if (kind === 'meet') {
+                    const c = item
+                    const isExpanded = expandedMeetId === c.id
+                    const place = placeOf(c)
+                    return (
+                      <div key={`m-${c.id}`} className="cal-entry">
+                        <div
+                          className={`cal-grid cal-item row-link${isExpanded ? ' is-open' : ''}`}
+                          onClick={() => setExpandedMeetId(isExpanded ? null : c.id)}
+                          role="button" tabIndex={0} aria-expanded={isExpanded}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedMeetId(isExpanded ? null : c.id) } }}
+                        >
+                          <DateTile d={d} />
+                          <div className="cal-name">{c.name}</div>
+                          <div className="cal-meta">
+                            <div className={`cal-cell${place ? '' : ' is-empty'}`}>{place || '—'}</div>
+                            <div className="cal-cell asw-num">{formatDateRange(c.date, c.end_date)}</div>
                           </div>
+                          <div className="cal-tags">
+                            {c.pool && <span className="tag tag-neutral" title={poolTitle(c.pool)}>{poolShort(c.pool)}</span>}
+                            {status && <span className={status.cls}>{status.label}</span>}
+                          </div>
+                          <span className="cal-chev"><Chevron /></span>
                         </div>
-                        {c.pool && <span className="tag tag-neutral hide-mobile" title={c.pool === 'LCM' ? 'Long course (50m pool)' : c.pool === 'SCM' ? 'Short course (25m pool)' : undefined}>{c.pool === 'LCM' ? '50m' : c.pool === 'SCM' ? '25m' : c.pool}</span>}
-                        <span className="micro" aria-hidden="true" style={{ fontSize: 11, width: 12, textAlign: 'center' }}>{isExpanded ? '▴' : '▾'}</span>
+                        {isExpanded && (
+                          <MeetExpandedPanel meet={c} isAdmin={isAdmin} onDelete={handleDeleteCalendarMeet} onEditLinks={setEditLinksMeet} />
+                        )}
                       </div>
-                      {isExpanded && (
-                        <MeetExpandedPanel meet={c} isAdmin={isAdmin} onDelete={handleDeleteCalendarMeet} onEditLinks={setEditLinksMeet} />
-                      )}
+                    )
+                  }
+                  // meet-type calendar event with no loaded championship behind it
+                  const ev = item
+                  return (
+                    <div key={`ev-${ev.id}`} className="cal-entry">
+                      <div
+                        className={`cal-grid cal-item${ev.championship ? ' row-link' : ''}`}
+                        onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
+                        role={ev.championship ? 'link' : undefined}
+                        tabIndex={ev.championship ? 0 : undefined}
+                        onKeyDown={ev.championship ? (e) => {
+                          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/meets/${ev.championship}`) }
+                        } : undefined}
+                      >
+                        <DateTile d={d} />
+                        <div className="cal-name">{ev.title}</div>
+                        <div className="cal-meta">
+                          <div className={`cal-cell${ev.description ? '' : ' is-empty'}`}>{ev.description || '—'}</div>
+                          <div className="cal-cell asw-num">{formatDateRange(ev.date, ev.end_date)}</div>
+                        </div>
+                        <div className="cal-tags">
+                          <span className="tag tag-neutral">{ev.event_type}</span>
+                          {status && <span className={status.cls}>{status.label}</span>}
+                          {isAdmin && (
+                            <button
+                              className="btn btn-ghost"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev) }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                        <span className="cal-chev" aria-hidden="true">{ev.championship ? '→' : ''}</span>
+                      </div>
                     </div>
                   )
-                }
-                // meet-type calendar event with no loaded championship behind it
-                const ev = item
-                return (
-                  <div
-                    key={`ev-${ev.id}`}
-                    className={`cal-row ${ev.championship ? 'row-link ' : ''}${i < g.items.length - 1 ? 'hair-b' : ''}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 32px' }}
-                    onClick={() => { if (ev.championship) navigate(`/meets/${ev.championship}`) }}
-                    role={ev.championship ? 'link' : undefined}
-                    tabIndex={ev.championship ? 0 : undefined}
-                    onKeyDown={ev.championship ? (e) => {
-                      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/meets/${ev.championship}`) }
-                    } : undefined}
-                  >
-                    <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                      <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]}</div>
-                      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{ev.title}</span>
-                      <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                        {ev.description ? `${ev.description} · ` : ''}
-                        {formatDateRange(ev.date, ev.end_date)}
-                      </div>
-                    </div>
-                    <span className="tag tag-accent hide-mobile">{ev.event_type}</span>
-                    {isAdmin && (
-                      <button
-                        className="btn btn-ghost"
-                        style={{ color: 'var(--asw-slow)' }}
-                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev) }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -940,33 +1040,39 @@ export default function Calendar() {
               {filterYear && <button type="button" className="btn btn-secondary" onClick={() => setFilterYear('')}>Show all years</button>}
             </Empty>
           )}
-          {otherEvents.map(({ ev, d }, i) => (
-            <div
-              key={ev.id}
-              className={`cal-row ${i < otherEvents.length - 1 ? 'hair-b' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 32px' }}
-            >
-              <div style={{ width: 46, flex: 'none', textAlign: 'center', border: '1px solid var(--color-divider)', background: 'var(--color-bg)', overflow: 'hidden' }}>
-                <div style={{ background: 'var(--color-accent)', color: '#ffffff', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 8.5, letterSpacing: '0.08em', padding: '4px 0 2px' }}>{MONTH_SHORT[d.getMonth()]} {String(d.getFullYear()).slice(2)}</div>
-                <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1, color: 'var(--color-accent)', padding: '4px 0 6px' }}>{d.getDate()}</div>
+          {otherEvents.length > 0 && (
+            <div className="cal-list">
+              <div className="cal-grid cal-cols" aria-hidden="true">
+                <span>Date</span><span>Event</span><span>Details</span><span>Dates</span><span>Status</span><span />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, lineHeight: 1.2 }}>{ev.title}</span>
-                  {ev.event_type && ev.event_type !== 'CUSTOM' && <span className="tag tag-outline">{ev.event_type}</span>}
-                </div>
-                {ev.description && <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 2 }}>{ev.description}</div>}
-                {ev.end_date && ev.end_date !== ev.date && (
-                  <div className="micro" style={{ fontSize: 11, marginTop: 2, textTransform: 'none', letterSpacing: 0 }}>
-                    {formatDate(ev.date)} to {formatDate(ev.end_date)}
+              {/* same row grid as the Meets tab (Jakob's Law inside the page) */}
+              {otherEvents.map(({ ev, d }) => {
+                const status = statusOf(d, ev.end_date)
+                return (
+                  <div key={ev.id} className="cal-entry">
+                    <div className="cal-grid cal-item">
+                      <DateTile d={d} />
+                      <div className="cal-name">{ev.title}</div>
+                      <div className="cal-meta">
+                        <div className={`cal-cell${ev.description ? '' : ' is-empty'}`}>{ev.description || '—'}</div>
+                        <div className="cal-cell asw-num">
+                          {ev.end_date && ev.end_date !== ev.date ? `${formatDate(ev.date)} to ${formatDate(ev.end_date)}` : formatDate(ev.date)}
+                        </div>
+                      </div>
+                      <div className="cal-tags">
+                        {ev.event_type && ev.event_type !== 'CUSTOM' && <span className="tag tag-outline">{ev.event_type}</span>}
+                        {status && <span className={status.cls}>{status.label}</span>}
+                        {isAdmin && (
+                          <button className="btn btn-ghost" onClick={() => handleDeleteEvent(ev)}>Delete</button>
+                        )}
+                      </div>
+                      <span className="cal-chev" aria-hidden="true" />
+                    </div>
                   </div>
-                )}
-              </div>
-              {isAdmin && (
-                <button className="btn btn-ghost" style={{ color: 'var(--asw-slow)' }} onClick={() => handleDeleteEvent(ev)}>Delete</button>
-              )}
+                )
+              })}
             </div>
-          ))}
+          )}
         </div>
       )}
 

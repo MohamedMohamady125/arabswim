@@ -1,0 +1,152 @@
+/* Page polish — qt. Brand tokens only (see theme.css). */
+
+/* ── Qualifying Times ────────────────────────────────────────────────────
+   Head → competition picker → summary band → filters → one aligned table.
+   The body is one reading column (Proximity): the eye travels a short line
+   from the event to its times instead of across the whole screen. */
+
+/* Head: title and description left, the admin's create action on the right */
+.qt-head > .pad-lg { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; align-items: end; }
+.qt-head > .pad-lg > * { grid-column: 1; }
+.qt-head > .pad-lg > h1 + div { font-size: 14px !important; line-height: 1.45; max-width: 68ch; }
+.qt-head > .pad-lg > .qt-head-actions { grid-column: 2; grid-row: 1 / span 2; }
+.qt-head-actions .btn { height: 40px; min-height: 40px; }
+
+.qt-notice { padding: 10px 32px; font-size: 13px; font-weight: 700; color: var(--asw-fast); }
+.qt-notice.is-bad { color: var(--asw-slow); }
+
+.qt-body { max-width: 1080px; margin: 0 auto; padding: 24px 32px 48px; }
+.qt-body .loading, .qt-body .empty { padding-left: 0; padding-right: 0; }
+
+/* Small uppercase labels — the look of the meet Results filter bar */
+.qt-picker > label,
+.qt-filters .field > label,
+.qt-form .field > label,
+.qt-admin-label,
+.qt-facts dt {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-neutral-700); margin: 0 0 6px;
+}
+
+/* Competition picker */
+.qt-picker { margin: 0 0 16px; }
+.qt-picker .select { height: 40px; min-height: 40px; max-width: 420px; }
+.qt-pick { display: inline-flex; flex-wrap: wrap; max-width: 100%; border: 1px solid var(--color-divider); }
+.qt-pick-opt {
+  min-height: 40px; padding: 0 16px; border: 0; background: var(--color-bg); color: var(--color-text);
+  font: inherit; font-size: 14px; line-height: 1.2; text-align: left; cursor: pointer;
+}
+.qt-pick-opt + .qt-pick-opt { border-left: 1px solid var(--color-divider); }
+.qt-pick-opt:not(.on):hover { background: var(--color-accent-100); }
+/* Von Restorff: the chosen competition is the one filled option */
+.qt-pick-opt.on { background: var(--color-accent-800); color: var(--color-bg); font-weight: 700; }
+
+/* Summary band */
+.qt-band { background: var(--color-accent-100); border-top: 2px solid var(--color-accent-800); padding: 16px 20px 18px; }
+.qt-band-name { margin: 0 0 14px; font-family: var(--font-heading); font-weight: 800; font-size: 22px; line-height: 1.2; letter-spacing: -0.01em; color: var(--color-accent-800); }
+.qt-facts { display: flex; flex-wrap: wrap; gap: 14px 0; margin: 0; }
+.qt-fact { padding: 0 24px; border-left: 1px solid var(--color-divider); min-width: 0; }
+.qt-fact:first-child { padding-left: 0; border-left: 0; }
+.qt-facts dt { margin-bottom: 4px; }
+.qt-facts dd { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--color-text); }
+.qt-facts .results-qt-status { font-size: 14px; font-weight: 600; }
+
+/* Admin strip */
+.qt-admin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--color-divider); }
+.qt-admin .btn { height: 40px; min-height: 40px; }
+.qt-admin-label { margin: 0 8px 0 0; }
+.qt-btn-danger { margin-left: auto; border-color: var(--asw-slow); color: var(--asw-slow); }
+.qt-btn-danger:hover { background: color-mix(in srgb, var(--asw-slow) 8%, transparent); }
+
+/* Filter bar: every control 40px tall on one baseline */
+.qt-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin: 20px 0 0; padding-bottom: 16px; border-bottom: 1px solid var(--color-divider); }
+.qt-filters .field { margin: 0; min-width: 0; }
+.qt-filters .select { height: 40px; min-height: 40px; }
+.qt-filters .seg, .qt-bulkbar .seg { display: inline-flex; height: 40px; }
+.qt-filters .seg-opt, .qt-bulkbar .seg-opt { min-height: 0; height: 100%; padding: 0 16px; }
+.qt-filters-stroke { flex: 0 1 220px; }
+
+/* The times table. Columns take proportional shares (set per column in the
+   markup); times sit at the start of their column, right-aligned inside a
+   fixed-width box, so the step from event to time is short and the decimal
+   points still line up. */
+.qt-tablewrap { margin-top: 0; }
+.qt-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 15px; }
+.qt-table th, .qt-table td { text-align: left; padding: 0 12px; }
+.qt-table thead th {
+  height: 40px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  color: var(--color-neutral-700); border-bottom: 2px solid var(--color-divider);
+}
+.qt-table .qt-row > * { height: 48px; border-bottom: 1px solid var(--color-divider); }
+.qt-table .qt-row:hover { background: var(--color-accent-100); }
+.qt-table .qt-event { font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.qt-table .qt-group > th {
+  height: 40px; font-family: var(--font-heading); font-weight: 800; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--color-accent-100); color: var(--color-accent-800); border-top: 2px solid var(--color-accent-800);
+}
+.qt-table tbody + tbody::before { content: ''; display: table-row; height: 16px; }
+.qt-table tbody:last-child .qt-row:last-child > * { border-bottom-width: 2px; }
+.qt-time { display: inline-block; min-width: 7ch; text-align: right; font-size: 16px; white-space: nowrap; }
+.qt-time-none { color: var(--color-neutral-500); font-weight: 400; }
+
+/* ── Admin forms (create / edit standard, add time, bulk grid) ──────────── */
+.qt-form { display: flex; flex-direction: column; gap: 16px; }
+.qt-form .field { margin: 0; min-width: 0; }
+.qt-form .input, .qt-form .select { height: 40px; min-height: 40px; box-sizing: border-box; }
+.qt-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; align-items: end; }
+.qt-form-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.qt-form-hint { font-size: 12px; line-height: 1.45; color: var(--color-neutral-700); }
+.qt-form .field > .qt-form-hint { margin-top: 6px; }
+/* Serial Position + Fitts: the primary action is last, on the right */
+.qt-form-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
+.qt-form-actions .btn { height: 40px; min-height: 40px; min-width: 96px; }
+
+.qt-bulkbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.qt-bulkbar-cut { flex: 0 0 72px; }
+.qt-bulkbar-cut .input { text-align: center; }
+.qt-bulkbar-hint { flex: 1 1 220px; min-height: 40px; display: flex; align-items: center; justify-content: flex-end; text-align: right; }
+.qt-bulkwrap { max-height: 55vh; overflow-y: auto; border-bottom: 1px solid var(--color-divider); }
+.qt-bulktable thead th { position: sticky; top: 0; z-index: 1; background: var(--color-bg); box-shadow: 0 2px 0 var(--color-divider); border-bottom: 0; }
+.qt-bulktable .qt-row > * { height: 52px; }
+.qt-bulktable .input { max-width: 160px; }
+
+/* ── Phone ──────────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .qt-head > .pad-lg { grid-template-columns: minmax(0, 1fr); }
+  .qt-head > .pad-lg > .qt-head-actions { grid-column: 1; grid-row: auto; margin-top: 14px; }
+  .qt-notice { padding: 10px 16px; }
+  .qt-body { padding: 16px 16px 32px; }
+
+  .qt-picker .select { max-width: none; }
+  .qt-pick { display: flex; flex-direction: column; }
+  .qt-pick-opt { padding: 10px 12px; }
+  .qt-pick-opt + .qt-pick-opt { border-left: 0; border-top: 1px solid var(--color-divider); }
+
+  .qt-band { padding: 14px 14px 16px; }
+  .qt-band-name { font-size: 18px; margin-bottom: 12px; }
+  /* facts fold into two columns; the long ones take a full line */
+  .qt-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .qt-fact { padding: 0; border-left: 0; }
+  .qt-fact-wide { grid-column: 1 / -1; }
+
+  .qt-admin .btn { flex: 1 1 calc(50% - 4px); }
+  .qt-admin-label { flex: 1 1 100%; margin: 0; }
+  .qt-btn-danger { margin-left: 0; }
+
+  .qt-filters { gap: 12px; margin-top: 16px; padding-bottom: 14px; }
+  .qt-filters .field, .qt-filters-stroke { flex: 1 1 100%; }
+  .qt-filters .seg { display: flex; width: 100%; }
+  .qt-filters .seg-opt { flex: 1 1 0; justify-content: center; }
+
+  /* the table stays a table: three short columns fit a phone without sideways scroll */
+  .qt-table { font-size: 14px; }
+  .qt-table th, .qt-table td { padding: 0 8px; }
+  .qt-table .qt-row > th, .qt-table .qt-group > th, .qt-table thead th:first-child { padding-left: 10px; }
+  .qt-th-long { display: none; }
+  .qt-time { font-size: 15px; min-width: 6.5ch; }
+  .qt-table tbody + tbody::before { height: 12px; }
+
+  .qt-form-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qt-bulkbar-hint { flex-basis: 100%; min-height: 0; justify-content: flex-start; text-align: left; }
+  .qt-form-actions .btn { flex: 1 1 0; }
+}

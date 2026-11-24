@@ -1,0 +1,326 @@
+/* Page polish — predictions. Brand tokens only (see theme.css). Loaded after audit-tables.css. */
+/* Everything here is pd-* and stands on its own: nothing depends on the older .at-pred-* rules. */
+
+.pd-body { padding: 20px 32px 32px; }
+.pd-view { margin: 0 0 16px; }
+.pd-view .seg { height: 40px; box-sizing: border-box; }
+.pd-view .seg .seg-opt { min-height: 0; height: 100%; padding: 0 16px; }
+/* the early-prediction notice outside the hero: one quiet line, no coloured bar */
+.pd-notice { margin: 0 0 12px; font-size: 13px; line-height: 1.45; color: var(--color-neutral-700); }
+.select.pd-select { width: 100%; height: 40px; min-height: 40px; font-size: 14px; padding-left: 10px; }
+.select.pd-select-inline { width: auto; max-width: min(100%, 320px); }
+
+/* ── Hero: solid navy band, cover confined to its own frame ───────────────── */
+.pd-hero {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: center;
+  background: var(--color-accent-800); color: var(--color-bg);
+  padding: 28px; margin-bottom: 24px;
+}
+.pd-hero.has-cover { grid-template-columns: minmax(0, 1fr) 300px; }
+.pd-hero-main { min-width: 0; }
+.pd-hero-kicker {
+  font-family: var(--font-heading); font-weight: 800; font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-accent-300); margin-bottom: 8px;
+}
+.pd-hero-title {
+  margin: 0; color: var(--color-bg); font-size: 30px; line-height: 1.12; letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+/* facts: labelled items in one row, hairlines between them; the clip hides the
+   hairline of whichever item starts a wrapped line */
+.pd-facts-clip { overflow: hidden; margin-top: 18px; }
+.pd-facts { display: flex; flex-wrap: wrap; gap: 12px 0; margin: 0 0 0 -21px; }
+.pd-facts > div { padding: 0 20px; border-left: 1px solid color-mix(in srgb, var(--color-bg) 24%, transparent); min-width: 0; }
+.pd-facts dt { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-300); line-height: 1.3; }
+.pd-facts dd { margin: 3px 0 0; font-family: var(--font-heading); font-weight: 700; font-size: 15px; line-height: 1.25; color: var(--color-bg); }
+.pd-hero-note { margin: 16px 0 0; font-size: 13px; line-height: 1.45; color: var(--color-accent-200); }
+.pd-share { display: grid; grid-template-columns: repeat(4, minmax(0, 136px)); gap: 8px; margin-top: 20px; }
+.pd-share-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 10px; box-sizing: border-box; min-width: 0;
+  font-family: var(--font-heading); font-weight: 700; font-size: 13px; line-height: 1; white-space: nowrap;
+  color: var(--color-bg); background: transparent; text-decoration: none; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--color-bg) 36%, transparent); border-radius: 0;
+}
+.pd-share-btn svg { flex: none; }
+.pd-share-btn:hover { background: color-mix(in srgb, var(--color-bg) 12%, transparent); border-color: var(--color-bg); }
+.pd-share-btn:focus-visible { outline: 2px solid var(--color-bg); outline-offset: 2px; }
+.pd-hero-cover {
+  aspect-ratio: 16 / 9; overflow: hidden; background: var(--color-accent-900);
+  border: 1px solid color-mix(in srgb, var(--color-bg) 30%, transparent);
+}
+
+/* ── Layout: main column + an independent rail ────────────────────────────── */
+.pd-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.pd-main { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+.pd-rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pd-sec { min-width: 0; }
+.pd-sec > .sect-head { margin-bottom: 12px; }
+.pd-card { border: 1px solid var(--color-divider); background: var(--color-surface); padding: 16px; min-width: 0; }
+.pd-card-title { margin-bottom: 12px; }
+.pd-card-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--color-neutral-700); }
+.pd-card-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-divider); font-size: 12px; }
+.pd-card .empty { padding: 16px 8px; }
+.pd-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-neutral-700); line-height: 1.3;
+}
+
+/* shared atoms ------------------------------------------------------------ */
+/* chance bar: the fill takes its tier's token */
+.pd-bar { display: block; height: 8px; background: var(--color-neutral-200); min-width: 0; }
+.pd-bar > span { display: block; height: 100%; }
+.pd-tier-gold { background: var(--wa-gold-head); }
+.pd-tier-fav { background: var(--color-accent-800); }
+.pd-tier-strong { background: var(--color-accent-500); }
+.pd-tier-cont { background: var(--color-accent-400); }
+.pd-tier-chal { background: var(--color-accent-300); }
+/* the lowest tier is hatched, so it never reads as the tier above it */
+.pd-tier-out { background: repeating-linear-gradient(135deg, var(--color-neutral-500) 0 2px, var(--color-neutral-200) 2px 4px); }
+/* predicted position: a fixed square, medal gradient for 1 / 2 / 3 */
+.pd-pos {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 28px; height: 28px; box-sizing: border-box;
+  font-family: var(--font-heading); font-weight: 800; font-size: 13px; line-height: 1;
+  color: var(--color-neutral-800); background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
+}
+.pd-pos-1, .pd-pos-2, .pd-pos-3 { color: var(--wa-ink); border-color: transparent; }
+.pd-pos-1 { background: var(--wa-gold-head); }
+.pd-pos-2 { background: var(--wa-silver-head); }
+.pd-pos-3 { background: var(--wa-bronze-head); }
+.pd-avatar { display: block; overflow: hidden; flex: none; background: var(--asw-portrait-bg); }
+.pd-initials {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  background: var(--color-accent-800); color: var(--color-bg);
+  font-family: var(--font-heading); font-weight: 800; font-size: 15px; letter-spacing: 0.02em;
+}
+/* a name never takes more than two lines */
+.pd-name {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  font-weight: 700; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere;
+  color: var(--color-text); text-decoration: none;
+}
+.pd-name:hover { text-decoration: underline; }
+.pd-sub { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; line-height: 1.3; color: var(--color-neutral-700); min-width: 0; }
+.pd-sub > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pd-sub .asw-flag { width: 20px; height: 15px; line-height: 15px; }
+
+/* ── Projection overview: selector and tiles on one row, one height ───────── */
+.pd-ov { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.pd-ov-pick {
+  display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0;
+  padding: 14px 16px; border: 1px solid var(--color-divider); background: var(--color-neutral-100);
+}
+.pd-ov-name { font-family: var(--font-heading); font-weight: 800; font-size: 18px; line-height: 1.2; min-height: 40px; display: flex; align-items: center; }
+.pd-hint { font-size: 12px; line-height: 1.4; color: var(--color-neutral-700); }
+.pd-tile { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--color-divider); background: var(--color-surface); padding: 0 16px 14px; }
+/* the medal head gradient as a top band; navy for the total */
+.pd-tile::before { content: ''; display: block; height: 6px; margin: 0 -16px 12px; background: var(--color-accent-800); }
+.pd-tile-gold::before { background: var(--wa-gold-head); }
+.pd-tile-silver::before { background: var(--wa-silver-head); }
+.pd-tile-bronze::before { background: var(--wa-bronze-head); }
+.pd-tile-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.pd-tile-value { font-family: var(--font-heading); font-weight: 800; font-size: 32px; line-height: 1; margin-top: 10px; }
+.pd-tile-sub { font-size: 12px; line-height: 1.3; color: var(--color-neutral-700); margin-top: auto; padding-top: 8px; }
+
+/* ── Top candidates: podium of three, then an aligned list ────────────────── */
+.pd-pod-list, .pd-cand-list { list-style: none; margin: 0; padding: 0; }
+.pd-pod-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pd-pod {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; column-gap: 12px; align-items: center;
+  grid-template-areas: "pos tier tier" "ava id id" "ev ev ev" "lab lab fig" "bar bar bar" "split split split";
+  min-width: 0; padding: 14px 16px 16px;
+  border: 1px solid var(--color-divider); border-top: 3px solid var(--color-accent-800); background: var(--color-surface);
+}
+.pd-pod > .pd-pos, .pd-cand > .pd-pos { grid-area: pos; justify-self: start; }
+.pd-pod > .pd-avatar, .pd-cand > .pd-avatar { grid-area: ava; }
+.pd-pod > .pd-id, .pd-cand > .pd-id { grid-area: id; min-width: 0; }
+.pd-pod > .pd-evline, .pd-cand > .pd-evline { grid-area: ev; min-width: 0; }
+.pd-pod > .pd-fig, .pd-cand > .pd-fig { grid-area: fig; }
+.pd-pod > .pd-bar, .pd-cand > .pd-bar { grid-area: bar; }
+.pd-pod > .pd-tier-tag { grid-area: tier; justify-self: end; }
+.pd-pod > .pd-lab { grid-area: lab; }
+.pd-pod > .pd-split { grid-area: split; }
+.pd-pod > .pd-pos { width: 32px; height: 32px; font-size: 15px; }
+.pd-pod > .pd-avatar { width: 56px; height: 56px; margin-top: 14px; }
+.pd-pod > .pd-id { margin-top: 14px; }
+/* two name lines are reserved, so the three cards keep one baseline grid */
+.pd-pod .pd-name { font-size: 15px; min-height: calc(2 * 1.25 * 15px); }
+.pd-evline { font-size: 13px; line-height: 1.35; color: var(--color-neutral-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-pod > .pd-evline { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-divider); font-weight: 600; }
+.pd-tier-tag {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-800);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pd-tier-tag > i { width: 10px; height: 10px; flex: none; }
+.pd-lab { margin-top: 14px; align-self: end; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.pd-fig { font-family: var(--font-heading); font-weight: 800; line-height: 1; text-align: right; }
+.pd-pod > .pd-fig { margin-top: 14px; font-size: 28px; }
+.pd-pod > .pd-bar { margin-top: 8px; }
+.pd-split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 14px 0 0; }
+.pd-split > div { padding-left: 12px; border-left: 1px solid var(--color-divider); }
+.pd-split > div:first-child { padding-left: 0; border-left: 0; }
+.pd-split dt { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.pd-split dd { margin: 2px 0 0; font-weight: 700; font-size: 14px; }
+/* the rest: rank | photo | name | event | bar | figure, proportional shares */
+.pd-cand-list { margin-top: 12px; border: 1px solid var(--color-divider); background: var(--color-surface); }
+.pd-cand {
+  display: grid; align-items: center; column-gap: 12px; min-height: 64px; padding: 10px 16px; box-sizing: border-box;
+  grid-template-columns: 7% 40px minmax(0, 31%) minmax(0, 1fr) minmax(0, 1fr) 52px;
+  grid-template-areas: "pos ava id ev bar fig";
+}
+.pd-cand + .pd-cand { border-top: 1px solid var(--color-divider); }
+.pd-cand > .pd-avatar { width: 40px; height: 40px; }
+.pd-cand .pd-initials { font-size: 13px; }
+.pd-cand > .pd-fig { font-size: 16px; }
+
+/* ── By event: filter bar + one card per event ────────────────────────────── */
+.pd-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; margin-bottom: 16px; }
+.pd-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pd-field-gender { margin-left: auto; }
+.pd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-chip {
+  height: 40px; padding: 0 14px; box-sizing: border-box; cursor: pointer; white-space: nowrap;
+  font-family: var(--font-heading); font-weight: 700; font-size: 13px; line-height: 1;
+  color: var(--color-accent-800); background: var(--color-bg); border: 1px solid var(--color-neutral-300); border-radius: 0;
+}
+.pd-chip:hover { border-color: var(--color-accent-800); }
+.pd-chip[aria-pressed="true"] { background: var(--color-accent-800); color: var(--color-bg); border-color: var(--color-accent-800); }
+.pd-field .seg { height: 40px; box-sizing: border-box; }
+.pd-field .seg .seg-opt { min-height: 0; height: 100%; padding: 0 18px; }
+.pd-events { display: flex; flex-direction: column; gap: 16px; }
+.pd-ev { border: 1px solid var(--color-divider); background: var(--color-surface); min-width: 0; }
+.pd-ev-head { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 16px; box-sizing: border-box; background: var(--color-accent-800); color: var(--color-bg); }
+.pd-ev-title { margin: 0; font-size: 15px; line-height: 1.2; letter-spacing: 0; color: var(--color-bg); }
+.pd-tag {
+  flex: none; padding: 3px 8px; font-family: var(--font-heading); font-weight: 700; font-size: 11px; line-height: 1.3;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-bg);
+  border: 1px solid color-mix(in srgb, var(--color-bg) 40%, transparent);
+}
+/* position 7% | swimmer 31% | club 20% | seed 14% | chance: bar + a fixed-width figure */
+.pd-ev-row {
+  display: grid; align-items: center; column-gap: 12px; min-height: 52px; padding: 6px 16px; box-sizing: border-box;
+  grid-template-columns: 7% minmax(0, 31%) minmax(0, 20%) minmax(0, 14%) minmax(0, 1fr) 52px;
+  border-top: 1px solid var(--color-divider);
+}
+.pd-ev-cols {
+  min-height: 32px; padding-top: 0; padding-bottom: 0; border-top: 0; background: var(--color-neutral-100);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700);
+}
+.pd-ev-cols > .pd-c-chance { grid-column: span 2; }
+.pd-c-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pd-c-club { font-size: 13px; color: var(--color-neutral-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* times end on one edge inside a fixed box at the column start, so the seed sits a short step from the club */
+.pd-c-seed { justify-self: start; min-width: 64px; text-align: right; font-size: 14px; white-space: nowrap; }
+.pd-ev-cols > .pd-c-seed { font-size: 11px; }
+.pd-c-pct { text-align: right; font-family: var(--font-heading); font-weight: 800; font-size: 14px; white-space: nowrap; }
+.pd-ev-more {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 40px;
+  font-family: var(--font-heading); font-weight: 700; font-size: 12px; color: var(--color-accent-800);
+  background: var(--color-neutral-100); border: 0; border-top: 1px solid var(--color-divider); border-radius: 0; cursor: pointer;
+}
+.pd-ev-more:hover { background: var(--color-neutral-200); }
+.pd-ev-detail { padding: 12px 16px 16px; border-top: 1px solid var(--color-divider); min-width: 0; }
+/* biggest improvements: the same proportional row */
+.pd-rise { list-style: none; margin: 0; padding: 0; border: 1px solid var(--color-divider); background: var(--color-surface); }
+.pd-rise > li { display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr) auto; column-gap: 12px; align-items: center; min-height: 48px; padding: 6px 16px; box-sizing: border-box; }
+.pd-rise > li + li { border-top: 1px solid var(--color-divider); }
+.pd-rise-delta { font-weight: 700; font-size: 13px; color: var(--asw-fast); white-space: nowrap; }
+
+/* ── Rail cards ───────────────────────────────────────────────────────────── */
+.pd-status { margin: 0 0 12px; }
+.pd-status > div { display: grid; grid-template-columns: 40% minmax(0, 1fr); align-items: baseline; padding: 7px 0; border-top: 1px solid var(--color-divider); }
+.pd-status > div:first-child { border-top: 0; padding-top: 0; }
+.pd-status dt { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.pd-status dd { margin: 0; font-size: 13px; font-weight: 700; }
+.pd-legend { list-style: none; margin: 0; padding: 0; }
+.pd-legend > li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-height: 32px; font-size: 13px; }
+.pd-legend > li + li { border-top: 1px solid var(--color-divider); }
+.pd-legend-name { font-weight: 600; line-height: 1.25; }
+.pd-legend-range { font-size: 12px; color: var(--color-neutral-700); white-space: nowrap; }
+/* projected medal table: the site's medal-table look (name 40%, four equal figure columns) */
+.pd-mt { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; color: var(--wa-ink); border: 1px solid var(--wa-line); }
+.pd-mt th { width: 15%; padding: 9px 2px; font-size: 12px; font-weight: 700; text-align: center; color: var(--wa-ink); border-bottom: 4px solid var(--wa-line); }
+.pd-mt th:first-child { width: 40%; text-align: left; padding-left: 10px; }
+.pd-mt td { padding: 10px 2px; text-align: center; border-top: 1px solid var(--wa-line); }
+.pd-mt td:first-child { text-align: left; padding-left: 10px; font-weight: 600; }
+.pd-mt th.pd-mt-g { background: var(--wa-gold-head); }
+.pd-mt th.pd-mt-s { background: var(--wa-silver-head); }
+.pd-mt th.pd-mt-b { background: var(--wa-bronze-head); }
+.pd-mt td.pd-mt-g { background: var(--wa-gold-band); }
+.pd-mt td.pd-mt-s { background: var(--wa-silver-band); }
+.pd-mt td.pd-mt-b { background: var(--wa-bronze-band); }
+.pd-mt td.pd-mt-t { font-weight: 700; }
+.pd-mt-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pd-mt-name > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* ── Narrower screens ─────────────────────────────────────────────────────── */
+@media (max-width: 1240px) {
+  /* the selector takes its own row; the four tiles stay one even row */
+  .pd-ov { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pd-ov-pick { grid-column: 1 / -1; }
+}
+@media (max-width: 1000px) {
+  /* the rail drops under the main column, at full width */
+  .pd-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .pd-hero.has-cover { grid-template-columns: minmax(0, 1fr) 220px; }
+}
+@media (max-width: 900px) {
+  .pd-body { padding: 16px 16px 24px; }
+}
+@media (max-width: 640px) {
+  .pd-hero, .pd-hero.has-cover { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 20px 16px; }
+  .pd-hero-cover { order: -1; }
+  .pd-hero-title { font-size: 24px; }
+  /* facts as an even two-column grid, no hairlines */
+  .pd-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-left: 0; }
+  .pd-facts > div { padding: 0; border-left: 0; }
+  /* 2 x 2, so no button is left alone on a row */
+  .pd-share { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pd-view .seg { display: flex; width: 100%; }
+  .pd-main { gap: 28px; }
+  .pd-ov { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .pd-tile-value { font-size: 28px; }
+  /* podium cards and list rows fall onto one shared grid: nothing is orphaned */
+  .pd-pod-list { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pd-cand-list { margin-top: 8px; }
+  .pd-pod, .pd-cand {
+    grid-template-columns: 28px 44px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 0; min-height: 0; padding: 12px;
+    grid-template-areas: "pos ava id fig" "pos ava ev fig" "bar bar bar bar";
+  }
+  .pd-pod > .pd-tier-tag, .pd-pod > .pd-lab, .pd-pod > .pd-split { display: none; }
+  .pd-pod > .pd-pos { width: 28px; height: 28px; font-size: 13px; }
+  .pd-pod > .pd-avatar, .pd-cand > .pd-avatar { width: 44px; height: 44px; margin-top: 0; }
+  .pd-pod > .pd-id { margin-top: 0; }
+  .pd-pod .pd-name { font-size: 14px; min-height: 0; }
+  .pd-pod > .pd-evline, .pd-cand > .pd-evline { margin-top: 4px; padding-top: 0; border-top: 0; font-weight: 400; font-size: 12px; }
+  .pd-pod > .pd-fig, .pd-cand > .pd-fig { margin-top: 0; font-size: 18px; }
+  .pd-pod > .pd-bar, .pd-cand > .pd-bar { margin-top: 10px; }
+  /* filters: stroke chips on an even 3-column grid, gender on its own row */
+  .pd-filters { gap: 12px; }
+  .pd-field { width: 100%; }
+  .pd-field-gender { margin-left: 0; }
+  .pd-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pd-chip { padding: 0 4px; }
+  .pd-field .seg { display: flex; width: 100%; }
+  .pd-field .seg .seg-opt, .pd-view .seg .seg-opt { flex: 1 1 0; justify-content: center; }
+  /* event rows: position + name over club, percentage over seed, bar underneath */
+  .pd-ev-head { padding: 6px 12px; }
+  .pd-ev-cols { display: none; }
+  .pd-ev-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; min-height: 0; padding: 10px 12px 12px;
+    grid-template-areas: "pos name pct" "pos club seed" "bar bar bar";
+  }
+  .pd-ev-cols + .pd-ev-row { border-top: 0; }
+  .pd-ev-row > .pd-c-pos { grid-area: pos; }
+  .pd-ev-row > .pd-c-name { grid-area: name; }
+  .pd-ev-row > .pd-c-club { grid-area: club; font-size: 12px; }
+  .pd-ev-row > .pd-c-seed { grid-area: seed; justify-self: end; min-width: 0; font-size: 12px; }
+  .pd-ev-row > .pd-c-pct { grid-area: pct; font-size: 15px; }
+  .pd-ev-row > .pd-c-bar { grid-area: bar; margin-top: 8px; }
+  .pd-ev-detail { padding: 12px; }
+  .pd-rise > li { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 12px; }
+  .pd-rise > li > .pd-c-club { grid-column: 1; grid-row: 2; }
+  .pd-rise > li > .pd-rise-delta { grid-column: 2; grid-row: 1 / span 2; }
+}

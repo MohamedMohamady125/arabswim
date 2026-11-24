@@ -12,7 +12,7 @@ import { PageHead, Loading, Empty, Seg, SectHead } from '../components/ui'
 import Flag from '../components/Flag'
 import { useAuth } from '../context/AuthContext'
 import { useFeatures } from '../context/FeaturesContext'
-import { nameTie, formatDate, formatDateRange, formatTime, parseTime, mediaUrl, poolLabel } from '../utils'
+import { nameTie, formatDate, formatDateRange, formatTime, parseTime, mediaUrl, poolLabel, nameInitials } from '../utils'
 import Pic from '../components/Pic'
 
 // one wording for a pool course on every page (utils.poolLabel)
@@ -45,7 +45,7 @@ function StatusBadge({ status, pct }) {
       fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
       padding: '4px 8px', lineHeight: 1.4, whiteSpace: 'nowrap',
     }}>
-      {status}{pct != null ? ` — ${Math.round(pct)}%` : ''}
+      {status}{pct != null ? ` — ${fmtPct(pct)}` : ''}
     </span>
   )
 }
@@ -140,10 +140,10 @@ function TallyTable({ table, isNational }) {
                     {entityName(r.name)}
                   </span>
                 </td>
-                <td className="num asw-num" style={{ fontWeight: 700 }}>{r.gold.toFixed(1)}</td>
-                <td className="num asw-num">{r.silver.toFixed(1)}</td>
-                <td className="num asw-num">{r.bronze.toFixed(1)}</td>
-                <td className="num asw-num" style={{ fontWeight: 700 }}>{r.total.toFixed(1)}</td>
+                <td className="num asw-num" style={{ fontWeight: 700 }}>{fmtMedals(r.gold)}</td>
+                <td className="num asw-num">{fmtMedals(r.silver)}</td>
+                <td className="num asw-num">{fmtMedals(r.bronze)}</td>
+                <td className="num asw-num" style={{ fontWeight: 700 }}>{fmtMedals(r.total)}</td>
                 <td className="num asw-num">{r.most_likely}</td>
                 <td className="num asw-num">{r.likely_min}–{r.likely_max}</td>
               </tr>
@@ -198,9 +198,9 @@ function EventDetail({ ev, champId, onChanged }) {
                 </td>
                 <td className="time asw-time">{r.seed}</td>
                 <td className="num asw-num">{r.place_range}</td>
-                <td className="num asw-num">{r.p_gold}%</td>
-                <td className="num asw-num">{r.p_silver}%</td>
-                <td className="num asw-num">{r.p_bronze}%</td>
+                <td className="num asw-num">{fmtPct(r.p_gold)}</td>
+                <td className="num asw-num">{fmtPct(r.p_silver)}</td>
+                <td className="num asw-num">{fmtPct(r.p_bronze)}</td>
                 <td><StatusBadge status={r.status} pct={r.p_medal} /></td>
                 <td className="num asw-num" style={{ color: r.gap_to_bronze > 0 ? 'var(--color-neutral-700)' : 'var(--color-accent-800)' }}>
                   {r.gap_to_bronze > 0 ? `+${r.gap_to_bronze.toFixed(2)}s` : `${r.gap_to_bronze.toFixed(2)}s`}
@@ -587,101 +587,119 @@ function EntriesAdmin({ champId, stage, events, onChanged }) {
 }
 
 // ---- Overview view --------------------------------------------------------
-// The boss-approved "outer look": hero card, projection overview, top
-// candidates with photos, by-event table + projected medal table.
+// Hero band, projection overview, podium of candidates, events as cards and an
+// independent right rail. All layout lives in audit-predictions.css (pd-*).
 
+// One number rule for the whole page: expected medals carry one decimal,
+// chances are whole percents (never "0%" for a real chance, never "100%" for a near-certainty).
+const fmtMedals = (v) => (Number(v) || 0).toFixed(1)
+const fmtPct = (v) => {
+  const n = Number(v) || 0
+  if (n > 0 && n < 0.5) return '<1%'
+  if (n >= 99.5 && n < 100) return '>99%'
+  return `${Math.round(n)}%`
+}
+const genderWord = (g) => (g === 'M' ? 'Men' : g === 'F' ? 'Women' : 'Mixed')
+// "200 M Freestyle" → "200 Freestyle"
+const eventTitle = (name) => String(name || '').replace(/\s*M\s+/, ' ')
+
+// Law of Similarity: one token per tier, used by the legend and by every chance bar.
+// Thresholds mirror backend/predictions/engine.py (medal_status / gold_status).
 const TIER_LEGEND = [
-  { label: 'Gold Favorite', range: '\u2265 50% gold', color: 'var(--asw-gold)' },
-  // Law of Similarity: one token per tier — a navy ramp from likeliest to least
-  { label: 'Medal Favorite', range: '80 – 100%', color: 'var(--color-accent-800)' },
-  { label: 'Strong Medal Chance', range: '65 – 79%', color: 'var(--color-accent-500)' },
-  { label: 'Medal Contender', range: '45 – 64%', color: 'var(--color-accent-400)' },
-  { label: 'Podium Challenger', range: '25 – 44%', color: 'var(--color-accent-300)' },
-  { label: 'Outside Chance', range: '10 – 24%', color: 'var(--color-neutral-400)' },
+  { key: 'gold', label: 'Gold Favorite', range: '50%+ for gold', fill: 100 },
+  { key: 'fav', label: 'Medal Favorite', range: '80% or more', fill: 100 },
+  { key: 'strong', label: 'Strong Medal Chance', range: '65 – 79%', fill: 80 },
+  { key: 'cont', label: 'Medal Contender', range: '45 – 64%', fill: 60 },
+  { key: 'chal', label: 'Podium Challenger', range: '25 – 44%', fill: 40 },
+  { key: 'out', label: 'Outside Chance', range: '10 – 24%', fill: 20 },
 ]
+function tierKey(pMedal, pGold) {
+  if (pGold >= 50) return 'gold'
+  if (pMedal >= 80) return 'fav'
+  if (pMedal >= 65) return 'strong'
+  if (pMedal >= 45) return 'cont'
+  if (pMedal >= 25) return 'chal'
+  return 'out'
+}
 
 const STROKE_CHIPS = ['All', 'Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Individual Medley']
 
-function StatCard({ label, value, sub, accent }) {
+function ChanceBar({ pMedal, pGold }) {
   return (
-    <div style={{
-      border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-      borderTop: `3px solid ${accent || 'var(--color-accent)'}`, padding: '16px 16px', minWidth: 0,
-    }}>
-      <div className="micro" style={{ marginBottom: 6 }}>{label}</div>
-      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 32, lineHeight: 1 }}>{value}</div>
-      {sub && <div className="micro" style={{ marginTop: 7, textTransform: 'none', letterSpacing: 0 }}>{sub}</div>}
+    <span className="pd-bar" aria-hidden="true">
+      <span className={`pd-tier-${tierKey(pMedal, pGold)}`} style={{ width: `${Math.max(0, Math.min(100, Number(pMedal) || 0))}%` }} />
+    </span>
+  )
+}
+
+// Predicted position: 1/2/3 wear the medal gradient (a predicted gold/silver/bronze place)
+function Pos({ n }) {
+  return <span className={`pd-pos asw-num${n <= 3 ? ` pd-pos-${n}` : ''}`}>{n}</span>
+}
+
+// Photo, or the navy initials tile when there is none (or it fails to load)
+function Avatar({ photo, name }) {
+  return (
+    <span className="pd-avatar">
+      <Pic kind="person" w={160} src={photo} alt="" fallback={<span className="pd-initials" aria-hidden="true">{nameInitials(name)}</span>} />
+    </span>
+  )
+}
+
+function StatTile({ tone, label, value, sub }) {
+  return (
+    <div className={`pd-tile pd-tile-${tone}`}>
+      <div className="pd-tile-label">{label}</div>
+      <div className="pd-tile-value asw-num">{value}</div>
+      <div className="pd-tile-sub asw-num">{sub}</div>
     </div>
   )
 }
 
-// Photo or navy-initial avatar
-function Avatar({ photo, name, size = 72 }) {
-  const initial = (name || '?').trim()[0]?.toUpperCase() || '?'
-  if (photo) {
-    return (
-      <Pic kind="person" w={160}
-        src={photo} alt={name}
-        style={{ width: size, height: size, border: '1px solid var(--color-divider)' }}
-      />
-    )
-  }
+// One candidate, as a podium card (top three) or a list row (the rest). Both
+// share the same parts in the same order, so cards and rows line up.
+function Candidate({ c, rank, podium, isNational }) {
+  const tier = TIER_LEGEND.find((t) => t.key === tierKey(c.p_medal, c.eg))
   return (
-    <div style={{
-      width: size, height: size, background: 'var(--color-accent-800)', color: '#fff',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size * 0.4,
-    }}>
-      {initial}
-    </div>
+    <li className={podium ? 'pd-pod' : 'pd-cand'}>
+      <Pos n={rank} />
+      {podium && (
+        <span className="pd-tier-tag"><i className={`pd-tier-${tier.key}`} />{tier.label}</span>
+      )}
+      <Avatar photo={c.photo} name={c.name} />
+      <div className="pd-id">
+        <Link to={`/swimmers/${c.swimmer_id}`} className="pd-name">{c.name}</Link>
+        <div className="pd-sub">
+          <Flag code={c.country_code} name={c.country_name} />
+          <span>{isNational ? entityName(c.club) : (c.country_name || c.country_code)}</span>
+        </div>
+      </div>
+      <div className="pd-evline">
+        {eventTitle(c.event)} · {genderWord(c.gender)}{c.age_group ? ` · ${c.age_group}` : ''}
+      </div>
+      {podium && <span className="pd-lab">Medal chance</span>}
+      <span className="pd-fig asw-num">{fmtPct(c.p_medal)}</span>
+      <ChanceBar pMedal={c.p_medal} pGold={c.eg} />
+      {podium && (
+        <dl className="pd-split">
+          {[['Gold', c.eg], ['Silver', c.es], ['Bronze', c.eb]].map(([lab, v]) => (
+            <div key={lab}><dt>{lab}</dt><dd className="asw-num">{fmtPct(v)}</dd></div>
+          ))}
+        </dl>
+      )}
+    </li>
   )
 }
 
-function CandidateCard({ c, rank }) {
-  const isGold = String(c.gold_status || '').includes('Gold')
-  return (
-    <div style={{
-      border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-      borderTop: `3px solid ${rank === 1 ? 'var(--asw-gold)' : 'var(--color-accent)'}`,
-      padding: '16px 16px 12px', textAlign: 'center', position: 'relative', minWidth: 0,
-    }}>
-      <span className="asw-num" style={{
-        position: 'absolute', top: 8, left: 10, fontFamily: 'var(--font-heading)',
-        fontWeight: 800, fontSize: 16,
-        color: rank === 1 ? 'var(--color-accent)' : 'var(--color-neutral-700)',
-      }}>
-        {rank}
-      </span>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-        <Avatar photo={c.photo} name={c.name} />
-      </div>
-      {/* the name takes up to two lines (reserved on every card) instead of being cut */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-        <Flag code={c.country_code} name={c.country_name} />
-      </div>
-      <Link to={`/swimmers/${c.swimmer_id}`} className="at-pred-cand-name">
-        {c.name}
-      </Link>
-      <div className="micro" style={{ marginTop: 3 }}>
-        {shortEvent(c.event)}{c.age_group ? ` · ${c.age_group}` : ''}
-      </div>
-      <div style={{ marginTop: 8 }}>
-        <StatusBadge status={isGold ? c.gold_status : c.status} />
-      </div>
-      <div className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, marginTop: 8, lineHeight: 1 }}>
-        {Math.round(c.p_medal)}%
-      </div>
-      <div className="micro" style={{ fontSize: 11, marginTop: 2 }}>Medal chance</div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 9, borderTop: '1px solid var(--color-divider)', paddingTop: 8 }}>
-        {[['Gold', c.eg], ['Silver', c.es], ['Bronze', c.eb]].map(([lab, v]) => (
-          <div key={lab}>
-            <div className="asw-num" style={{ fontWeight: 700, fontSize: 13 }}>{Math.round(v)}%</div>
-            <div className="micro" style={{ fontSize: 11, letterSpacing: '0.08em' }}>{lab}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const SHARE_ICONS = {
+  whatsapp: ['0 0 16 16', 'M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z'],
+  facebook: ['0 0 16 16', 'M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z'],
+  x: ['0 0 24 24', 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z'],
+  link: ['0 0 16 16', 'M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z'],
+}
+function ShareIcon({ name }) {
+  const [box, d] = SHARE_ICONS[name]
+  return <svg viewBox={box} width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false"><path d={d} /></svg>
 }
 
 function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
@@ -692,6 +710,7 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   const [gender, setGender] = useState('M')
   const [openKey, setOpenKey] = useState('')
   const [copied, setCopied] = useState(false) // Doherty Threshold: instant feedback on Copy link
+  const [coverOk, setCoverOk] = useState(true) // a cover that fails to load takes its frame with it
 
   // best event per swimmer, with per-medal % of that event
   const candidates = useMemo(() => {
@@ -702,8 +721,8 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
         if (!cur || r.p_medal > cur.p_medal) {
           map.set(r.swimmer_id, {
             swimmer_id: r.swimmer_id, name: r.name, photo: r.photo,
-            country_code: r.country_code, country_name: r.country_name,
-            event: ev.event, age_group: ev.age_group,
+            country_code: r.country_code, country_name: r.country_name, club: r.club,
+            event: ev.event, age_group: ev.age_group, gender: ev.gender,
             p_medal: r.p_medal, eg: r.p_gold, es: r.p_silver, eb: r.p_bronze,
             status: r.status, gold_status: r.gold_status,
           })
@@ -732,304 +751,281 @@ function OverviewTab({ snap, onOpenEvent, champId, onChanged }) {
   const rising = snap.sections?.rising || []
   const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
   const shareText = `Medal predictions — ${champ.name}`
+  const entityWord = snap.is_national ? 'Club' : 'Country'
+  const hasCover = !!champ.meet_photo && coverOk
 
-  const panelStyle = { border: '1px solid var(--color-divider)', background: 'var(--color-surface)', padding: '16px 16px' }
+  // Chunking: the meet's facts as short labelled items, only the ones the data has
+  const facts = [
+    ['Dates', formatDateRange(champ.date, champ.end_date)],
+    ['Place', champ.location || champ.country],
+    ['Pool', champ.pool ? poolWord(champ.pool) : ''],
+    ['Events', snap.event_count],
+    ['Swimmers', snap.swimmer_count],
+  ].filter(([, v]) => v != null && v !== '' && v !== 0)
 
   return (
     <div>
-      {/* hero */}
-      <div className="at-pred-row" style={{ marginBottom: 18 }}>
-        <div style={{
-          minHeight: 130, position: 'relative', overflow: 'hidden', minWidth: 0,
-          background: 'var(--color-accent-800)', color: '#fff',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '22px 26px',
-        }}>
-          {champ.meet_photo && (
-            <>
-              <Pic kind="meet" w={960} src={champ.meet_photo} style={{ position: 'absolute', inset: 0, objectFit: 'cover' }} />
-              {/* scrim: near-solid navy under the title, so no cover can fight it */}
-              <div className="at-pred-scrim" />
-            </>
+      {/* hero: a solid navy band; the cover (if any) stays inside its own frame, never under text */}
+      <header className={`pd-hero${hasCover ? ' has-cover' : ''}`}>
+        <div className="pd-hero-main">
+          <div className="pd-hero-kicker">{champ.classification || 'Championship'}</div>
+          <h2 className="pd-hero-title">{champ.name}</h2>
+          <div className="pd-facts-clip">
+            <dl className="pd-facts">
+              {facts.map(([k, v]) => (
+                <div key={k}><dt>{k}</dt><dd className="asw-num">{v}</dd></div>
+              ))}
+            </dl>
+          </div>
+          {snap.stage !== 'OFFICIAL' && (
+            <p className="pd-hero-note" role="note">
+              Early prediction: entries are not published yet, so fields are estimated from recent results.
+            </p>
           )}
-          <div style={{ position: 'relative' }}>
-            <div className="kicker" style={{ color: 'var(--color-accent-200)', marginBottom: 6 }}>
-              {champ.classification || 'Championship'}{champ.pool ? ` · ${poolWord(champ.pool)}` : ''}
-            </div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1.15 }}>
-              {champ.name}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 13, opacity: 0.92 }}>
-              {formatDateRange(champ.date, champ.end_date)}
-              {(champ.location || champ.country) ? ` · ${champ.location || champ.country}` : ''}
-            </div>
+          {/* Fitts's Law + Similarity: four equal 40px buttons, icon and label each */}
+          <div className="pd-share" role="group" aria-label="Share these predictions">
+            <a className="pd-share-btn" href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${pageUrl}`)}`} target="_blank" rel="noreferrer"><ShareIcon name="whatsapp" />WhatsApp</a>
+            <a className="pd-share-btn" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer"><ShareIcon name="facebook" />Facebook</a>
+            <a className="pd-share-btn" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer" aria-label="Share on X"><ShareIcon name="x" />X</a>
+            <button className="pd-share-btn" type="button" onClick={() => { navigator.clipboard?.writeText(pageUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) }}><ShareIcon name="link" /><span aria-live="polite">{copied ? 'Link copied' : 'Copy link'}</span></button>
           </div>
         </div>
-        <div style={{
-          ...panelStyle, minWidth: 0,
-          display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center',
-        }}>
-          <div>
-            <div className="micro" style={{ marginBottom: 3 }}>Prediction updated</div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{formatDate(snap.updated_at?.slice(0, 10))}</div>
+        {hasCover && (
+          <div className="pd-hero-cover">
+            <Pic kind="meet" w={384} eager src={champ.meet_photo} alt="" onError={() => setCoverOk(false)} style={{ objectFit: 'cover' }} />
           </div>
-          <div>
-            <div className="micro" style={{ marginBottom: 4 }}>Prediction stage</div>
-            <Chip tone={snap.stage === 'OFFICIAL' ? 'navy' : 'warn'}>
-              {snap.stage === 'OFFICIAL' ? 'Entry list prediction' : 'Early prediction'}
-            </Chip>
-          </div>
-          <div>
-            <div className="micro" style={{ marginBottom: 4 }}>Confidence level</div>
-            <Chip tone={snap.confidence === 'High' ? 'navy' : 'plain'}>{snap.confidence}</Chip>
-          </div>
-        </div>
-      </div>
+        )}
+      </header>
 
-      {/* projection overview */}
-      <div className="at-pred-row" style={{ marginBottom: 22 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+      {/* Uniform Connectedness: the rail is its own column, so its cards stack with one gap */}
+      <div className="pd-layout">
+        <div className="pd-main">
+          {/* projection overview */}
+          <section className="pd-sec">
             <SectHead title="Medal Projection Overview" />
-            {table.length > 1 && (
-              <select
-                className="select at-pred-pick" style={{ marginLeft: 'auto' }}
-                aria-label={snap.is_national ? 'Club' : 'Country'}
-                value={selectedCountry?.name || ''}
-                onChange={(e) => setCountryKey(e.target.value)}
-              >
-                {table.map((r) => <option key={r.name} value={r.name}>{entityName(r.name)}</option>)}
-              </select>
-            )}
-          </div>
-          {selectedCountry ? (
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
-              <StatCard
-                label={`${entityName(selectedCountry.name)} · expected medals`}
-                value={selectedCountry.total.toFixed(1)}
-                sub={`Likely range: ${selectedCountry.likely_min} – ${selectedCountry.likely_max}`}
-                accent="var(--color-accent)"
-              />
-              <StatCard label="Gold" value={selectedCountry.gold.toFixed(1)} accent="var(--asw-gold)" sub="Expected" />
-              <StatCard label="Silver" value={selectedCountry.silver.toFixed(1)} accent="var(--asw-silver)" sub="Expected" />
-              <StatCard label="Bronze" value={selectedCountry.bronze.toFixed(1)} accent="var(--asw-bronze)" sub="Expected" />
-            </div>
-          ) : (
-            <Empty label="No projection available yet" hint="Check back after the next prediction update." />
-          )}
-        </div>
-        <div style={{ minWidth: 0, ...panelStyle }}>
-          <div className="kicker" style={{ marginBottom: 8 }}>About the prediction</div>
-          <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-neutral-700)' }}>
-            Predictions are calculated from current season best times, recent form, progression and
-            thousands of simulated race outcomes. They are probabilities, not certainties, and update
-            as entry lists, new times and withdrawals come in.
-          </div>
-        </div>
-      </div>
-
-      {/* top candidates + legend */}
-      <div className="at-pred-row" style={{ marginBottom: 22 }}>
-        <div style={{ minWidth: 0 }}>
-          <SectHead title="Top Medal Candidates" />
-          {candidates.length === 0 ? (
-            <Empty label="No candidates yet" hint="Candidates appear once the fields are predicted." />
-          ) : (
-            <div className="at-pred-cands">
-              {candidates.map((c, i) => <CandidateCard key={c.swimmer_id} c={c} rank={i + 1} />)}
-            </div>
-          )}
-        </div>
-        <div style={{ minWidth: 0, ...panelStyle, alignSelf: 'flex-start' }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>Medal chance status</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {TIER_LEGEND.map((t) => (
-              <div key={t.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <span style={{ width: 10, height: 10, background: t.color, flex: 'none' }} />
-                <span style={{ fontWeight: 600 }}>{t.label}</span>
-                <span className="asw-num" style={{ marginLeft: 'auto', color: 'var(--color-neutral-700)', fontSize: 12 }}>{t.range}</span>
+            {selectedCountry ? (
+              <div className="pd-ov">
+                <div className="pd-ov-pick">
+                  <label className="pd-label" htmlFor="pd-entity">{entityWord}</label>
+                  {table.length > 1 ? (
+                    <select
+                      id="pd-entity" className="select pd-select"
+                      value={selectedCountry?.name || ''}
+                      onChange={(e) => setCountryKey(e.target.value)}
+                    >
+                      {table.map((r) => <option key={r.name} value={r.name}>{entityName(r.name)}</option>)}
+                    </select>
+                  ) : (
+                    <div id="pd-entity" className="pd-ov-name">{entityName(selectedCountry.name)}</div>
+                  )}
+                  <div className="pd-hint">Expected medals, averaged over every simulated outcome.</div>
+                </div>
+                <StatTile tone="total" label="All medals" value={fmtMedals(selectedCountry.total)} sub={`Likely range ${selectedCountry.likely_min} – ${selectedCountry.likely_max}`} />
+                <StatTile tone="gold" label="Gold" value={fmtMedals(selectedCountry.gold)} sub="Expected" />
+                <StatTile tone="silver" label="Silver" value={fmtMedals(selectedCountry.silver)} sub="Expected" />
+                <StatTile tone="bronze" label="Bronze" value={fmtMedals(selectedCountry.bronze)} sub="Expected" />
               </div>
-            ))}
-          </div>
-          <div className="micro" style={{ marginTop: 12, textTransform: 'none', letterSpacing: 0, borderTop: '1px solid var(--color-divider)', paddingTop: 10 }}>
-            Percentages represent the probability of winning ANY medal (gold, silver or bronze).
-          </div>
-        </div>
-      </div>
+            ) : (
+              <Empty label="No projection available yet" hint="Check back after the next prediction update." />
+            )}
+          </section>
 
-      {/* by event + medal table */}
-      <div className="at-pred-row" style={{ marginBottom: 22, alignItems: 'start' }}>
-        <div style={{ minWidth: 0 }}>
-          <SectHead title="Medal Predictions by Event" />
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '8px 0 12px' }}>
-            {STROKE_CHIPS.map((s) => {
-              const active = stroke === s
-              return (
-                <button
-                  key={s} type="button" aria-pressed={active} onClick={() => { setStroke(s); setOpenKey('') }}
-                  style={{
-                    cursor: 'pointer', minHeight: 40, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 12,
-                    padding: '4px 12px', lineHeight: 1, whiteSpace: 'nowrap',
-                    background: active ? 'var(--color-accent)' : 'var(--color-bg)',
-                    color: active ? '#fff' : 'var(--color-accent-800)',
-                    border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
-                  }}
-                >
-                  {s === 'All' ? 'All events' : s === 'Individual Medley' ? 'IM' : s}
-                </button>
-              )
-            })}
-            <span style={{ marginLeft: 'auto' }}>
-              <Seg
-                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-                value={gender}
-                onChange={(g) => { setGender(g); setOpenKey('') }}
-              />
-            </span>
+          {/* top candidates: a podium of three, then the rest as an aligned list */}
+          <section className="pd-sec">
+            <SectHead title="Top Medal Candidates" />
+            {candidates.length === 0 ? (
+              <Empty label="No candidates yet" hint="Candidates appear once the fields are predicted." />
+            ) : (
+              <>
+                <ol className="pd-pod-list">
+                  {candidates.slice(0, 3).map((c, i) => <Candidate key={c.swimmer_id} c={c} rank={i + 1} podium isNational={snap.is_national} />)}
+                </ol>
+                {candidates.length > 3 && (
+                  <ol className="pd-cand-list" start={4}>
+                    {candidates.slice(3).map((c, i) => <Candidate key={c.swimmer_id} c={c} rank={i + 4} isNational={snap.is_national} />)}
+                  </ol>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* by event */}
+          <section className="pd-sec">
+            <SectHead title="Medal Predictions by Event" />
+            {/* Hick's Law: two labelled controls on one baseline, each 40px tall */}
+            <div className="pd-filters">
+              <div className="pd-field">
+                <span className="pd-label" id="pd-stroke-label">Stroke</span>
+                <div className="pd-chips" role="group" aria-labelledby="pd-stroke-label">
+                  {STROKE_CHIPS.map((s) => (
+                    <button
+                      key={s} type="button" className="pd-chip" aria-pressed={stroke === s}
+                      onClick={() => { setStroke(s); setOpenKey('') }}
+                    >
+                      {s === 'All' ? 'All events' : s === 'Individual Medley' ? 'IM' : s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pd-field pd-field-gender">
+                <span className="pd-label">Gender</span>
+                <Seg
+                  options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                  value={gender}
+                  onChange={(g) => { setGender(g); setOpenKey('') }}
+                />
+              </div>
+            </div>
+            {eventRows.length === 0 ? (
+              <Empty label="No events match this filter" hint="Try All events or the other gender." />
+            ) : (
+              <div className="pd-events">
+                {eventRows.map((ev) => {
+                  if (!ev.field?.[0]) return null
+                  const key = evKey(ev)
+                  const open = openKey === key
+                  const title = `${eventTitle(ev.event)}${ev.age_group ? ` · ${ev.age_group}` : ''}`
+                  return (
+                    <section key={key} className="pd-ev">
+                      <header className="pd-ev-head">
+                        <h5 className="pd-ev-title">{eventTitle(ev.event)}</h5>
+                        <span className="pd-tag">{genderWord(ev.gender)}</span>
+                        {ev.age_group && <span className="pd-tag">{ev.age_group}</span>}
+                      </header>
+                      {/* Proportional columns: each is a short, even step from the last */}
+                      <div className="pd-ev-table" role="table" aria-label={`${title}, ${genderWord(ev.gender)}: predicted podium`}>
+                        <div className="pd-ev-row pd-ev-cols" role="row">
+                          <span role="columnheader">Pos</span>
+                          <span role="columnheader">Swimmer</span>
+                          <span role="columnheader">{entityWord}</span>
+                          <span role="columnheader" className="pd-c-seed">Seed</span>
+                          <span role="columnheader" className="pd-c-chance">Medal chance</span>
+                        </div>
+                        {ev.field.slice(0, 3).map((r, i) => (
+                          <div className="pd-ev-row" role="row" key={r.swimmer_id}>
+                            <span className="pd-c-pos" role="cell"><Pos n={i + 1} /></span>
+                            <span className="pd-c-name" role="cell">
+                              <Flag code={r.country_code} name={r.country_name} />
+                              <Link to={`/swimmers/${r.swimmer_id}`} className="pd-name">{r.name}</Link>
+                            </span>
+                            <span className="pd-c-club" role="cell">
+                              {snap.is_national ? entityName(r.club) : (r.country_name || r.country_code)}
+                            </span>
+                            <span className="pd-c-seed asw-time" role="cell">{r.seed}</span>
+                            <span className="pd-c-bar" role="cell"><ChanceBar pMedal={r.p_medal} pGold={r.p_gold} /></span>
+                            <span className="pd-c-pct asw-num" role="cell">{fmtPct(r.p_medal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" className="pd-ev-more" aria-expanded={open} onClick={() => setOpenKey(open ? '' : key)}>
+                        {open ? 'Hide the full field' : 'Show the full field'}
+                        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+                      </button>
+                      {open && (
+                        <div className="pd-ev-detail">
+                          <EventDetail ev={ev} champId={champId} onChanged={onChanged} />
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          {rising.length > 0 && (
+            <section className="pd-sec">
+              <SectHead title="Biggest Improvements" />
+              <ul className="pd-rise">
+                {rising.slice(0, 6).map((c, i) => (
+                  <li key={`${c.swimmer_id}-${i}`}>
+                    <span className="pd-c-name">
+                      <Flag code={c.country_code} name={c.country_name} />
+                      <Link to={`/swimmers/${c.swimmer_id}`} className="pd-name">{c.name}</Link>
+                    </span>
+                    <span className="pd-c-club">{eventTitle(c.event)}</span>
+                    <span className="pd-rise-delta asw-num">▲ +{c.delta} pts</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        <aside className="pd-rail">
+          <div className="pd-card">
+            <div className="kicker pd-card-title">About the prediction</div>
+            <dl className="pd-status">
+              <div><dt>Stage</dt><dd>{snap.stage === 'OFFICIAL' ? 'Entry list prediction' : 'Early prediction'}</dd></div>
+              <div><dt>Confidence</dt><dd>{snap.confidence}</dd></div>
+              <div><dt>Updated</dt><dd className="asw-num">{formatDate(snap.updated_at?.slice(0, 10))}</dd></div>
+            </dl>
+            <p className="pd-card-text">
+              Predictions are calculated from current season best times, recent form, progression and
+              thousands of simulated race outcomes. They are probabilities, not certainties, and update
+              as entry lists, new times and withdrawals come in.
+            </p>
           </div>
-          {eventRows.length === 0 ? (
-            <Empty label="No events match this filter" hint="Try All events or the other gender." />
-          ) : (
-            <div className="table-scroll">
-              <table className="table at-pred-events">
+
+          <div className="pd-card">
+            <div className="kicker pd-card-title">Medal chance status</div>
+            {/* Similarity + redundancy: each tier has its own token and its own bar length */}
+            <ul className="pd-legend">
+              {TIER_LEGEND.map((t) => (
+                <li key={t.key}>
+                  <span className="pd-bar" aria-hidden="true"><span className={`pd-tier-${t.key}`} style={{ width: `${t.fill}%` }} /></span>
+                  <span className="pd-legend-name">{t.label}</span>
+                  <span className="pd-legend-range asw-num">{t.range}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="pd-card-text pd-card-foot">
+              The percentage is the chance of winning any medal. Gold Favorite is the one tier set by the
+              chance of gold; below 10% a swimmer is unlikely to medal.
+            </p>
+          </div>
+
+          <div className="pd-card">
+            <div className="kicker pd-card-title">
+              {snap.is_national ? 'Projected medal table · clubs' : 'Projected medal table'}
+            </div>
+            {table.length === 0 ? (
+              <Empty label="No projected medal table yet" hint="It appears once the fields are predicted." />
+            ) : (
+              <table className="pd-mt">
                 <thead>
                   <tr>
-                    <th>Event</th>
-                    <th>Top contender</th>
-                    <th className="time hide-mobile">Seed</th>
-                    <th className="num hide-mobile">Expected rank</th>
-                    <th>Medal chance</th>
+                    <th scope="col">{entityWord}</th>
+                    <th scope="col" className="pd-mt-g" aria-label="Gold">G</th>
+                    <th scope="col" className="pd-mt-s" aria-label="Silver">S</th>
+                    <th scope="col" className="pd-mt-b" aria-label="Bronze">B</th>
+                    <th scope="col">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {eventRows.map((ev) => {
-                    const top = ev.field?.[0]
-                    if (!top) return null
-                    const key = evKey(ev)
-                    const open = openKey === key
-                    return (
-                      <React.Fragment key={key}>
-                        <tr
-                          onClick={() => setOpenKey(open ? '' : key)} className="row-link" title="View full field"
-                          role="button" tabIndex={0} aria-expanded={open}
-                          onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenKey(open ? '' : key) } }}
-                        >
-                          <td className="at-pred-ev" style={{ fontWeight: 600 }}>
-                            {shortEvent(ev.event)}{ev.age_group ? ` · ${ev.age_group}` : ''} {open ? '▲' : '▾'}
-                          </td>
-                          <td>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                              <Flag code={top.country_code} name={top.country_name} />
-                              <Link to={`/swimmers/${top.swimmer_id}`} onClick={(e) => e.stopPropagation()}>{top.name}</Link>
-                            </span>
-                          </td>
-                          <td className="time asw-time hide-mobile">{top.seed}</td>
-                          <td className="num asw-num hide-mobile">{top.place_range}</td>
-                          <td className="at-pred-chance">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div className="at-pred-bar" style={{ flex: 1, height: 7, background: 'var(--color-bg)', border: '1px solid var(--color-divider)' }}>
-                                <div style={{ width: `${Math.min(100, top.p_medal)}%`, height: '100%', background: top.p_gold >= 50 ? 'var(--asw-gold)' : 'var(--color-accent)' }} />
-                              </div>
-                              <span className="asw-num" style={{ fontWeight: 700, fontSize: 13, width: 34, flex: 'none', textAlign: 'right' }}>{Math.round(top.p_medal)}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                        {open && (
-                          <tr>
-                            <td colSpan={5} style={{ background: 'var(--color-surface)', padding: '12px 12px 16px' }}>
-                              <EventDetail ev={ev} champId={champId} onChanged={onChanged} />
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    )
-                  })}
+                  {table.slice(0, 10).map((r) => (
+                    <tr key={r.name}>
+                      <td>
+                        <span className="pd-mt-name">
+                          {r.code && <Flag code={r.code} name={r.name} />}
+                          <span>{entityName(r.name)}</span>
+                        </span>
+                      </td>
+                      <td className="asw-num pd-mt-g">{fmtMedals(r.gold)}</td>
+                      <td className="asw-num pd-mt-s">{fmtMedals(r.silver)}</td>
+                      <td className="asw-num pd-mt-b">{fmtMedals(r.bronze)}</td>
+                      <td className="asw-num pd-mt-t">{fmtMedals(r.total)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            </div>
-          )}
-        </div>
-
-        <div style={{ minWidth: 0, ...panelStyle }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>
-            {snap.is_national ? 'Projected medal table · clubs' : 'Projected medal table'}
+            )}
+            <p className="pd-card-text pd-card-foot">Values are expected medals, not guaranteed ones.</p>
           </div>
-          {table.length === 0 ? (
-            <div className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>Not available yet</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr className="micro">
-                  <th style={{ textAlign: 'left', paddingBottom: 6 }}>{snap.is_national ? 'Club' : 'Country'}</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>G</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>S</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>B</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {table.slice(0, 10).map((r) => (
-                  <tr key={r.name} style={{ borderTop: '1px solid var(--color-divider)' }}>
-                    <td style={{ padding: '4px 0', fontWeight: 600 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        {r.code && <Flag code={r.code} name={r.name} />}
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120, display: 'inline-block' }}>{entityName(r.name)}</span>
-                      </span>
-                    </td>
-                    <td className="asw-num" style={{ textAlign: 'right' }}>{r.gold.toFixed(1)}</td>
-                    <td className="asw-num" style={{ textAlign: 'right' }}>{r.silver.toFixed(1)}</td>
-                    <td className="asw-num" style={{ textAlign: 'right' }}>{r.bronze.toFixed(1)}</td>
-                    <td className="asw-num" style={{ textAlign: 'right', fontWeight: 700 }}>{r.total.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div className="micro" style={{ marginTop: 10, textTransform: 'none', letterSpacing: 0 }}>
-            Values are expected medals (not guaranteed).
-          </div>
-        </div>
-      </div>
-
-      {/* improvements + share */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        {rising.length > 0 && (
-          <div style={{ flex: '1 1 320px', minWidth: 0, ...panelStyle }}>
-            <div className="kicker" style={{ marginBottom: 10 }}>Biggest improvements</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {rising.slice(0, 6).map((c, i) => (
-                <div key={`${c.swimmer_id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                  <Flag code={c.country_code} name={c.country_name} />
-                  <Link to={`/swimmers/${c.swimmer_id}`} style={{ fontWeight: 600 }}>{c.name}</Link>
-                  <span className="micro" style={{ textTransform: 'none', letterSpacing: 0 }}>{shortEvent(c.event)}</span>
-                  <span className="asw-num" style={{ marginLeft: 'auto', color: 'var(--asw-fast)', fontWeight: 700 }}>▲ +{c.delta} pts</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={{ flex: '1 1 280px', minWidth: 0, ...panelStyle }}>
-          <div className="kicker" style={{ marginBottom: 8 }}>Share predictions</div>
-          <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, marginBottom: 10 }}>
-            Share these predictions with your friends and community.
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${pageUrl}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
-            <a className="btn btn-secondary" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer">X</a>
-            <a className="btn btn-secondary" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`} target="_blank" rel="noreferrer">Facebook</a>
-            <button className="btn btn-secondary" type="button" onClick={() => { navigator.clipboard?.writeText(pageUrl); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>{copied ? 'Link copied' : 'Copy link'}</button>
-          </div>
-        </div>
+        </aside>
       </div>
     </div>
   )
-}
-
-function shortEvent(name) {
-  return String(name)
-    .replace(/\s*M\s+/, ' ')
-    .replace('Freestyle', 'Free').replace('Backstroke', 'Back')
-    .replace('Breaststroke', 'Breast').replace('Butterfly', 'Fly')
-    .replace('Individual Medley', 'IM')
 }
 
 // ---- Page -----------------------------------------------------------------
@@ -1161,7 +1157,7 @@ export default function Predictions() {
               <button type="button" className="btn btn-secondary" onClick={() => loadDetail(selectedId)}>Try again</button>
             </Empty>
           ) : (
-            <div className="at-pred-body">
+            <div className="pd-body">
               {/* header: dates + stage + confidence + updated
                   (Overview has its own hero card with all of this) */}
               {view !== 'overview' && (
@@ -1190,12 +1186,13 @@ export default function Predictions() {
               </div>
               </>
               )}
-              {snap.stage !== 'OFFICIAL' && (
-                <div className="at-pred-notice" role="note">
-                  <strong>Early prediction.</strong> The entry list has not been published yet. Fields are estimated from recent results and will update when entries are official.
+              {/* the Overview hero carries this notice itself, as one quiet line */}
+              {view !== 'overview' && snap.stage !== 'OFFICIAL' && (
+                <div className="pd-notice" role="note">
+                  Early prediction: entries are not published yet, so fields are estimated from recent results.
                 </div>
               )}
-              <div style={{ margin: '12px 0 20px' }}>
+              <div className="pd-view">
                 <Seg
                   options={[
                     { value: 'overview', label: 'Overview' },
@@ -1227,7 +1224,7 @@ export default function Predictions() {
                     onChange={(g) => { setGender(g); setEventKey('') }}
                   />
                   <select
-                    className="select at-pred-pick"
+                    className="select pd-select pd-select-inline"
                     aria-label="Event"
                     value={selectedEvent ? evKey(selectedEvent) : ''}
                     onChange={(e) => setEventKey(e.target.value)}

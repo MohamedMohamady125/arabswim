@@ -274,8 +274,9 @@ function ProgramRow({ item, meetId, meet, board, last, grouped = false }) {
         {item.session && <span className="lv-row-round">{SESSION_LABEL[item.session]}</span>}
       </div>
       <span className="lv-row-status">
+        {/* the status says what you get: the results, the heats only so far, or nothing yet */}
         {st.state === 'in' && 'Results'}
-        {st.state === 'waiting' && `${SESSION_LABEL[st.round]} in`}
+        {st.state === 'waiting' && `${SESSION_LABEL[st.round]} results`}
         {st.state === 'scheduled' && 'Scheduled'}
         {st.state !== 'scheduled' && <span className="live-chevron" aria-hidden="true" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>›</span>}
       </span>
@@ -356,6 +357,10 @@ function DayProgram({ day, meetId, meet, board, gender = '', category = '' }) {
             {/* Goal-Gradient: the bar under the name shows how far along the session is */}
             <header className="lv-session-head">
               <h3>{label}</h3>
+              {/* where the session stands, in a word (the bar below shows how far) */}
+              <span className={`lv-session-state${done === list.length ? ' done' : done > 0 ? ' live' : ''}`}>
+                {done === list.length ? 'Completed' : done > 0 ? 'In progress' : 'Upcoming'}
+              </span>
               <span className="lv-session-bar" role="img" aria-label={`${done} of ${list.length} races have results`}><i style={{ width: `${(done / list.length) * 100}%` }} /></span>
             </header>
             {/* Proximity: an event swum by several age categories is named once,
@@ -989,7 +994,7 @@ export default function Live() {
   return (
     <div>
       <PageHead
-        title="Live results"
+        title="Live Results"
         sub="Program, results and medals for the meets happening now."
       />
       {meets.length === 0 ? (

@@ -40,75 +40,94 @@ function periodStatus(start, end) {
   return { open: true, text: left === 0 ? 'Qualifying closes today' : `Qualifying open · ${n(left)} left` }
 }
 
-function StandardTables({ times, gender, pool, isAdmin, onDeleteTime }) {
-  // event rows for the selection, cut categories (A/B/C…) as separate columns
-  const { byStroke, cutKeys } = useMemo(() => {
-    const map = new Map()
-    const cuts = new Set()
-    ;(times || [])
-      .filter((t) => t.gender === gender && t.pool === pool)
-      .forEach((t) => {
-        if (!map.has(t.event)) {
-          map.set(t.event, {
-            event: t.event,
-            name: t.event_name,
-            stroke: t.event_stroke,
-            distance: t.event_distance,
-            cuts: {},
-          })
-        }
-        map.get(t.event).cuts[t.cut || 'A'] = t.formatted_time
-        cuts.add(t.cut || 'A')
-      })
-    const rows = [...map.values()].sort((a, b) => {
-      const sa = STROKE_ORDER[a.stroke] ?? 99
-      const sb = STROKE_ORDER[b.stroke] ?? 99
-      if (sa !== sb) return sa - sb
-      return (a.distance || 0) - (b.distance || 0)
+// One row per event for a gender + pool, cut categories (A/B/C…) as columns
+function buildRows(times, gender, pool) {
+  const map = new Map()
+  const cuts = new Set()
+  ;(times || [])
+    .filter((t) => t.gender === gender && t.pool === pool)
+    .forEach((t) => {
+      if (!map.has(t.event)) {
+        map.set(t.event, {
+          event: t.event,
+          name: t.event_name,
+          stroke: t.event_stroke,
+          distance: t.event_distance,
+          cuts: {},
+        })
+      }
+      map.get(t.event).cuts[t.cut || 'A'] = t.formatted_time
+      cuts.add(t.cut || 'A')
     })
-    const grouped = {}
-    rows.forEach((r) => {
-      const key = r.stroke || 'Events'
-      if (!grouped[key]) grouped[key] = []
-      grouped[key].push(r)
-    })
-    return { byStroke: grouped, cutKeys: [...cuts].sort() }
-  }, [times, gender, pool])
+  const rows = [...map.values()].sort((a, b) => {
+    const sa = STROKE_ORDER[a.stroke] ?? 99
+    const sb = STROKE_ORDER[b.stroke] ?? 99
+    if (sa !== sb) return sa - sb
+    return (a.distance || 0) - (b.distance || 0)
+  })
+  const byStroke = {}
+  rows.forEach((r) => {
+    const key = r.stroke || 'Events'
+    if (!byStroke[key]) byStroke[key] = []
+    byStroke[key].push(r)
+  })
+  return { byStroke, cutKeys: [...cuts].sort() }
+}
 
-  const strokes = Object.keys(byStroke)
-  if (strokes.length === 0) {
+function StandardTables({ times, gender, pool, stroke, isAdmin, onAddTimes, onDeleteTime }) {
+  const { byStroke, cutKeys } = useMemo(() => buildRows(times, gender, pool), [times, gender, pool])
+
+  if ((times || []).length === 0) {
+    return (
+      <Empty label="No times in this standard yet" hint={isAdmin ? 'Type the cut times for every event in one grid, or upload the federation PDF.' : 'The cut times appear here as soon as they are published.'}>
+        {isAdmin && <button type="button" className="btn btn-primary" onClick={onAddTimes}>Add times</button>}
+      </Empty>
+    )
+  }
+  const allStrokes = Object.keys(byStroke)
+  if (allStrokes.length === 0) {
     return <Empty label={`No times for ${gender === 'M' ? 'men' : 'women'} (${poolLabel(pool)}) yet`} hint="This standard has no cut for that group. Try the other pool or gender above." />
   }
+  const strokes = stroke && byStroke[stroke] ? [stroke] : allStrokes
+
+  // Proportional columns: the event takes about a third, the cuts share the
+  // rest evenly, so every column is a short even step from the last.
+  const eventShare = cutKeys.length <= 2 ? 34 : cutKeys.length === 3 ? 31 : 28
+  const cutShare = (100 - eventShare) / cutKeys.length
 
   return (
-    // side-by-side stroke tables use the page width instead of one long column
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4px 28px' }}>
-      {strokes.map((stroke) => (
-        <div key={stroke} style={{ marginBottom: 18 }}>
-          <div className="kicker" style={{ marginBottom: 8 }}>{stroke}</div>
-          <div className="table-scroll">
-            {/* Prägnanz: fixed columns, so the A and B times line up from one stroke table to the next */}
-            <table className="table results-qt-table">
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  {cutKeys.map((c) => <th key={c} className="time" style={{ width: `${Math.min(25, 56 / cutKeys.length)}%` }}>{c} standard</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {byStroke[stroke].map((r) => (
-                  <tr key={r.event}>
-                    <td style={{ fontWeight: 600 }}>{r.name}</td>
-                    {cutKeys.map((c) => (
-                      <td key={c} className="time asw-time">{r.cuts[c] || '—'}</td>
-                    ))}
-                  </tr>
+    <div className="table-scroll qt-tablewrap">
+      {/* Prägnanz: one table, fixed columns — the A and B times line up from one stroke to the next */}
+      <table className="qt-table" style={cutKeys.length > 3 ? { minWidth: 150 + cutKeys.length * 88 } : undefined}>
+        <colgroup>
+          <col style={{ width: `${eventShare}%` }} />
+          {cutKeys.map((c) => <col key={c} style={{ width: `${cutShare}%` }} />)}
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Event</th>
+            {cutKeys.map((c) => <th key={c} scope="col">{c}<span className="qt-th-long"> standard</span></th>)}
+          </tr>
+        </thead>
+        {/* Common Region: each stroke is its own block under a tinted band */}
+        {strokes.map((s) => (
+          <tbody key={s}>
+            <tr className="qt-group"><th colSpan={cutKeys.length + 1} scope="colgroup">{s}</th></tr>
+            {byStroke[s].map((r) => (
+              <tr key={r.event} className="qt-row">
+                <th scope="row" className="qt-event">{r.name}</th>
+                {cutKeys.map((c) => (
+                  <td key={c}>
+                    {r.cuts[c]
+                      ? <span className="qt-time asw-time">{r.cuts[c]}</span>
+                      : <span className="qt-time qt-time-none" aria-label="No time">—</span>}
+                  </td>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
     </div>
   )
 }
@@ -155,10 +174,10 @@ function StandardModal({ standard, onClose, onSaved }) {
   }
   return (
     <Modal title={standard?.id ? 'Edit Standard' : 'Create Standard'} onClose={onClose}>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <form onSubmit={submit} className="qt-form">
         {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field"><label>Name *</label><input className="input" aria-label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="qt-form-row">
           <div className="field"><label>Competition type</label><input className="input" aria-label="Competition type" value={form.competition_type} onChange={(e) => setForm({ ...form, competition_type: e.target.value })} placeholder="e.g. world_championships" list="qt-comp-types" />
             {/* Hick's Law: the two usual types are offered, anything else can still be typed */}
             <datalist id="qt-comp-types">{Object.entries(COMP_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</datalist>
@@ -168,18 +187,18 @@ function StandardModal({ standard, onClose, onSaved }) {
         <div className="field">
           <label>Competition date</label>
           <input className="input" aria-label="Competition date" type="date" value={compDate} onChange={(e) => applyCompDate(e.target.value)} />
-          <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+          <div className="qt-form-hint">
             Enter the meet date and the qualifying period is calculated automatically (16-month window ending on this date) — or set the period yourself below.
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="qt-form-row">
           <div className="field"><label>Qualifying start *</label><input className="input" aria-label="Qualifying start" type="date" value={form.qualifying_period_start} onChange={(e) => setForm({ ...form, qualifying_period_start: e.target.value })} /></div>
           <div className="field"><label>Qualifying end *</label><input className="input" aria-label="Qualifying end" type="date" value={form.qualifying_period_end} onChange={(e) => setForm({ ...form, qualifying_period_end: e.target.value })} /></div>
         </div>
-        <div className="text-muted" style={{ fontSize: 12 }}>
+        <div className="qt-form-hint">
           Only swims inside this window count toward qualification in the federation Qualifying tab.
         </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="qt-form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         </div>
@@ -208,7 +227,7 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
   }
   return (
     <Modal title="Add Qualifying Time" onClose={onClose}>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <form onSubmit={submit} className="qt-form">
         {error && <div className="error-box" role="alert">{error}</div>}
         <div className="field"><label>Event *</label>
           <select className="select" aria-label="Event" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
@@ -216,7 +235,7 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
             {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+        <div className="qt-form-row qt-form-row-4">
           <div className="field"><label>Gender</label>
             <select className="select" aria-label="Gender" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
               <option value="M">Men</option><option value="F">Women</option>
@@ -224,13 +243,13 @@ function AddTimeModal({ standardId, onClose, onSaved }) {
           </div>
           <div className="field"><label>Pool</label>
             <select className="select" aria-label="Pool" value={form.pool} onChange={(e) => setForm({ ...form, pool: e.target.value })}>
-              <option value="LCM">LCM (50m)</option><option value="SCM">SCM (25m)</option>
+              {POOLS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </div>
           <div className="field"><label>Cut</label><input className="input" aria-label="Cut" value={form.cut} onChange={(e) => setForm({ ...form, cut: e.target.value })} placeholder="A" /></div>
           <div className="field"><label>Time *</label><input className="input asw-num" aria-label="Time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="27.45" /></div>
         </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="qt-form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Add time'}</button>
         </div>
@@ -309,34 +328,37 @@ function BulkTimesModal({ standard, onClose, onSaved }) {
     }
   }
 
-  const inputStyle = { width: '100%', boxSizing: 'border-box' }
   return (
     <Modal title={`Times — ${standard.name}`} onClose={onClose} width={720}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="qt-form">
         {error && <div className="error-box" role="alert">{error}</div>}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="micro">Cut</span>
-            <input className="input" aria-label="Cut" value={cut} onChange={(e) => setCut(e.target.value.toUpperCase())}
-              style={{ width: 52, textAlign: 'center' }} maxLength={2} />
+        {/* Proximity: what the grid is for (pool, cut) sits on one baseline above it */}
+        <div className="qt-bulkbar">
+          <div className="field">
+            <label>Pool</label>
+            <Seg options={[{ value: 'LCM', label: 'LCM' }, { value: 'SCM', label: 'SCM' }]} value={pool} onChange={setPool} />
           </div>
-          <span className="micro" style={{ marginLeft: 'auto' }}>
-            Type times like 27.45 or 1:02.34 — clear a cell to remove that time
-          </span>
+          <div className="field qt-bulkbar-cut">
+            <label htmlFor="qt-bulk-cut">Cut</label>
+            <input id="qt-bulk-cut" className="input" value={cut} onChange={(e) => setCut(e.target.value.toUpperCase())} maxLength={2} />
+          </div>
+          <div className="qt-form-hint qt-bulkbar-hint">
+            Type times like 27.45 or 1:02.34. Clear a cell to remove that time.
+          </div>
         </div>
-        <div className="table-scroll" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
-          <table className="table">
+        <div className="table-scroll qt-bulkwrap">
+          <table className="qt-table qt-bulktable">
+            <colgroup><col style={{ width: '40%' }} /><col style={{ width: '30%' }} /><col style={{ width: '30%' }} /></colgroup>
             <thead>
-              <tr><th>Event</th><th className="time">Men</th><th className="time">Women</th></tr>
+              <tr><th scope="col">Event</th><th scope="col">Men</th><th scope="col">Women</th></tr>
             </thead>
             <tbody>
               {events.map((ev) => (
-                <tr key={ev.id}>
-                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{ev.name}</td>
+                <tr key={ev.id} className="qt-row">
+                  <th scope="row" className="qt-event">{ev.name}</th>
                   {['M', 'F'].map((g) => (
-                    <td key={g} className="time" style={{ minWidth: 110 }}>
-                      <input className="input asw-num" placeholder="—" style={inputStyle}
+                    <td key={g}>
+                      <input className="input asw-num" placeholder="—"
                         aria-label={`${ev.name} ${g === 'M' ? 'Men' : 'Women'}`}
                         value={values[`${ev.id}-${g}`] || ''}
                         onChange={(e) => setValues((v) => ({ ...v, [`${ev.id}-${g}`]: e.target.value }))} />
@@ -347,7 +369,7 @@ function BulkTimesModal({ standard, onClose, onSaved }) {
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="qt-form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="button" className="btn btn-primary" disabled={saving} onClick={submit}>
             {saving ? 'Saving…' : 'Save all times'}
@@ -365,6 +387,7 @@ export default function QualifyingTimes() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [gender, setGender] = useState('M')
   const [pool, setPool] = useState('LCM')
+  const [stroke, setStroke] = useState('') // '' = all strokes
   const { isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
   const [editModal, setEditModal] = useState(null) // null=closed, {}=create, standard=edit
@@ -440,20 +463,31 @@ export default function QualifyingTimes() {
   }, [pools, genders, pool, gender])
   const status = periodStatus(detail?.qualifying_period_start, detail?.qualifying_period_end)
 
+  // Stroke filter options follow the gender + pool on screen
+  const strokeOptions = useMemo(() => Object.keys(buildRows(detail?.times, gender, pool).byStroke), [detail, gender, pool])
+  useEffect(() => {
+    if (stroke && !strokeOptions.includes(stroke)) setStroke('')
+  }, [strokeOptions, stroke])
+  const cutNames = useMemo(() => [...new Set((detail?.times || []).map((t) => t.cut || 'A'))].sort(), [detail])
+
   if (loading) return <Loading label="Loading qualifying standards" />
 
+  const hasTimes = (detail?.times || []).length > 0
+
   return (
-    <div className="at-empty">
-      <PageHead title="Qualifying Times">
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn btn-primary" onClick={() => setEditModal({})}>Create standard</button>
-          </div>
-        )}
-      </PageHead>
+    <div className="at-empty qt-page">
+      <div className="qt-head">
+        <PageHead title="Qualifying Times" sub="The time a swimmer must swim, inside the qualifying window, to earn a place at a championship.">
+          {isAdmin && (
+            <div className="qt-head-actions">
+              <button className="btn btn-primary" onClick={() => setEditModal({})}>Create standard</button>
+            </div>
+          )}
+        </PageHead>
+      </div>
 
       {notice && (
-        <div role={notice.bad ? 'alert' : 'status'} className="rule-b" style={{ padding: '10px 32px', fontSize: 13, fontWeight: 700, color: notice.bad ? 'var(--asw-slow)' : 'var(--asw-fast)' }}>
+        <div role={notice.bad ? 'alert' : 'status'} className={`rule-b qt-notice${notice.bad ? ' is-bad' : ''}`}>
           {notice.text}
         </div>
       )}
@@ -468,68 +502,63 @@ export default function QualifyingTimes() {
             : <Link to="/championships" className="btn btn-secondary">Browse championships</Link>}
         </Empty>
       ) : (
-        <>
-          {/* Competition selector — big and prominent */}
-          <div className="rule-b" style={{ padding: '20px 32px' }}>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-              {standards.map((s) => {
-                const active = s.id === selectedId
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSelectedId(s.id)}
-                    aria-pressed={active}
-                    style={{
-                      cursor: 'pointer', minHeight: 40,
-                      fontFamily: 'var(--font-heading)', fontWeight: 800,
-                      fontSize: active ? 22 : 15,
-                      padding: 0, lineHeight: 1.2,
-                      background: 'none', border: 'none',
-                      // neutral-700 (not 500): readable, and still clearly a tab to tap
-                      color: active ? 'var(--color-accent-800)' : 'var(--color-neutral-700)',
-                      borderBottom: active ? '3px solid var(--asw-gold)' : '3px solid transparent',
-                      paddingBottom: 4,
-                      transition: 'font-size 0.15s ease, color 0.15s ease',
-                    }}
-                  >
-                    {s.name}
-                  </button>
-                )
-              })}
+        <div className="qt-body">
+          {/* Hick's Law: a few competitions are one tap each; a long list folds into one menu */}
+          {standards.length > 1 && (
+            <div className="field qt-picker">
+              <label htmlFor={standards.length > 3 ? 'qt-standard' : undefined}>Competition</label>
+              {standards.length <= 3 ? (
+                <div className="qt-pick" role="group" aria-label="Competition">
+                  {standards.map((s) => (
+                    <button key={s.id} type="button" className={`qt-pick-opt${s.id === selectedId ? ' on' : ''}`}
+                      aria-pressed={s.id === selectedId} onClick={() => setSelectedId(s.id)}>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <select id="qt-standard" className="select" value={selectedId || ''} onChange={(e) => setSelectedId(Number(e.target.value))}>
+                  {standards.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Seg
-                options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
-                value={gender}
-                onChange={setGender}
-              />
-              {/* a standard published for one pool only needs no pool switch */}
-              {pools.length > 1
-                ? <Seg options={pools} value={pool} onChange={setPool} />
-                : pools.length === 1 && <span className="micro">{poolLabel(pools[0].value)}</span>}
-            </div>
-          </div>
+          )}
 
           {detailLoading ? (
             <Loading label="Loading standard" />
           ) : !detail ? (
-            <Empty label="This standard could not be loaded" hint="Pick another competition above, or try again in a moment." />
+            <Empty label="This standard could not be loaded" hint={standards.length > 1 ? 'Pick another competition above, or try again in a moment.' : 'Check your connection and try again in a moment.'}>
+              <button type="button" className="btn btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+            </Empty>
           ) : (
-            <div style={{ padding: '16px 32px 28px' }}>
-              {/* the selected tab already names the standard — only show
-                  what it doesn't: competition type + qualifying period */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-                <span className="kicker">{compLabel(detail.competition_type)}{detail.year ? ` · ${detail.year}` : ''}</span>
-                {detail.qualifying_period_start && detail.qualifying_period_end && (
-                  <span className="micro" style={{ marginLeft: 'auto' }}>
-                    Qualifying period: {formatDate(detail.qualifying_period_start)} — {formatDate(detail.qualifying_period_end)}
-                  </span>
-                )}
-                {status && <span className={`results-qt-status${status.open ? ' is-open' : ''}`}>{status.text}</span>}
-              </div>
+            <>
+              {/* Chunking: what the standard is, as labelled facts on one row */}
+              <section className="qt-band" aria-label="Selected standard">
+                <h2 className="qt-band-name">{detail.name}</h2>
+                <dl className="qt-facts">
+                  <div className="qt-fact"><dt>Competition</dt><dd>{compLabel(detail.competition_type)}</dd></div>
+                  {detail.year ? <div className="qt-fact"><dt>Year</dt><dd className="asw-num">{detail.year}</dd></div> : null}
+                  {pools.length > 0 && <div className="qt-fact"><dt>Pool</dt><dd>{pools.map((p) => p.label).join(' · ')}</dd></div>}
+                  {cutNames.length > 0 && <div className="qt-fact"><dt>Standards</dt><dd>{cutNames.join(' · ')}</dd></div>}
+                  {detail.qualifying_period_start && detail.qualifying_period_end && (
+                    <div className="qt-fact qt-fact-wide">
+                      <dt>Qualifying window</dt>
+                      <dd className="asw-num">{formatDate(detail.qualifying_period_start)} – {formatDate(detail.qualifying_period_end)}</dd>
+                    </div>
+                  )}
+                  {status && (
+                    <div className="qt-fact qt-fact-wide">
+                      <dt>Status</dt>
+                      <dd><span className={`results-qt-status${status.open ? ' is-open' : ''}`}>{status.text}</span></dd>
+                    </div>
+                  )}
+                </dl>
+              </section>
+
               {isAdmin && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                // Common Region: the admin tools are one ruled strip; the destructive one stands apart on the right
+                <div className="qt-admin" role="group" aria-label="Manage standard">
+                  <span className="qt-admin-label">Manage</span>
                   <button className="btn btn-secondary" onClick={() => setEditModal(detail)}>Edit standard</button>
                   <button className="btn btn-secondary" onClick={() => setBulkModal(detail)}>Edit all times</button>
                   <button className="btn btn-secondary" onClick={() => setAddTimeModal(true)}>Add time</button>
@@ -550,7 +579,7 @@ export default function QualifyingTimes() {
                     }} />
                   </label>
                   {uploading && <span className="micro" style={{ alignSelf: 'center' }}>Uploading…</span>}
-                  <button className="btn" style={{ borderColor: 'var(--asw-slow)', color: 'var(--asw-slow)', marginLeft: 'auto' }}
+                  <button className="btn qt-btn-danger"
                     onClick={async () => {
                       if (!window.confirm(`Delete "${detail.name}"? All qualifying times in it will be removed.`)) return
                       try {
@@ -562,14 +591,46 @@ export default function QualifyingTimes() {
                     }}>Delete standard</button>
                 </div>
               )}
-              <StandardTables times={detail.times || []} gender={gender} pool={pool} isAdmin={isAdmin}
+
+              {hasTimes && (
+                <div className="qt-filters">
+                  <div className="field">
+                    <label>Gender</label>
+                    <Seg
+                      options={[{ value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]}
+                      value={gender}
+                      onChange={setGender}
+                    />
+                  </div>
+                  {/* a standard published for one pool only needs no pool switch — the band names it */}
+                  {pools.length > 1 && (
+                    <div className="field">
+                      <label>Pool</label>
+                      <Seg options={pools} value={pool} onChange={setPool} />
+                    </div>
+                  )}
+                  {/* Hick's Law: the stroke menu only appears when there are enough strokes to scan */}
+                  {strokeOptions.length > 2 && (
+                    <div className="field qt-filters-stroke">
+                      <label htmlFor="qt-stroke">Stroke</label>
+                      <select id="qt-stroke" className="select" value={stroke} onChange={(e) => setStroke(e.target.value)}>
+                        <option value="">All strokes</option>
+                        {strokeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <StandardTables times={detail.times || []} gender={gender} pool={pool} stroke={stroke} isAdmin={isAdmin}
+                onAddTimes={() => setBulkModal(detail)}
                 onDeleteTime={async (timeId) => {
                   await deleteQualifyingTime(selectedId, timeId)
                   setReloadKey((k) => k + 1)
                 }} />
-            </div>
+            </>
           )}
-        </>
+        </div>
       )}
 
       {editModal !== null && (

@@ -9,6 +9,10 @@ import './audit-chrome.css'
 import './audit-meets.css'
 import './audit-profiles.css'
 import './audit-tables.css'
+import './audit-live.css'
+import './audit-calendar.css'
+import './audit-qt.css'
+import './audit-predictions.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

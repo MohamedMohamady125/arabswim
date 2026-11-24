@@ -1,0 +1,48 @@
+/* Page polish — Live Results. Brand tokens only (see theme.css).
+   Hierarchy: the session is the one navy line; an event is a tinted band;
+   a race is a row on fixed columns (category · round · status). */
+
+/* tabs under the hero: part of the hero card, not a lone box */
+.lv-hub .seg-tabs, .lv-hero + div .seg-tabs { border: 0; }
+
+/* every session header reads the same: navy, name left, state right */
+.lv-session { border: 1px solid var(--color-divider); }
+.lv-session-head, .lv-session.strong .lv-session-head { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 13px 16px 0; background: var(--color-accent-800); }
+.lv-session-head h3, .lv-session.strong .lv-session-head h3 { color: var(--color-bg); font-size: 15px; }
+.lv-session-state { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; background: var(--color-accent-700); color: var(--color-accent-200); white-space: nowrap; }
+.lv-session-state.live { background: var(--asw-slow); color: var(--color-bg); }
+.lv-session-state.done { background: var(--color-bg); color: var(--color-accent-800); }
+.lv-session-bar, .lv-session.strong .lv-session-bar { margin-top: 12px; background: var(--color-accent-700); }
+.lv-session-bar i, .lv-session.strong .lv-session-bar i { background: var(--color-accent-2-400); }
+
+/* an event: a pale band with navy type — clearly under the session, above its races */
+.live-event-head { padding: 10px 16px; background: var(--color-accent-100); color: var(--color-accent-800); border-bottom: 1px solid var(--color-divider); border-top: 0; font-size: 14px; }
+.live-event-head > span:first-child { color: var(--color-accent-800); }
+.live-cluster { border-bottom: 1px solid var(--color-divider); }
+
+/* a race: category, round and status on fixed columns, a short step apart */
+.lv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; min-height: 48px; padding: 8px 16px; }
+.lv-row-main { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: baseline; column-gap: 12px; row-gap: 2px; }
+.lv-row-main > .lv-row-gender, .lv-row-main > .lv-row-cat { grid-column: 2; }
+.lv-row-title { font-size: 14px; }
+.lv-row-round { font-size: 11px; }
+.lv-row-status { margin-left: 0; justify-self: end; min-width: 108px; justify-content: flex-end; padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+/* outlined, so a column of them stays calm; it fills on hover and when open */
+.lv-row.is-in .lv-row-status { background: var(--color-bg); color: var(--color-accent-800); box-shadow: inset 0 0 0 1px var(--color-accent-800); }
+.lv-row.is-in.open .lv-row-status { background: var(--color-accent-800); color: var(--color-bg); }
+.lv-row.is-waiting .lv-row-status { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
+.lv-row.is-scheduled .lv-row-status { color: var(--color-neutral-500); font-weight: 500; }
+.lv-row-link:hover .lv-row.is-in .lv-row-status { background: var(--color-accent-800); color: var(--color-bg); }
+
+@media (max-width: 760px) {
+  .lv-session-head, .lv-session.strong .lv-session-head { padding: 11px 12px 0; }
+  .live-event-head { padding: 9px 12px; }
+  .lv-row { padding: 7px 12px; min-height: 46px; column-gap: 10px; }
+  .lv-row-main { grid-template-columns: 74px minmax(0, 1fr); column-gap: 8px; }
+  .lv-row-status { min-width: 0; padding: 5px 8px; }
+}
+
+@media (max-width: 760px) {
+  /* the podium strip swipes sideways: the cut card fades instead of ending hard */
+  .lv-latest-list { -webkit-mask-image: linear-gradient(to right, black calc(100% - 36px), transparent); mask-image: linear-gradient(to right, black calc(100% - 36px), transparent); padding-right: 28px; }
+}

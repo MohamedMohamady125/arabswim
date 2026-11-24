@@ -2245,48 +2245,53 @@ function RecordsBrokenTab({ meetId }) {
         const c = BROKEN_SCOPE_COLOR[g.scope] || 'var(--color-accent)'
         return (
           <div key={g.key} style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, borderBottom: `2px solid ${c}`, marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingBottom: 6, borderBottom: `2px solid ${c}`, marginBottom: 2 }}>
               <span className="tag" style={{ background: c, color: '#fff', border: 0 }}>{g.label.toUpperCase()}</span>
             </div>
-            {/* one aligned table per record level: the race, who swam it, the
-                mark it replaced, the new record and the margin — each in its
-                own column, a short step apart */}
-            <div className="rb-table" role="table" aria-label={g.label}>
-              <div className="rb-row rb-headrow" role="row">
-                <span role="columnheader">Event</span>
-                <span role="columnheader">Record holder</span>
-                <span role="columnheader">Previous record</span>
-                <span role="columnheader" className="rb-c">New record</span>
-                <span role="columnheader" className="rb-c">Margin</span>
-              </div>
-              {g.rows.map((r, i) => (
-                <div
-                  key={i}
-                  role="row"
-                  className={r.is_relay_team ? 'rb-row' : 'rb-row row-link'}
-                  style={{ cursor: r.is_relay_team ? 'default' : 'pointer' }}
-                  {...rowLink(r.is_relay_team ? null : () => navigate(`/swimmers/${r.swimmer_id}`))}
-                >
-                  <span className="rb-ev" role="cell">
-                    <span className="rb-ev-name">{r.event_name}</span>
+            {g.rows.map((r, i) => (
+              <div
+                key={i}
+                className={r.is_relay_team ? 'hair-b asw-fade-up' : 'hair-b asw-fade-up row-link'}
+                style={{
+                  padding: '12px 0 12px 12px', borderLeft: `4px solid ${c}`,
+                  cursor: r.is_relay_team ? 'default' : 'pointer',
+                  animationDelay: `${Math.min(i * 40, 320)}ms`,
+                }}
+                {...rowLink(r.is_relay_team ? null : () => navigate(`/swimmers/${r.swimmer_id}`))}
+              >
+                {/* Line 1 — event + gender + new time */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                      {r.event_name}
+                    </span>
                     <span className={`tag ${r.gender === 'F' ? 'tag-accent-2' : r.gender === 'X' ? 'tag-neutral' : 'tag-accent'}`} style={{ flex: 'none' }}>
                       {GENDER_LABEL[r.gender] || 'Mixed'}
                     </span>
                     {r.is_relay_team && <span className="tag tag-outline" style={{ flex: 'none' }}>Relay</span>}
-                  </span>
-                  <span className="rb-who" role="cell">
-                    <Flag code={r.nationality_code} name={r.swimmer_name} />
-                    <span>{r.swimmer_name}</span>
-                  </span>
-                  <span className="rb-prev" role="cell">
-                    <span className="asw-time">{r.previous_time}</span>
-                    {r.previous_holder && <span className="rb-prev-who">{r.previous_holder}{r.previous_date ? ` · ${formatDate(r.previous_date)}` : ''}</span>}
-                  </span>
-                  <span className="rb-c rb-new asw-time" role="cell">{r.time}</span>
-                  <span className="rb-c" role="cell"><span className="pb-gain asw-num">−{(r.improvement_centiseconds / 100).toFixed(2)} s</span></span>
+                  </div>
+                  <span className="asw-time asw-fast" style={{ fontSize: 20, fontWeight: 700, flex: 'none' }}>{r.time}</span>
                 </div>
-              ))}
-            </div>
+                {/* Line 2 — swimmer / team */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <Flag code={r.nationality_code} name={r.swimmer_name} />
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{r.swimmer_name}</span>
+                </div>
+                {/* Line 3 — previous record */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                  <span className="micro" style={{ flex: 'none' }}>Previous</span>
+                  <span className="asw-time" style={{ fontWeight: 700 }}>{r.previous_time}</span>
+                  <span className="asw-num" style={{ color: 'var(--asw-fast, var(--asw-fast))', fontWeight: 700 }}>
+                    −{(r.improvement_centiseconds / 100).toFixed(2)}s
+                  </span>
+                  {r.previous_holder && (
+                    <span style={{ minWidth: 0 }}>
+                      {r.previous_holder}{r.previous_date ? ` · ${formatDate(r.previous_date)}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )
       })}

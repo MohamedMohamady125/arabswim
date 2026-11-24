@@ -1710,6 +1710,7 @@ function MedalsTab({ meetId, isNational }) {
 
 function PersonalBestsTab({ stats, onRetry }) {
   const navigate = useNavigate()
+  const [pbGender, setPbGender] = useState('ALL')
   if (!stats) return <LoadFailed what="Personal bests" onRetry={onRetry} />
 
   // Only swims that actually improved a previous best — first-ever swims
@@ -1734,55 +1735,50 @@ function PersonalBestsTab({ stats, onRetry }) {
     }
   }
 
+  const both = pbs.some((x) => x.gender === 'M') && pbs.some((x) => x.gender === 'F')
+  const shown = pbs.filter((x) => pbGender === 'ALL' || x.gender === pbGender)
   return (
-    <div className="pad">
+    <div className="pad am-list">
       <FeaturedCards picks={[pbPick('M', 'Men'), pbPick('F', 'Women')]} />
-      {/* personal bests achieved */}
-      {hasPbs && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="kicker" style={{ marginBottom: 4 }}>Personal bests achieved</div>
-          <div className="micro" style={{ marginBottom: 10, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}>Swimmers who improved their all-time best at this meet</div>
-          <div className="rule-t">
-            {pbs.map((s, i) => (
-              <div
-                key={i}
-                className="hair-b asw-fade-up row-link"
-                style={{ padding: '12px 0', cursor: 'pointer', animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}
-              >
-                {/* Line 1 — rank + swimmer + new time */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="asw-num" style={{ width: 26, height: 26, flex: 'none', background: 'var(--color-accent-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 12 }}>
-                    {i + 1}
-                  </span>
-                  <Flag code={s.nationality_code} name={s.swimmer_name} />
-                  <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.swimmer_name}
-                  </span>
-                  <span className="asw-time asw-fast" style={{ fontSize: 18, fontWeight: 700, flex: 'none' }}>{s.time}</span>
-                </div>
-                {/* Line 2 — event + FINA */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 36 }}>
-                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, letterSpacing: '0.02em' }}>
-                    {s.event_name}
-                  </span>
-                  {s.fina_points != null && <span className="tag tag-neutral asw-num" style={{ flex: 'none', textTransform: 'none' }}>{formatPoints(s.fina_points)}</span>}
-                </div>
-                {/* Line 3 — previous PB */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, paddingLeft: 36, fontSize: 12, color: 'var(--color-neutral-700)' }}>
-                  <span className="micro" style={{ flex: 'none' }}>Previous</span>
-                  <span className="asw-time" style={{ fontWeight: 700 }}>{s.previous_best}</span>
-                  {s.improvement_cs > 0 && (
-                    <span className="asw-num" style={{ color: 'var(--asw-fast, var(--asw-fast))', fontWeight: 700 }}>
-                      −{(s.improvement_cs / 100).toFixed(2)}s
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="am-list-head">
+        <div>
+          <div className="kicker">Personal bests achieved</div>
+          <div className="am-list-note">Swims that beat the swimmer's own all-time best · {shown.length} listed, best points first</div>
         </div>
-      )}
+        {both && (
+          <Seg options={[{ value: 'ALL', label: 'Overall' }, { value: 'M', label: 'Men' }, { value: 'F', label: 'Women' }]} value={pbGender} onChange={setPbGender} />
+        )}
+      </div>
+      {/* one row per swim on one column grid: who and what on the left, then
+          the old time, the new time and the gain reading left to right */}
+      <div className="pb-table" role="table" aria-label="Personal bests">
+        <div className="pb-row pb-headrow" role="row">
+          <span role="columnheader">#</span>
+          <span role="columnheader">Swimmer</span>
+          <span role="columnheader" className="pb-ev">Event</span>
+          <span role="columnheader" className="pb-r">Previous</span>
+          <span role="columnheader" className="pb-r">New best</span>
+          <span role="columnheader" className="pb-r">Gain</span>
+          <span role="columnheader" className="pb-r pb-pts">Points</span>
+        </div>
+        {shown.map((s, i) => (
+          <div key={`${s.swimmer_id}-${s.event_name}-${i}`} className="pb-row row-link" role="row" {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}>
+            <span className="pb-rank asw-num" role="cell">{i + 1}</span>
+            <span className="pb-who" role="cell">
+              <Flag code={s.nationality_code} name={s.nationality} />
+              <span className="pb-name">{s.swimmer_name}</span>
+              <span className="pb-ev-m">{s.event_name}</span>
+            </span>
+            <span className="pb-ev" role="cell">{s.event_name}</span>
+            <span className="pb-r pb-prev asw-time" role="cell">{s.previous_best}</span>
+            <span className="pb-r pb-new asw-time" role="cell">{s.time}</span>
+            <span className="pb-r" role="cell">
+              {s.improvement_cs > 0 && <span className="pb-gain asw-num">−{(s.improvement_cs / 100).toFixed(2)} s</span>}
+            </span>
+            <span className="pb-r pb-pts asw-num" role="cell">{s.fina_points != null ? formatPoints(s.fina_points) : '—'}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -2125,12 +2121,12 @@ function MostImprovedTab({ meetId }) {
   }
 
   return (
-    <div className="pad">
+    <div className="pad am-list">
       <FeaturedCards picks={[improvedPick('M', 'Men'), improvedPick('F', 'Women')]} />
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div className="am-list-head">
         <div>
           <div className="kicker">Most improved swimmers</div>
-          <div className="micro" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, marginTop: 4 }}>Biggest time drops vs previous personal best</div>
+          <div className="am-list-note">Biggest time drops against the swimmer's previous best · {filtered.length} listed</div>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {mixedRegions && (
@@ -2154,50 +2150,27 @@ function MostImprovedTab({ meetId }) {
       ) : (() => {
         const maxDrop = Math.max(0.01, ...filtered.map((s) => parseFloat(s.improvement) || 0))
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+          <div className="mi-grid">
             {filtered.map((s, i) => {
               const drop = parseFloat(s.improvement) || 0
-              // podium colours per rank: gold, silver, bronze — navy after
-              const rankColor = i === 0 ? 'var(--asw-gold)' : i === 1 ? 'var(--asw-silver)' : i === 2 ? 'var(--asw-bronze)' : 'var(--color-accent-800)'
               return (
-                <div
-                  key={i}
-                  className="row-link"
-                  {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}
-                  style={{
-                    border: '1px solid var(--color-divider)', background: 'var(--color-surface)',
-                    borderTop: `3px solid ${rankColor}`,
-                    padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
-                  }}
-                >
-                  {/* rank + swimmer + headline drop */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="asw-num" style={{
-                      width: 22, height: 22, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 11,
-                      background: rankColor, color: '#fff',
-                    }}>{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Flag code={s.nationality_code} name={s.swimmer_name} />
-                        <span style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.swimmer_name}</span>
-                      </div>
-                      <div className="micro" style={{ marginTop: 1, fontSize: 11 }}>{s.event_name}</div>
-                    </div>
-                    <span className="asw-num" style={{ flex: 'none', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, lineHeight: 1, color: 'var(--asw-fast)' }}>
-                      −{s.improvement}{String(s.improvement).includes(':') ? '' : 's'}
+                // every card is the same grid: rank and name on top, then three
+                // labelled figures in three fixed columns, then the bar — so a
+                // row of cards lines up edge to edge and figure to figure
+                <div key={i} className="mi-card row-link" {...rowLink(() => navigate(`/swimmers/${s.swimmer_id}`))}>
+                  <div className="mi-top">
+                    <span className="mi-rank asw-num">{i + 1}</span>
+                    <span className="mi-who">
+                      <span className="mi-name"><Flag code={s.nationality_code} name={s.nationality} /><span>{s.swimmer_name}</span></span>
+                      <span className="mi-event">{s.event_name}</span>
                     </span>
                   </div>
-
-                  {/* time journey + relative drop bar */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="asw-num" style={{ fontSize: 13, color: 'var(--color-neutral-700)', textDecoration: 'line-through' }}>{s.previous_best}</span>
-                    <span style={{ color: 'var(--asw-fast)', fontWeight: 700, fontSize: 12 }}>→</span>
-                    <span className="asw-time" style={{ fontSize: 16 }}>{s.current_time}</span>
+                  <div className="mi-figs">
+                    <span><span className="mi-lab">Previous</span><span className="mi-val mi-prev asw-time">{s.previous_best}</span></span>
+                    <span><span className="mi-lab">New best</span><span className="mi-val asw-time">{s.current_time}</span></span>
+                    <span><span className="mi-lab">Drop</span><span className="mi-val mi-drop asw-num">−{s.improvement}{String(s.improvement).includes(':') ? '' : ' s'}</span></span>
                   </div>
-                  <div className="bar" style={{ height: 4 }}>
-                    <div style={{ width: `${Math.max(4, Math.round((drop / maxDrop) * 100))}%`, background: 'var(--asw-fast)' }} />
-                  </div>
+                  <div className="bar mi-bar"><div style={{ width: `${Math.max(4, Math.round((drop / maxDrop) * 100))}%` }} /></div>
                 </div>
               )
             })}
@@ -2339,6 +2312,7 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
   const [, setSearchParams] = useSearchParams()
   const [days, setDays] = useState(null)
   const [failed, setFailed] = useState(false)
+  const [dayIdx, setDayIdx] = useState(0)
 
   const load = () => {
     setFailed(false)
@@ -2360,62 +2334,93 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
 
   // group a day's items into sessions (Heats → Semifinals → Finals → unscheduled)
   const sessionsOf = (d) => {
+    // a session swum in two sittings (morning and evening) is two cards
+    const TOD = ['MORNING', 'EVENING', '']
     const groups = new Map()
     d.items.forEach((it) => {
-      const key = it.session || ''
+      const key = `${it.session || ''}|${it.time_of_day || ''}`
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key).push(it)
     })
-    return [...groups.entries()].sort((a, b) => SESSION_SORT.indexOf(a[0]) - SESSION_SORT.indexOf(b[0]))
+    const part = (k, n) => k.split('|')[n]
+    return [...groups.entries()].sort((a, b) =>
+      (TOD.indexOf(part(a[0], 1)) - TOD.indexOf(part(b[0], 1)))
+      || (SESSION_SORT.indexOf(part(a[0], 0)) - SESSION_SORT.indexOf(part(b[0], 0))))
+  }
+  const sessionTitle = (key) => {
+    const [sess, tod] = key.split('|')
+    return [PROGRAM_TIME_OF_DAY[tod], PROGRAM_SESSION[sess]].filter(Boolean).join(' · ') || 'Races'
   }
 
+  // Chunking: one day at a time, its sessions side by side as cards
+  const day = days[Math.min(dayIdx, days.length - 1)]
+  const daySessions = day ? sessionsOf(day) : []
+  const dayDone = day ? day.items.filter(hasResults).length : 0
   return (
     <div className="pad-lg">
       {hasItems ? (
-        <div className={days.length === 1 ? 'am-prog-single' : undefined} style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: isAdmin ? 26 : 0 }}>
-          {days.map((d) => (
-            <div key={d.day} style={{ border: '1px solid var(--color-divider)', background: 'var(--color-surface)' }}>
-              <div style={{ padding: '10px 16px', borderBottom: '2px solid var(--asw-gold)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16 }}>Day {d.day}</span>
-                <span className="micro">{formatDate(d.date)}</span>
-              </div>
-              {d.items.length > 0 ? (
-                <div className="am-prog-items" style={{ padding: '6px 0' }}>
-                  {sessionsOf(d).map(([session, items]) => (
-                    <div key={session || 'none'}>
-                      {session && (
-                        <div className="micro" style={{ padding: '8px 16px 4px', color: 'var(--color-accent-800)', fontWeight: 700 }}>
-                          {PROGRAM_SESSION[session]}
-                        </div>
-                      )}
-                      {items.map((it, i) => {
-                        const linked = hasResults(it)
-                        return (
-                          <div
-                            key={it.id || `${it.event}-${i}`}
-                            className={linked ? 'row-link' : undefined}
-                            {...rowLink(linked ? () => openResults(it) : null)}
-                            title={linked ? 'View results' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px', minHeight: 40, fontSize: 13, cursor: linked ? 'pointer' : 'default' }}
-                          >
-                            <span className="asw-num" style={{ width: 20, color: 'var(--color-neutral-400)', flex: 'none' }}>{i + 1}</span>
-                            <span style={{ fontWeight: 600, textDecoration: linked ? 'underline' : 'none', textDecorationColor: 'var(--color-neutral-300)', textUnderlineOffset: 3 }}>
-                              {it.event_name}
-                            </span>
-                            {it.time_of_day && <span className="tag tag-neutral" style={{ flex: 'none' }}>{PROGRAM_TIME_OF_DAY[it.time_of_day]}</span>}
-                            {it.age_category && <span className="tag tag-neutral" style={{ flex: 'none' }}>{displayCategory(it.age_category)}</span>}
-                            <span className="micro" style={{ marginLeft: 'auto' }}>{PROGRAM_GENDER[it.gender]}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="micro" style={{ padding: '10px 16px', textTransform: 'none', letterSpacing: 0 }}>Rest day / no events</div>
-              )}
+        <div className="pg" style={{ marginBottom: isAdmin ? 26 : 0 }}>
+          {days.length > 1 && (
+            <div className="pg-days" role="tablist" aria-label="Days">
+              {days.map((d, i) => (
+                <button key={d.day} type="button" role="tab" aria-selected={i === dayIdx}
+                  className={`pg-day${i === dayIdx ? ' on' : ''}`} onClick={() => setDayIdx(i)}>
+                  <span className="pg-day-n">Day {d.day}</span>
+                  <span className="pg-day-d asw-num">{formatDate(d.date)}</span>
+                  <span className="pg-day-c asw-num">{d.items.length ? `${d.items.length} race${d.items.length === 1 ? '' : 's'}` : 'Rest day'}</span>
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+          <div className="pg-summary">
+            <div>
+              <span className="pg-title">Day {day.day}</span>
+              <span className="pg-date asw-num">{formatDate(day.date)}</span>
+            </div>
+            {day.items.length > 0 && (
+              <div className="pg-facts asw-num">
+                <span><b>{day.items.length}</b> races</span>
+                {Object.entries(day.items.reduce((acc, it) => (it.session ? { ...acc, [it.session]: (acc[it.session] || 0) + 1 } : acc), {}))
+                  .sort((a, b) => SESSION_SORT.indexOf(a[0]) - SESSION_SORT.indexOf(b[0]))
+                  .map(([k, n]) => <span key={k}><b>{n}</b> {PROGRAM_SESSION[k].toLowerCase()}</span>)}
+                <span><b>{dayDone}</b> with results</span>
+              </div>
+            )}
+          </div>
+          {day.items.length > 0 ? (
+            <div className="pg-sessions">
+              {daySessions.map(([session, items]) => (
+                <section key={session || 'none'} className="pg-card">
+                  <header className="pg-card-head">
+                    <span>{sessionTitle(session)}</span>
+                    <span className="asw-num">{items.length}</span>
+                  </header>
+                  <div className="pg-cols" aria-hidden="true">
+                    <span>#</span><span>Event</span><span>Category</span><span>Gender</span><span />
+                  </div>
+                  {items.map((it, i) => {
+                    const linked = hasResults(it)
+                    return (
+                      <div key={it.id || `${it.event}-${i}`}
+                        className={`pg-row${linked ? ' row-link' : ''}`}
+                        {...rowLink(linked ? () => openResults(it) : null)}
+                        title={linked ? 'View results' : undefined}>
+                        <span className="pg-n asw-num">{i + 1}</span>
+                        <span className="pg-ev">
+                          {it.event_name}
+                        </span>
+                        <span className="pg-cat">{it.age_category ? displayCategory(it.age_category) : 'Open'}</span>
+                        <span className={`pg-g pg-g-${it.gender}`}>{PROGRAM_GENDER[it.gender]}</span>
+                        <span className="pg-st">{linked ? <>Results <span aria-hidden="true">›</span></> : <span className="pg-st-0">Scheduled</span>}</span>
+                      </div>
+                    )
+                  })}
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="pg-rest">Rest day — no races scheduled.</div>
+          )}
         </div>
       ) : (
         !isAdmin && (

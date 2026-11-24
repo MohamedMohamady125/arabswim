@@ -25,35 +25,6 @@
   .at-medals .medals-table th.medal-col { width: 88px !important; }
   .at-medals .medals-table th:last-child { width: 88px; }
 }
-/* Podium: the headline figure is the gold count — the key the table is ranked
-   by — and the total follows as a labelled secondary figure. */
-.at-medals .live-podium > div > div:last-child { flex-wrap: nowrap !important; gap: 10px !important; }
-.at-medals .live-podium > div > div:last-child > .asw-num {
-  order: 2; margin-left: auto; white-space: nowrap;
-  font-family: var(--font-body) !important; font-size: 12px !important; font-weight: 600 !important;
-  color: var(--color-neutral-700);
-}
-.at-medals .live-podium > div > div:last-child > .asw-num::after { content: ' total'; }
-.at-medals .live-podium > div > div:last-child > span:last-child { flex-wrap: nowrap !important; gap: 10px !important; }
-.at-medals .live-podium > div > div:last-child > span:last-child > span { white-space: nowrap; }
-.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child { gap: 4px !important; }
-.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child img { width: 18px !important; height: 18px !important; }
-.at-medals .live-podium > div > div:last-child > span:last-child > span:first-child .asw-num {
-  font-family: var(--font-heading); font-weight: 800; font-size: 24px; line-height: 1;
-}
-@media (max-width: 640px) {
-  /* three cards across (countries): place label on its own line so the flag
-     and code always fit, and the counts sit on a fixed grid — gold, then
-     silver + bronze, then the total — identical on every card */
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:first-child { flex-wrap: wrap; row-gap: 6px; }
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:first-child > span:first-child { flex: 0 0 100%; }
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child { flex-direction: column; align-items: flex-start !important; gap: 6px !important; }
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > .asw-num { order: 2; margin-left: 0; }
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > span:last-child {
-    display: grid !important; grid-template-columns: auto auto; justify-content: start; gap: 6px 10px !important;
-  }
-  .at-medals .live-podium:not(.live-podium-stack) > div > div:last-child > span:last-child > span:first-child { grid-column: 1 / -1; }
-}
 @media (max-width: 900px) {
   /* both pickers the same full width */
   .at-medals-fb .filterbar-controls .select,
@@ -247,3 +218,71 @@
 /* the record's tag line stays on one line in a narrow card */
 .at-rec-head .card-kicker { font-size: 10px; letter-spacing: 0.04em; }
 .at-rec-head .card-kicker > span { white-space: nowrap; }
+
+/* ── Medal podium cards (every medal tally on the site) ─────────────────
+   A place badge in the medal's own colour, who it is, then the counts with
+   gold — the ranking key — as the lead figure and the total as a note. */
+.mp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.mp-card { display: flex; align-items: stretch; min-width: 0; background: var(--color-bg); border: 1px solid var(--color-divider); }
+.mp-badge { flex: none; width: 60px; display: flex; align-items: center; justify-content: center; color: var(--wa-ink); font-family: var(--font-heading); line-height: 1; }
+.mp-badge b { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
+.mp-badge sup { align-self: flex-start; margin: 14px 0 0 1px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.mp-1 .mp-badge { background: var(--wa-gold-head); }
+.mp-2 .mp-badge { background: var(--wa-silver-head); }
+.mp-3 .mp-badge { background: var(--wa-bronze-head); }
+.mp-main { flex: 1; min-width: 0; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.mp-who { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.mp-counts { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.mp-c { display: inline-flex; align-items: baseline; gap: 5px; font-size: 13px; font-weight: 700; color: var(--color-neutral-800); white-space: nowrap; }
+.mp-c i { width: 9px; height: 9px; flex: none; align-self: center; }
+.mp-c-g i { background: var(--wa-gold-head); } .mp-c-s i { background: var(--wa-silver-head); } .mp-c-b i { background: var(--wa-bronze-head); }
+.mp-c-g { font-family: var(--font-heading); font-size: 26px; font-weight: 800; line-height: 1; color: var(--color-accent-800); }
+.mp-c-g i { width: 11px; height: 11px; }
+.mp-total { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--color-neutral-700); white-space: nowrap; }
+.mp-total b { font-weight: 800; color: var(--color-accent-800); }
+@media (max-width: 760px) {
+  /* phone: one card per row — a full name always fits */
+  .mp-grid { grid-template-columns: 1fr; gap: 8px; }
+  .mp-badge { width: 52px; }
+  .mp-badge b { font-size: 28px; }
+  .mp-badge sup { margin-top: 12px; }
+  .mp-main { padding: 10px 12px; gap: 6px; }
+  .mp-c-g { font-size: 22px; }
+}
+
+/* ── Medal table · a country's (or club's) medallists, opened in place ──
+   Plain figures under the same Gold / Silver / Bronze columns as the row
+   above; the events are one quiet line of text, each marked by a small
+   square in its medal's colour. No row of medal pictures. */
+.md-panel { background: var(--color-accent-100); border-left: 3px solid var(--color-accent-800); }
+.md-head { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px 8px 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+.md-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--md-g, 54px) var(--md-g, 54px) var(--md-g, 54px) var(--md-t, 64px); align-items: center; border-top: 1px solid var(--color-divider); }
+.md-who { min-width: 0; padding: 10px 12px 10px 20px; }
+.md-name { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; font-size: 14px; font-weight: 700; color: var(--color-accent-800); text-decoration: none; cursor: pointer; background: none; border: 0; padding: 0; font-family: inherit; text-align: left; }
+button.md-name:hover > span:first-child, a.md-name:hover > span:first-child { text-decoration: underline; }
+.md-name-static { cursor: default; }
+.md-events { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 4px; font-size: 12px; color: var(--color-neutral-700); line-height: 1.5; }
+.md-ev { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.md-ev i { width: 8px; height: 8px; flex: none; }
+.md-ev-GOLD i { background: var(--wa-gold-head); } .md-ev-SILVER i { background: var(--wa-silver-head); } .md-ev-BRONZE i { background: var(--wa-bronze-head); }
+.md-n { align-self: stretch; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--wa-ink); }
+.md-n-0 { color: var(--color-neutral-500); font-weight: 400; }
+.md-n-total { font-weight: 800; }
+@media (max-width: 760px) {
+  .medals-table .medal-total-col { width: 40px !important; }
+  .md-row { grid-template-columns: minmax(0, 1fr) 34px 34px 34px 40px; }
+  .md-who { padding: 9px 8px 9px 12px; }
+  .md-head { padding: 9px 8px 7px 12px; }
+  .md-ev { white-space: normal; }
+}
+/* the opened medallists sit exactly under the Gold / Silver / Bronze / Total
+   columns: both use the same fixed widths */
+.medals-table th.medal-col { width: 66px !important; min-width: 66px; }
+.medals-table th.medal-total-col { width: 62px !important; min-width: 62px; }
+.md-row { --md-g: 66px; --md-t: 62px; }
+.at-medals .md-row { --md-g: 88px; --md-t: 88px; }
+@media (max-width: 760px) {
+  .medals-table th.medal-col { width: 32px !important; min-width: 32px; padding-left: 0 !important; padding-right: 0 !important; }
+  .medals-table th.medal-total-col { width: 36px !important; min-width: 36px; padding-left: 0 !important; padding-right: 0 !important; }
+  .md-row { grid-template-columns: minmax(0, 1fr) 32px 32px 32px 36px; }
+}

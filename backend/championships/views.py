@@ -1176,7 +1176,58 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
             'best_fina': b['best_fina'],
         } for b in busiest]
 
+        # Stars of the meet: the swimmers who took the most home. Ranked the
+        # way a medal table is (gold, silver, bronze), then by their best
+        # swim in points; a meet with no medals yet ranks on points alone.
+        # Individual medals only — a relay medal belongs to the team.
+        from medals.models import Medal
+        from swimmers.models import Swimmer
+        tally = {}
+        for m in (Medal.objects.filter(championship=championship, swimmer__is_relay_team=False)
+                  .values('swimmer_id', 'medal_type').annotate(n=Count('id'))):
+            row = tally.setdefault(m['swimmer_id'], {'GOLD': 0, 'SILVER': 0, 'BRONZE': 0})
+            row[m['medal_type']] = m['n']
+        rec_count = {}
+        breaks, _prev = self._record_breaks(championship)
+        for (_key, (r, _old)) in breaks.items():
+            if not r.swimmer.is_relay_team:
+                rec_count[r.swimmer_id] = rec_count.get(r.swimmer_id, 0) + 1
+        best_swim = {}
+        for r in (athletes.filter(fina_points__gt=0)
+                  .values('swimmer_id', 'fina_points', 'event__name').order_by('-fina_points')):
+            best_swim.setdefault(r['swimmer_id'], (r['fina_points'], r['event__name']))
+        events_n = dict(athletes.values('swimmer_id').annotate(n=Count('event', distinct=True))
+                        .values_list('swimmer_id', 'n'))
+        pool_ids = set(tally) or set(best_swim)
+        ranked = sorted(pool_ids, key=lambda sid: (
+            -tally.get(sid, {}).get('GOLD', 0), -tally.get(sid, {}).get('SILVER', 0),
+            -tally.get(sid, {}).get('BRONZE', 0), -(best_swim.get(sid, (0, ''))[0] or 0), sid))[:8]
+        nat_at_meet = {r['swimmer_id']: (r['nationality__code'], r['nationality__name'])
+                       for r in athletes.filter(swimmer_id__in=ranked)
+                       .values('swimmer_id', 'nationality__code', 'nationality__name')}
+        profiles = Swimmer.objects.select_related('nationality').in_bulk(ranked)
+        stars = []
+        for sid in ranked:
+            sw = profiles.get(sid)
+            if not sw:
+                continue
+            code, cname = nat_at_meet.get(sid) or (None, None)
+            if not code and sw.nationality:
+                code, cname = sw.nationality.code, sw.nationality.name
+            medals_row = tally.get(sid, {'GOLD': 0, 'SILVER': 0, 'BRONZE': 0})
+            pts, ev = best_swim.get(sid, (None, ''))
+            stars.append({
+                'swimmer_id': sid, 'name': sw.name, 'gender': sw.sex,
+                'photo': request.build_absolute_uri(sw.photo.url) if sw.photo else None,
+                'nationality_code': code, 'nationality': cname,
+                'gold': medals_row['GOLD'], 'silver': medals_row['SILVER'], 'bronze': medals_row['BRONZE'],
+                'records': rec_count.get(sid, 0),
+                'best_points': pts, 'best_event': ev,
+                'events_count': events_n.get(sid, 0),
+            })
+
         return Response({
+            'stars': stars,
             'total_results': total_results,
             'total_swimmers': total_swimmers,
             'total_events': total_events,

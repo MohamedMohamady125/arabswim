@@ -60,36 +60,28 @@ export default function MedalStandings({
   return (
     <div>
       {showPodium && top3.length === 3 && (
-        <div className={`live-podium${stackPodiumOnPhone ? ' live-podium-stack' : ''}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
-          {top3.map((r, i) => (
-            <div key={key(r, i)} style={{
-              /* white card with the standard navy top frame */
-              border: '1px solid var(--color-neutral-200)', borderTop: '3px solid var(--color-box-top)',
-              borderRadius: 0, padding: '12px 16px', background: '#fff', minWidth: 0,
-              border: '1px solid var(--color-divider)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, overflow: 'hidden' }}>
+        <div className={`live-podium mp-grid${stackPodiumOnPhone ? ' live-podium-stack' : ''}`}>
+          {top3.map((r, i) => {
+            const total = r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)
+            return (
+              <div key={key(r, i)} className={`mp-card mp-${i + 1}`}>
                 {podiumLabels && (
-                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
-                    {PODIUM_META[i].label}
+                  <span className="mp-badge" aria-label={`${PODIUM_META[i].label} place`}>
+                    <b aria-hidden="true">{i + 1}</b><sup aria-hidden="true">{PODIUM_META[i].label.slice(1)}</sup>
                   </span>
                 )}
-                {chip(r, i)}
+                <div className="mp-main">
+                  <div className="mp-who">{chip(r, i)}</div>
+                  <div className="mp-counts asw-num" aria-label={`${r.gold || 0} gold, ${r.silver || 0} silver, ${r.bronze || 0} bronze, ${total} in total`}>
+                    <span className="mp-c mp-c-g" aria-hidden="true"><i />{r.gold || 0}</span>
+                    <span className="mp-c mp-c-s" aria-hidden="true"><i />{r.silver || 0}</span>
+                    <span className="mp-c mp-c-b" aria-hidden="true"><i />{r.bronze || 0}</span>
+                    <span className="mp-total" aria-hidden="true"><b>{total}</b> total</span>
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, lineHeight: 1 }}>
-                  {r.total ?? (r.gold || 0) + (r.silver || 0) + (r.bronze || 0)}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-                  {[['GOLD', r.gold], ['SILVER', r.silver], ['BRONZE', r.bronze]].map(([t, n]) => (
-                    <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      <MedalIcon type={t} size={13} /><span className="asw-num">{n || 0}</span>
-                    </span>
-                  ))}
-                </span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -103,7 +95,7 @@ export default function MedalStandings({
               {medalTh('var(--wa-gold-head)', 'Gold', 'GOLD')}
               {medalTh('var(--wa-silver-head)', 'Silver', 'SILVER')}
               {medalTh('var(--wa-bronze-head)', 'Bronze', 'BRONZE')}
-              <th aria-label="Total" style={{ ...th, textAlign: 'center' }}><span className="hide-mobile">Total</span><span className="show-mobile-inline">T</span></th>
+              <th aria-label="Total" className="medal-total-col" style={{ ...th, textAlign: 'center', width: 64 }}><span className="hide-mobile">Total</span><span className="show-mobile-inline">T</span></th>
             </tr>
           </thead>
           <tbody>

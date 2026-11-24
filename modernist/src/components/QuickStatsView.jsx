@@ -6,7 +6,8 @@ import {
 import Flag from './Flag'
 import { Empty } from './ui'
 import MedalStandings from './MedalStandings'
-import { formatNumber, formatPoints } from '../utils'
+import Pic from './Pic'
+import { formatNumber, formatPoints, nameInitials } from '../utils'
 
 const NAVY = 'var(--color-accent)'
 const NAVY_DARK = 'var(--color-accent-800)'
@@ -187,6 +188,39 @@ function RecordStack({ rows, levels }) {
   )
 }
 
+/* ── Stars of the meet ───────────────────────────────────────────────── */
+function StarMedals({ s, small = false }) {
+  const total = s.gold + s.silver + s.bronze
+  if (!total) return <span className="sm-medals" />
+  return (
+    <span className={`sm-medals${small ? ' sm-medals-s' : ''}`} aria-label={`${s.gold} gold, ${s.silver} silver, ${s.bronze} bronze`}>
+      {[['gold', s.gold], ['silver', s.silver], ['bronze', s.bronze]].map(([k, n]) => (
+        <span key={k} className={`sm-medal sm-medal-${k}${n ? '' : ' sm-medal-0'}`} aria-hidden="true">{n}</span>
+      ))}
+    </span>
+  )
+}
+
+function StarCard({ s, rank }) {
+  return (
+    <Link to={`/swimmers/${s.swimmer_id}`} className={`sm-card${rank === 1 ? ' sm-card-1' : ''}`}>
+      <span className="sm-rank asw-num">{rank}</span>
+      <span className="sm-photo">
+        <Pic kind="person" w={160} src={s.photo} alt="" fallback={<span aria-hidden="true">{nameInitials(s.name)}</span>} />
+      </span>
+      <span className="sm-body">
+        <span className="sm-name">{s.name}</span>
+        <span className="sm-country"><Flag code={s.nationality_code} name={s.nationality} /> {s.nationality}</span>
+        <StarMedals s={s} />
+        <span className="sm-facts">
+          {s.best_points ? <span><b className="asw-num">{formatPoints(s.best_points)}</b> · {s.best_event}</span> : null}
+          {s.records > 0 && <span className="tag tag-accent sm-rec">{s.records} record{s.records === 1 ? '' : 's'}</span>}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
 /* ── Layout bits ────────────────────────────────────────────────────── */
 
 /* `center`: the content sits in the middle of the panel when a taller
@@ -267,7 +301,7 @@ function ProgressRow({ icon: Icon, label, value }) {
 
 /* ── Shared Quick Statistics body (home page + meet Overview tab) ───── */
 
-export default function QuickStatsView({ data, busiest, pad = false, medalsLink = '/medals', headline = false }) {
+export default function QuickStatsView({ data, stars, pad = false, medalsLink = '/medals', headline = false }) {
   const { counts, participation, medals, performance: perf, records, progress } = data
   const mf = participation.male + participation.female || 1
   const malePct = Math.round((participation.male / mf) * 1000) / 10
@@ -388,38 +422,29 @@ export default function QuickStatsView({ data, busiest, pad = false, medalsLink 
         </Panel>
       </div>
 
-      {/* ── Busiest swimmers (meet Overview tab only) ── */}
-      {(busiest || []).length > 0 && (
-        <Panel title="Busiest Swimmers (Most Races)">
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-neutral-700)' }}>
-                  <th style={{ textAlign: 'left', paddingBottom: 6 }}>#</th>
-                  <th style={{ textAlign: 'left', paddingBottom: 6 }}>Swimmer</th>
-                  <th style={{ textAlign: 'center', paddingBottom: 6 }}>Swims</th>
-                  <th style={{ textAlign: 'center', paddingBottom: 6 }}>Events</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 6 }}>Best points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {busiest.map((s, i) => (
-                  <tr key={s.swimmer_id} className="hair-t">
-                    <td className="asw-num" style={{ padding: '8px 0', fontWeight: 700, color: 'var(--color-neutral-700)' }}>{i + 1}</td>
-                    {/* Fitts's Law: the link fills the row height (row itself is not taller) */}
-                    <td style={{ padding: 0 }}>
-                      <Link to={`/swimmers/${s.swimmer_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 0', fontWeight: 700, color: 'inherit', textDecoration: 'none' }}>
-                        <Flag code={s.nationality_code} name={s.nationality} /> {s.swimmer_name}
-                      </Link>
-                    </td>
-                    <td className="asw-num" style={{ textAlign: 'center', fontWeight: 800, color: NAVY_DARK }}>{s.swims}</td>
-                    <td className="asw-num" style={{ textAlign: 'center', fontWeight: 700 }}>{s.events_count}</td>
-                    <td className="asw-num" style={{ textAlign: 'right', fontWeight: 700 }}>{s.best_fina ? formatPoints(s.best_fina) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* ── Stars of the meet (meet Overview tab only) ──
+          Who took the most home: a podium of three, then the next five.
+          Serial Position: the leaders sit first and largest; each card
+          answers "how many medals, how good, any records" at a glance. */}
+      {(stars || []).length > 0 && (
+        <Panel title="Stars of the Meet">
+          <div className="sm-note">Ranked by individual medals — gold, then silver, then bronze — and by best swim.</div>
+          <div className="sm-top">
+            {stars.slice(0, 3).map((s, i) => <StarCard key={s.swimmer_id} s={s} rank={i + 1} />)}
           </div>
+          {stars.length > 3 && (
+            <div className="sm-rest">
+              {stars.slice(3).map((s, i) => (
+                <Link key={s.swimmer_id} to={`/swimmers/${s.swimmer_id}`} className="sm-row">
+                  <span className="sm-row-rank asw-num">{i + 4}</span>
+                  <Flag code={s.nationality_code} name={s.nationality} />
+                  <span className="sm-row-name">{s.name}</span>
+                  <StarMedals s={s} small />
+                  <span className="sm-row-pts asw-num">{s.best_points ? formatPoints(s.best_points) : ''}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </Panel>
       )}
 

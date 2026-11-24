@@ -696,6 +696,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   // keep a valid event selected whenever the gender filter changes the list
   useEffect(() => {
     if (filteredEvents.length === 0) { setEventKey(''); return }
+    // wait for the gender to be chosen: picking an event from the unfiltered
+    // list first loaded the wrong gender's race for a moment (or for good)
+    if (!genderFilter) return
     if (!filteredEvents.some((e) => `${e.event_id}|${e.gender}` === eventKey)) {
       setEventKey(`${filteredEvents[0].event_id}|${filteredEvents[0].gender}`)
     }
@@ -705,13 +708,18 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   const selectedEvent = filteredEvents.find((e) => `${e.event_id}|${e.gender}` === eventKey)
     || events.find((e) => `${e.event_id}|${e.gender}` === eventKey)
 
+  // only the latest request may fill the table: a slower, older answer must
+  // never replace the race the visitor is looking at now
+  const loadSeq = React.useRef(0)
   const loadResults = () => {
     if (!eventKey) return
     const [eventId, gender] = eventKey.split('|')
+    const seq = ++loadSeq.current
     setLoading(true)
     setLoadFailed(false)
     getChampionshipResults(meetId, { event: eventId, gender, all_rounds: true })
       .then((res) => {
+        if (seq !== loadSeq.current) return
         const data = list(res.data)
         setRows(data)
         const rounds = [...new Set(data.map((r) => r.round_type || ''))]
@@ -732,8 +740,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         }
         setEditingRow(null)
       })
-      .catch(() => { setRows([]); setLoadFailed(true) })
-      .finally(() => setLoading(false))
+      .catch(() => { if (seq === loadSeq.current) { setRows([]); setLoadFailed(true) } })
+      .finally(() => { if (seq === loadSeq.current) setLoading(false) })
   }
 
   useEffect(() => { loadResults() }, [meetId, eventKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -928,7 +936,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
     )
   }
 
-  const colCount = 6 + (isNational ? 1 : 0) + (editMode ? 1 : 0)
+  const colCount = 5 + (isNational ? 1 : 0) + (editMode ? 1 : 0)
 
   // Double podium (Tunisian-style meets with foreign guests): guests medal
   // from their source placements, host-country swimmers from a host-only
@@ -1127,7 +1135,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
   }
 
   return (
-    <div className="pad">
+    <div className="pad am-results">
       {/* Pool / Open Water discipline switch — only when the meet has OW swims */}
       {hasOpenWaterEvents && (
         <div style={{ marginBottom: 16 }}>
@@ -1139,8 +1147,9 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         </div>
       )}
 
-      {/* filters row */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+      {/* filters row — every control carries a label and sits on one baseline
+          at one height (Similarity); admin actions stay apart on the right */}
+      <div className="am-resfilters">
         {/* Gender comes first: it decides which events the next menu lists.
             Occam: with a single gender in the meet the switch is not shown. */}
         {(() => {
@@ -1163,7 +1172,8 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           })()
           if (genderOptions.length < 2) return null
           return (
-        <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 38 }}>
+        <div className="field am-resfilters-gender">
+        <label id="meet-f18-label">Gender</label>
         <Seg
           options={genderOptions}
           value={isAllMode ? `${genderFilter}_${ageView === 'boys' ? (genderFilter === 'M' ? 'BOYS' : 'GIRLS') : (genderFilter === 'M' ? 'MEN' : genderFilter === 'F' ? 'WOMEN' : '')}` : genderFilter}
@@ -1178,7 +1188,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
         </div>
           )
         })()}
-        <div className="field" style={{ width: 320, maxWidth: '100%' }}>
+        <div className="field am-resfilters-event">
           <label htmlFor="meet-f19">{discipline === 'OW' ? 'Open water event' : 'Event'}</label>
           <select id="meet-f19" className="select" value={eventKey} onChange={(e) => setEventKey(e.target.value)}>
             {/* Chunking: a long event list is grouped by stroke */}
@@ -1199,7 +1209,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           </select>
         </div>
         {hasCategories && (
-          <div className="field" style={{ width: 180, maxWidth: '100%' }}>
+          <div className="field am-resfilters-cat">
             <label htmlFor="meet-f20">Category</label>
             <select id="meet-f20"
               className="select"
@@ -1225,7 +1235,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
           </div>
         )}
         {isAdmin && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <div className="am-resfilters-admin">
             <button
               className={`btn ${editMode ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => { setEditMode((m) => !m); setEditingRow(null) }}
@@ -1269,7 +1279,7 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
 
       {/* round filter */}
       {rounds.length > 1 && (
-        <div style={{ marginBottom: 16, overflowX: 'auto' }}>
+        <div className="am-res-rounds" style={{ marginBottom: 16, overflowX: 'auto' }}>
           <Seg
             options={rounds.map((r) => ({ value: r, label: roundLabel(r, rounds) }))}
             value={selectedRound}
@@ -1306,13 +1316,13 @@ function ResultsTab({ meetId, events, isNational, isAdmin, hasOpenPodium, hasDou
               {pageGroups.map(([cat, catRows], gi) => (
                 <React.Fragment key={`${cat || '_general'}-${gi}`}>
                   {isOpenView && gi === 0 && (
-                    <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{openLabel} — all categories, ranked by time</td>
+                    <tr className="am-res-group">
+                      <td colSpan={colCount} className="kicker">{openLabel} — all categories, ranked by time</td>
                     </tr>
                   )}
                   {selectedCategory === 'ALL' && hasCategories && (
-                    <tr style={{ background: 'var(--color-surface)' }}>
-                      <td colSpan={colCount} className="kicker" style={{ padding: '16px 8px' }}>{displayCategory(cat) || 'Open'}</td>
+                    <tr className="am-res-group">
+                      <td colSpan={colCount} className="kicker">{displayCategory(cat) || 'Open'}</td>
                     </tr>
                   )}
                   {catRows.map((r) => renderRow(r, fullByCat.get(cat) || catRows))}
@@ -1432,35 +1442,43 @@ function EntityAthleteMedals({ medals, isNational }) {
   if (groups.length === 0) {
     return <div className="micro" style={{ padding: '16px 16px' }}>No athlete medals recorded</div>
   }
+  // a relay medal belongs to the team, not to a person named after the country
+  const teamName = isNational ? 'Relay team' : 'National team'
+  const people = groups.filter((g) => !g.swimmer?.is_relay_team).length
+  const num = (n, extra = '') => <span className={`md-n asw-num${n ? '' : ' md-n-0'}${extra}`}>{n || '–'}</span>
   return (
-    <div className="medal-drop">
+    <div className="md-panel">
+      <div className="md-head">
+        <span>Medallists</span>
+        <span className="asw-num">{people} swimmer{people === 1 ? '' : 's'}{groups.length > people ? ' · relays' : ''}</span>
+      </div>
       {groups.map((g, gi) => {
         const sw = g.swimmer
         const isRelay = sw?.is_relay_team
         return (
-          <div key={sw?.id || gi} className="medal-drop-row">
-            <span
-              className={isRelay ? 'medal-drop-name' : 'medal-drop-name row-link'}
-              {...rowLink(isRelay ? null : () => navigate(`/swimmers/${sw?.id}`))}
-              style={{ cursor: isRelay ? 'default' : 'pointer' }}
-            >
-              <Flag code={sw?.nationality_detail?.code} name={sw?.nationality_detail?.name} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sw?.name}</span>
-              {isRelay && <span className="tag tag-neutral" style={{ flex: 'none' }}>{isNational ? 'Club' : 'Country'}</span>}
-            </span>
-            <span className="medal-drop-counts asw-num">
-              {[['GOLD', g.gold], ['SILVER', g.silver], ['BRONZE', g.bronze]].map(([t, n]) => (
-                <span key={t}><MedalIcon type={t} size={13} />{n}</span>
-              ))}
-            </span>
-            <span className="medal-drop-chips">
-              {g.medals.map((m, mi) => (
-                <span key={m.id || mi} className="tag tag-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <MedalIcon type={m.medal_type} size={12} />
-                  {m.event_detail?.name}{m.scope === 'OPEN' ? ' · Open' : ''}
+          <div key={sw?.id || gi} className="md-row">
+            <div className="md-who">
+              {isRelay ? (
+                <span className="md-name md-name-static">
+                  <span>{teamName}</span>
+                  <span className="tag tag-accent" style={{ flex: 'none', fontSize: 11 }}>Relay</span>
                 </span>
-              ))}
-            </span>
+              ) : (
+                <button type="button" className="md-name" onClick={() => navigate(`/swimmers/${sw?.id}`)}>
+                  <span>{sw?.name}</span>
+                </button>
+              )}
+              <div className="md-events">
+                {g.medals.map((m, mi) => (
+                  <span key={m.id || mi} className={`md-ev md-ev-${m.medal_type}`} title={m.medal_type.charAt(0) + m.medal_type.slice(1).toLowerCase()}>
+                    <i aria-hidden="true" />
+                    <span className="sr-only">{m.medal_type.toLowerCase()}: </span>
+                    {m.event_detail?.name}{m.scope === 'OPEN' ? ' · Open' : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {num(g.gold)}{num(g.silver)}{num(g.bronze)}{num(g.gold + g.silver + g.bronze, ' md-n-total')}
           </div>
         )
       })}
@@ -1618,8 +1636,7 @@ function MedalsTab({ meetId, isNational }) {
                   entityHeader={activeScope === 'country' ? 'Country' : activeScope === 'club' ? 'Club' : 'Swimmer'}
                   // country / club cards: no 1st-2nd-3rd label (the order says it);
                   // swimmer cards: long names need the full width, so they stack on phone
-                  podiumLabels={activeScope === 'swimmer'}
-                  stackPodiumOnPhone={activeScope === 'swimmer'}
+                  stackPodiumOnPhone
                   rowKey={(row, i) => row.swimmer__id || row.team_key || row.swimmer__nationality__code || i}
                   // Every tally row drops down the medal detail: club/nation
                   // rows list each athlete's medals, swimmer rows list that
@@ -1648,8 +1665,8 @@ function MedalsTab({ meetId, isNational }) {
                     ) : (
                       <>
                         <Flag code={row.swimmer__nationality__code} name={row.swimmer__nationality__name} />
-                        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {activeScope === 'swimmer' ? row.swimmer__name : row.swimmer__nationality__code}
+                        <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {activeScope === 'swimmer' ? row.swimmer__name : (row.swimmer__nationality__name || row.swimmer__nationality__code)}
                         </span>
                       </>
                     )
@@ -1894,7 +1911,7 @@ function OverviewTab({ meetId, stats }) {
   return (
     <div>
       {/* home-page style quick statistics + busiest swimmers widget */}
-      <QuickStatsView data={qs} busiest={stats?.busiest_swimmers} pad medalsLink={`/meets/${meetId}?tab=medals`} />
+      <QuickStatsView data={qs} stars={stats?.stars} pad medalsLink={`/meets/${meetId}?tab=medals`} />
 
       {/* Similarity: the lower half follows the same numbered section + card
           pattern as sections 1–5 above (numbers continue from there) */}

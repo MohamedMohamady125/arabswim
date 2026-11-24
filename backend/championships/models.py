@@ -92,6 +92,10 @@ class Championship(models.Model):
     # meet, turned off by the admin's "Finish meet" button. While live, the
     # meet shows a LIVE badge and results grow session by session.
     is_live = models.BooleanField(default=False)
+    # Set by "Finish meet": the meet page shows the full championship layout
+    # (Overview, Medals, Highlights…) even though today is still inside the
+    # meet's dates. A later live session upload reopens it.
+    live_closed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

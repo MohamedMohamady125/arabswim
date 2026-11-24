@@ -3526,7 +3526,7 @@ export default function MeetDetail() {
   const meetEnd = meet.end_date ? new Date(meet.end_date + 'T00:00:00') : meetStart
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const isLiveMode = meet.is_live || (meetStart && meetEnd && today >= meetStart && today <= new Date(meetEnd.getTime() + 86400000))
+  const isLiveMode = meet.is_live || (!meet.live_closed && meetStart && meetEnd && today >= meetStart && today <= new Date(meetEnd.getTime() + 86400000))
   // Meet is finished: last day has passed
   const isFinished = meetEnd && today > new Date(meetEnd.getTime() + 86400000)
 
@@ -3638,7 +3638,7 @@ export default function MeetDetail() {
 
       {isAdmin && (meet.is_live || isWithinLiveWindow(meet)) && (
         <LivePanel meet={meet} onFinished={() => {
-          setMeet({ ...meet, is_live: false })
+          setMeet({ ...meet, is_live: false, live_closed: true })
           refreshStats()
         }} />
       )}

@@ -301,10 +301,11 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         championship (medals recomputed, LIVE badge dropped)."""
         champ = self.get_object()
         champ.is_live = False
+        champ.live_closed = True
         if champ.is_calendar_only:
             champ.is_calendar_only = False
             champ.is_published = True
-        champ.save(update_fields=['is_live', 'is_calendar_only', 'is_published'])
+        champ.save(update_fields=['is_live', 'live_closed', 'is_calendar_only', 'is_published'])
         from medals.utils import recompute_medals
         medal_count = recompute_medals(champ)
         # Check records for all results in this meet
@@ -345,7 +346,7 @@ class ChampionshipViewSet(viewsets.ModelViewSet):
         from datetime import date as _date
         today = _date.today()
         qs = self.get_queryset().filter(
-            Q(is_live=True) | Q(date__lte=today, end_date__gte=today) | Q(date=today, end_date__isnull=True),
+            Q(is_live=True) | Q(live_closed=False) & (Q(date__lte=today, end_date__gte=today) | Q(date=today, end_date__isnull=True)),
         ).filter(
             # Calendar-only meets are inherently public (they appear on the
             # calendar with live-results links), so they count as "live now"

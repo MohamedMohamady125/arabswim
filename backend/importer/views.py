@@ -264,7 +264,8 @@ def _record_live_session(result, preview, live_day, live_source, live_label):
     )
     if not champ.is_live:
         champ.is_live = True
-        champ.save(update_fields=['is_live'])
+        champ.live_closed = False
+        champ.save(update_fields=['is_live', 'live_closed'])
 
 
 def _run_confirm_job(job_id, preview, swimmer_decisions, championship_id,

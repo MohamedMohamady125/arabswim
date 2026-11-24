@@ -250,7 +250,7 @@ export default function Championships() {
             const md = parseMeetDate(m.date)
             const me = parseMeetDate(m.end_date) || md
             const upcoming = md && md > today
-            const running = m.is_live || (md && me && md <= today && me >= today && !hasResults)
+            const running = m.is_live || (!m.live_closed && md && me && md <= today && me >= today && !hasResults)
             return (
               <div key={m.id} className={i < g.items.length - 1 ? 'hair-b' : ''}>
                 {/* the whole row IS the link — no expander, no extra chrome */}

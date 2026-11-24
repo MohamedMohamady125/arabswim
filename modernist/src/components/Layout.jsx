@@ -266,7 +266,7 @@ function Header() {
       <div className="rule-b asw-brandbar">
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 'auto', textDecoration: 'none', color: 'inherit' }}>
           {/* the emblem is a navy roundel: a light tile behind it keeps it readable on the navy bar */}
-          <img src="/logo.png" alt="ArabSwim" className="asw-emblem" style={{ width: 40, height: 40 }} />
+          <img src="/logo.png" alt="ArabSwim" className="asw-emblem" style={{ width: 44, height: 44 }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, letterSpacing: '0.02em', color: '#ffffff' }}>ARABSWIM</span>
           <span className="micro hide-mobile" style={{ color: 'var(--color-accent-2-300)' }}>Arab Swimming Database</span>
         </Link>

@@ -309,7 +309,7 @@ function AcademiesTab({ countryId }) {
   if (load.failed) return <LoadFailed what="academies" onRetry={load.retry} />
   return (
     <div className="pad-lg">
-      <SectHead title={`Academies · ${academies.length}`} />
+      <SectHead title="Academies" />
       {academies.length === 0 ? <Empty label="No academies registered" hint="Academies from this country will be listed here." /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
           {academies.map((a) => (
@@ -377,7 +377,7 @@ function ClubsTab({ countryId }) {
   const shown = q ? clubs.filter((t) => fold(t.name).includes(q)) : clubs
   return (
     <div className="pad-lg">
-      <SectHead title={`Clubs · ${clubs.length}`} />
+      <SectHead title="Clubs" />
       {/* Miller's Law: a long club list gets a way to find one, and says how it is ordered */}
       {clubs.length > 12 && (
         <>
@@ -2604,7 +2604,7 @@ export default function CountryProfile({ arabFed = false }) {
           {/* Hosted */}
           {champSub === 'hosted' && (
           <div className="pad-lg">
-            <SectHead title={`Hosted · ${hostedIntl.length}`} />
+            <SectHead title="Hosted" />
             {hostedIntl.length === 0 ? <Empty label="No international championships hosted" /> : (
               <div>{hostedIntl.map((c) => (
                 <Link key={c.id} to={`/meets/${c.id}`} className="hair-b" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', color: 'inherit', textDecoration: 'none' }}>
@@ -2618,7 +2618,7 @@ export default function CountryProfile({ arabFed = false }) {
           {/* Participated */}
           {champSub === 'participation' && (
           <div className="pad-lg">
-            <SectHead title={`Participated · ${participated.length}`} />
+            <SectHead title="Participated" />
             {participated.length === 0 ? <Empty label="No participations" /> : (
               <div>{participated.map((c) => {
                 const isOpen = openChamp === c.id
@@ -2719,7 +2719,7 @@ export default function CountryProfile({ arabFed = false }) {
             </div>
             )
           })()}
-          <SectHead title={`Top Medalists · ${topMedalists.length}`} />
+          <SectHead title="Top Medalists" />
           {topMedalists.length === 0 ? <Empty label="No medals" hint="Medalists appear here once this federation wins a medal." /> : (
             <div className="table-scroll" style={{ maxWidth: 880 }}><table className="table"><thead><tr><th style={{ width: 30 }}>#</th><th>Swimmer</th><th className="num">G</th><th className="num">S</th><th className="num">B</th><th className="num">Total</th></tr></thead><tbody>
               {topMedalists.map((m, i) => (<tr key={m.id ?? i}><td className="asw-num">{i + 1}</td><td><SwimmerLink id={m.id} name={m.name} /></td><td className="num asw-num" style={{ fontWeight: 800 }}>{m.gold}</td><td className="num asw-num">{m.silver}</td><td className="num asw-num">{m.bronze}</td><td className="num asw-num" style={{ fontWeight: 800 }}>{m.total}</td></tr>))}

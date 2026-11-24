@@ -2307,6 +2307,18 @@ const PROGRAM_GENDER = { M: 'Men', F: 'Women', X: 'Mixed' }
 const PROGRAM_SESSION = { HEATS: 'Heats', SEMIS: 'Semifinals', FINALS: 'Finals' }
 const PROGRAM_TIME_OF_DAY = { MORNING: 'Morning', EVENING: 'Evening' }
 const SESSION_SORT = ['HEATS', 'SEMIS', 'FINALS', '']
+// A program line says who swims once: the tag takes the category's own word
+// ("Girl's 13-14" → Girls) and the category column keeps only the age group.
+const GENDER_WORD = /\b(boy|girl|men|women|mixed)(?:['‘’]s|s['‘’]|s)?\b/i
+const programGender = (it) => {
+  const w = (String(it.age_category || '').match(GENDER_WORD) || [])[1]
+  if (w) return { boy: 'Boys', girl: 'Girls', men: 'Men', women: 'Women', mixed: 'Mixed' }[w.toLowerCase()]
+  return PROGRAM_GENDER[it.gender]
+}
+const programAge = (cat) => {
+  const age = displayCategory(cat || '').replace(/\b(boys?|girls?|men|women|mixed)(?:['‘’]s|s['‘’])?\b/gi, '').replace(/\s+/g, ' ').trim()
+  return age || 'Open'
+}
 
 function ProgramTab({ meetId, isAdmin, resultEvents }) {
   const [, setSearchParams] = useSearchParams()
@@ -2393,7 +2405,6 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                 <section key={session || 'none'} className="pg-card">
                   <header className="pg-card-head">
                     <span>{sessionTitle(session)}</span>
-                    <span className="asw-num">{items.length}</span>
                   </header>
                   <div className="pg-cols" aria-hidden="true">
                     <span>#</span><span>Event</span><span>Category</span><span>Gender</span><span />
@@ -2409,8 +2420,8 @@ function ProgramTab({ meetId, isAdmin, resultEvents }) {
                         <span className="pg-ev">
                           {it.event_name}
                         </span>
-                        <span className="pg-cat">{it.age_category ? displayCategory(it.age_category) : 'Open'}</span>
-                        <span className={`pg-g pg-g-${it.gender}`}>{PROGRAM_GENDER[it.gender]}</span>
+                        <span className="pg-cat">{programAge(it.age_category)}</span>
+                        <span className={`pg-g pg-g-${it.gender}`}>{programGender(it)}</span>
                         <span className="pg-st">{linked ? <>Results <span aria-hidden="true">›</span></> : <span className="pg-st-0">Scheduled</span>}</span>
                       </div>
                     )

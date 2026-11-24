@@ -242,7 +242,6 @@ export default function Championships() {
           <div className="pad" style={{ paddingBottom: 10 }}>
             <h2 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, letterSpacing: '0.02em', color: 'var(--color-accent-800)' }}>
               {g.key}
-              <span className="asw-num" style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--color-neutral-700)' }}>{g.items.length}</span>
             </h2>
           </div>
           {g.items.map((m, i) => {

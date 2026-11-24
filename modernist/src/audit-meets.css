@@ -351,7 +351,6 @@ a.hr-name:hover { text-decoration: underline; }
 .pg-sessions { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
 .pg-card { min-width: 0; background: var(--color-bg); border: 1px solid var(--color-divider); }
 .pg-card-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; background: var(--color-accent-800); color: var(--color-bg); font-family: var(--font-heading); font-size: 14px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
-.pg-card-head > span:last-child { padding: 2px 9px; background: var(--color-bg); color: var(--color-accent-800); font-size: 12px; letter-spacing: 0; }
 .pg-cols, .pg-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 116px 72px 88px; align-items: center; column-gap: 12px; padding: 0 16px; }
 .pg-cols { min-height: 34px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); border-bottom: 1px solid var(--color-neutral-300); }
 .pg-row { min-height: 46px; font-size: 13px; border-bottom: 1px solid var(--color-divider); }

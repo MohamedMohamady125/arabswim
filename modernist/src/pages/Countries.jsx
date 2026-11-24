@@ -154,7 +154,7 @@ export default function Countries() {
         <>
           {active.length > 0 && (
             <div className="pad">
-              <SectHead title={`Arab federations · ${active.length}`} />
+              <SectHead title="Arab federations" />
               <div className="micro" style={{ marginBottom: 10 }}>
                 Ranked by swimmers in the database{cols.medals ? ' · medals won at Arab & GCC championships' : ''}
               </div>
@@ -163,7 +163,7 @@ export default function Countries() {
           )}
           {dormant.length > 0 && (
             <div className="rule-t pad">
-              <SectHead title={`No swimmers in the database yet · ${dormant.length}`} />
+              <SectHead title="No swimmers in the database yet" />
               <div className="fed-chips">
                 {dormant.map((c) => (
                   <Link key={c.id} to={`/countries/${c.id}`} className="fed-chip">
@@ -176,7 +176,7 @@ export default function Countries() {
           )}
           {others.length > 0 && (
             <div className="rule-t pad">
-              <SectHead title={`Other countries · ${others.length}`} />
+              <SectHead title="Other countries" />
               <div className="micro" style={{ marginBottom: 10 }}>Countries whose swimmers raced at meets in the database</div>
               {q || others.length <= OTHERS_FIRST + 3 ? (
                 <CountryTable countries={others} cols={cols} medals={false} />

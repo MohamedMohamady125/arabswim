@@ -45,7 +45,7 @@ export default function GalleryTab({ swimmerId }) {
       {photos.length > 0 && (
         <div>
           <div className="kicker" style={{ marginBottom: 12 }}>
-            Photos <span className="asw-num" style={{ color: 'var(--color-neutral-700)' }}>({photos.length})</span>
+            Photos
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 2 }}>
             {photos.map((p) => (
@@ -67,7 +67,7 @@ export default function GalleryTab({ swimmerId }) {
       {videos.length > 0 && (
         <div>
           <div className="kicker" style={{ marginBottom: 12 }}>
-            Videos <span className="asw-num" style={{ color: 'var(--color-neutral-700)' }}>({videos.length})</span>
+            Videos
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {videos.map((v) => (

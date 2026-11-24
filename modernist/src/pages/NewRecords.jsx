@@ -573,7 +573,6 @@ export default function NewRecords() {
                     <Flag code={(sub[0].country_detail || sub[0].swimmer_detail?.nationality_detail)?.code} name={countryName} />
                     <strong style={{ fontFamily: 'var(--font-heading)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{countryName}</strong>
                     {/* the last federation may still be loading — no count until it is whole */}
-                    {(allLoaded || gi < arr.length - 1) && <span className="micro asw-num">{sub.length}</span>}
                   </div>
                   <RecordCards rows={sub} onRemove={isAdmin ? removeRecord : null} />
                 </div>

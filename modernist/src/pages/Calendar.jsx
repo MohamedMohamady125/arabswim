@@ -843,7 +843,7 @@ export default function Calendar() {
             <div key={g.key} className="rule-b">
               {g.section && (
                 <div className="pad" style={{ paddingBottom: 0 }}>
-                  <h2 className="kicker" style={{ margin: 0 }}>{g.section} <span className="asw-num" style={{ marginLeft: 6 }}>{g.sectionCount}</span></h2>
+                  <h2 className="kicker" style={{ margin: 0 }}>{g.section}</h2>
                 </div>
               )}
               <div className="pad" style={{ paddingBottom: 10, display: 'flex', alignItems: 'baseline', gap: 12 }}>

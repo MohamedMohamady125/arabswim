@@ -4,105 +4,74 @@ import { CLASSIFICATIONS } from './MeetsTab'
 const GOLD = 'var(--asw-gold)'
 const SILVER = 'var(--asw-silver)'
 const BRONZE = 'var(--asw-bronze)'
-const GOLD_HEX = 'var(--asw-gold)'
-const SILVER_HEX = 'var(--asw-silver)'
-const BRONZE_HEX = 'var(--asw-bronze)'
 const NAVY = 'var(--color-accent-800)'
+const TRACK = 'var(--color-neutral-200)'
 
-function PercentRing({ pct, color, title, desc }) {
-  const r = 46
-  const C = 2 * Math.PI * r
+/* Slim linear meter — one value, shown as a bar rather than a ring so the
+   whole tab speaks a single visual language (Law of Uniform Connectedness). */
+function Meter({ pct, color, title, desc }) {
   return (
-    <div className="rule-t" style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <div className="kicker" style={{ textAlign: 'center' }}>{title}</div>
-      <div style={{ position: 'relative', width: 128, height: 128 }}>
-        <svg viewBox="0 0 120 120" role="img" aria-label={`${title}: ${pct}%`} style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-          <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-neutral-300)" strokeWidth="12" />
-          <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="12"
-            strokeDasharray={`${(pct / 100) * C} ${C}`} />
-        </svg>
-        <span className="asw-num" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 800 }}>
-          {/* decimal values ("86.2") are wider than the ring's hole — shrink them */}
-          <span style={{ fontSize: String(pct).length > 2 ? 22 : 30 }}>{pct}</span><span style={{ fontSize: String(pct).length > 2 ? 12 : 15 }}>%</span>
+    <div className="rule-t" style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <span className="kicker">{title}</span>
+        <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>
+          {pct}<span style={{ fontSize: 13 }}>%</span>
         </span>
       </div>
-      <div className="micro" style={{ textAlign: 'center', maxWidth: 200 }}>{desc}</div>
-    </div>
-  )
-}
-
-/* Flat medal donut with a centred total and a label underneath */
-function MedalDonut({ counts, label, size = 160 }) {
-  const r = 44
-  const C = 2 * Math.PI * r
-  let acc = 0
-  const segs = [
-    { key: 'gold', n: counts.gold, color: GOLD_HEX },
-    { key: 'silver', n: counts.silver, color: SILVER_HEX },
-    { key: 'bronze', n: counts.bronze, color: BRONZE_HEX },
-  ].map((s) => {
-    const frac = counts.total > 0 ? s.n / counts.total : 0
-    const seg = { ...s, dash: frac * C, offset: -acc * C }
-    acc += frac
-    return seg
-  })
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 'none' }}>
-      <div style={{ position: 'relative', width: size, height: size }}>
-        <svg viewBox="0 0 120 120" role="img"
-          aria-label={`${label ? `${label}: ` : ''}${counts.gold} gold, ${counts.silver} silver, ${counts.bronze} bronze`}
-          style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-          {counts.total === 0 && (
-            <circle cx="60" cy="60" r={r} fill="none" stroke="var(--color-neutral-300)" strokeWidth="22" />
-          )}
-          {segs.map((s) => s.n > 0 && (
-            <circle key={s.key} cx="60" cy="60" r={r} fill="none" stroke={s.color} strokeWidth="22"
-              strokeDasharray={`${s.dash} ${C}`} strokeDashoffset={s.offset} />
-          ))}
-        </svg>
-        <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span className="asw-num" style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: size >= 160 ? 32 : size >= 120 ? 26 : 21, lineHeight: 1 }}>{counts.total}</span>
-          {size >= 120 && <span className="micro">Total</span>}
-        </span>
+      <div role="img" aria-label={`${title}: ${pct}%`}
+        style={{ height: 10, background: TRACK, borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999, transition: 'width .5s ease' }} />
       </div>
-      {label ? <span className="micro" style={{ textAlign: 'center' }}>{label}</span> : null}
+      <div className="micro">{desc}</div>
     </div>
   )
 }
 
 /* Uniform distribution widget: every classification (and the career total)
-   gets the exact same card — donut chart + G/S/B legend with counts & %. */
+   gets the same card — a segmented stacked bar for the gold/silver/bronze
+   split (replaces the old donut) plus a legend with exact counts and %. */
 function DistCard({ title, counts, shareOfCareer }) {
-  const tot = counts.total
+  const tot = counts.total || counts.gold + counts.silver + counts.bronze
+  const pct = (n) => (tot > 0 ? Math.round((n / tot) * 100) : 0)
+  const rows = [
+    { label: 'Gold', n: counts.gold, color: GOLD },
+    { label: 'Silver', n: counts.silver, color: SILVER },
+    { label: 'Bronze', n: counts.bronze, color: BRONZE },
+  ]
   return (
-    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* title · big total · share-of-career (Von Restorff: the total stands out) */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
         <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        <span className="asw-num" style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, lineHeight: 1, flex: 'none' }}>{tot}</span>
         {shareOfCareer != null && (
-          <span className="asw-num" title={`${shareOfCareer}% of all career medals`}
-            style={{ marginLeft: 'auto', fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, flex: 'none' }}>
+          <span className="asw-num micro" title={`${shareOfCareer}% of all career medals`} style={{ flex: 'none' }}>
             {shareOfCareer}%
           </span>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <MedalDonut counts={counts} size={120} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {[
-            { label: 'Gold', n: counts.gold, color: GOLD },
-            { label: 'Silver', n: counts.silver, color: SILVER },
-            { label: 'Bronze', n: counts.bronze, color: BRONZE },
-          ].map((row) => (
-            <div key={row.label} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-              <span style={{ width: 10, height: 10, background: row.color, flex: 'none' }} />
-              <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>{row.label}</span>
-              <span className="asw-num" style={{ fontWeight: 800, fontSize: 13 }}>{row.n}</span>
-              <span className="asw-num micro" style={{ width: 38, textAlign: 'right' }}>
-                {tot > 0 ? Math.round((row.n / tot) * 100) : 0}%
-              </span>
-            </div>
-          ))}
-        </div>
+
+      {/* segmented proportion bar — the whole split at a glance. Thin gaps let
+          the track show through as separators between tiers. */}
+      <div role="img"
+        aria-label={`${counts.gold} gold, ${counts.silver} silver, ${counts.bronze} bronze`}
+        style={{ display: 'flex', gap: 2, height: 14, borderRadius: 999, overflow: 'hidden', background: TRACK }}>
+        {rows.map((r) => r.n > 0 && (
+          <div key={r.label} style={{ width: `${pct(r.n)}%`, background: r.color, transition: 'width .5s ease' }}
+            title={`${r.label}: ${r.n}`} />
+        ))}
+      </div>
+
+      {/* legend: dot · tier · count · share (Proximity keeps each figure with its tier) */}
+      <div>
+        {rows.map((r) => (
+          <div key={r.label} className="hair-b" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: r.color, flex: 'none' }} />
+            <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>{r.label}</span>
+            <span className="asw-num" style={{ fontWeight: 800, fontSize: 13 }}>{r.n}</span>
+            <span className="asw-num micro" style={{ width: 38, textAlign: 'right' }}>{pct(r.n)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -139,7 +108,7 @@ export default function MedalsTab({ stats }) {
   const goldRacePct = races > 0 ? Math.min(100, Math.round((medals.gold / races) * 100)) : 0
   const goldSharePct = medals.total > 0 ? Math.round((medals.gold / medals.total) * 1000) / 10 : 0
 
-  // Second donut: international-only medals, when they differ from the tally
+  // Second card: international-only medals, when they differ from the tally
   const intlDonut = intl_medals && intl_medals.total > 0
     && intl_medals.total !== medals.total
 
@@ -194,13 +163,13 @@ export default function MedalsTab({ stats }) {
         </div>
       </div>
 
-      {/* Percentage rings — career-wide */}
-      <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-        <PercentRing pct={medalRacePct} color={NAVY} title="Medal-winning races"
+      {/* Career-wide rates — linear meters */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 24 }}>
+        <Meter pct={medalRacePct} color={NAVY} title="Medal-winning races"
           desc="Races that earned at least one medal" />
-        <PercentRing pct={goldRacePct} color={GOLD_HEX} title="Gold-winning races"
+        <Meter pct={goldRacePct} color={GOLD} title="Gold-winning races"
           desc="Races that resulted in a gold medal" />
-        <PercentRing pct={goldSharePct} color={GOLD_HEX} title="Gold share"
+        <Meter pct={goldSharePct} color={GOLD} title="Gold share"
           desc="Percentage of gold medals out of total medals" />
       </div>
     </div>

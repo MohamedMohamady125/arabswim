@@ -20,7 +20,7 @@ function Meter({ pct, color, title, desc }) {
       </div>
       <div role="img" aria-label={`${title}: ${pct}%`}
         style={{ height: 10, background: TRACK, borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999, transition: 'width .5s ease' }} />
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999 }} />
       </div>
       <div className="micro">{desc}</div>
     </div>
@@ -57,7 +57,7 @@ function DistCard({ title, counts, shareOfCareer }) {
         aria-label={`${counts.gold} gold, ${counts.silver} silver, ${counts.bronze} bronze`}
         style={{ display: 'flex', gap: 2, height: 14, borderRadius: 999, overflow: 'hidden', background: TRACK }}>
         {rows.map((r) => r.n > 0 && (
-          <div key={r.label} style={{ width: `${pct(r.n)}%`, background: r.color, transition: 'width .5s ease' }}
+          <div key={r.label} style={{ width: `${pct(r.n)}%`, background: r.color }}
             title={`${r.label}: ${r.n}`} />
         ))}
       </div>

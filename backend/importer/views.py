@@ -781,18 +781,27 @@ def _run_scrape_job(job_id, pdf_paths=None):
     """Background worker: scrape the site and store clean rows on the job."""
     from django.db import close_old_connections
     from .models import ScrapeJob
-    from .scraper import scrape_meet
+    from .scraper import scrape_meet, merge_meets
     close_old_connections()
     job = ScrapeJob.objects.get(id=job_id)
     job.status = 'running'
     job.save(update_fields=['status'])
     try:
-        def progress(done, total):
-            if done == 1 or done == total or done % 10 == 0:
-                ScrapeJob.objects.filter(id=job_id).update(
-                    progress=f'{done} / {total} event pages')
+        urls = [u for u in (job.source_urls or [job.url]) if u]
+        nlinks = len(urls)
 
-        meet_name, date_text, rows = scrape_meet(job.url, progress_cb=progress)
+        def make_progress(li):
+            def progress(done, total):
+                if done == 1 or done == total or done % 10 == 0:
+                    label = f'{done} / {total} event pages'
+                    if nlinks > 1:
+                        label = f'Link {li + 1}/{nlinks} · {label}'
+                    ScrapeJob.objects.filter(id=job_id).update(progress=label)
+            return progress
+
+        parts = [scrape_meet(u, progress_cb=make_progress(li))
+                 for li, u in enumerate(urls)]
+        meet_name, date_text, rows = merge_meets(parts)
         name_stats = {}
         if rows and pdf_paths:
             from .egypt_names import NameRepairIndex
@@ -846,6 +855,7 @@ class ScrapeView(APIView):
         return Response([{
             'id': j.id,
             'url': j.url,
+            'source_urls': j.source_urls or [j.url],
             'meet_name': j.meet_name,
             'date_text': j.date_text,
             'status': j.status,
@@ -861,10 +871,24 @@ class ScrapeView(APIView):
         import tempfile
         import threading
         from .models import ScrapeJob
-        url = (request.data.get('url') or '').strip()
-        if not url.lower().startswith(('http://', 'https://')):
-            return Response({'error': 'Please paste a valid http(s) link'},
+        # One meet may be published across several links (e.g. one per age
+        # group); accept a list and merge them into a single job.
+        data = request.data
+        if hasattr(data, 'getlist'):
+            urls = data.getlist('urls') or data.getlist('url')
+        else:
+            urls = data.get('urls') or data.get('url') or []
+            if isinstance(urls, str):
+                urls = [urls]
+        urls = [u.strip() for u in urls if u and u.strip()]
+        if not urls:
+            return Response({'error': 'Please paste at least one results link'},
                             status=400)
+        for u in urls:
+            if not u.lower().startswith(('http://', 'https://')):
+                return Response(
+                    {'error': f'"{u[:60]}" is not a valid http(s) link'},
+                    status=400)
         # Optional heats PDFs → persist to temp files for the worker thread
         pdf_paths = []
         for pf in request.FILES.getlist('name_pdfs'):
@@ -884,7 +908,7 @@ class ScrapeView(APIView):
                 tmp.write(chunk)
             tmp.close()
             pdf_paths.append(tmp.name)
-        job = ScrapeJob.objects.create(url=url)
+        job = ScrapeJob.objects.create(url=urls[0], source_urls=urls)
         threading.Thread(target=_run_scrape_job, args=(job.id, pdf_paths),
                          daemon=True).start()
         return Response({'id': job.id, 'status': 'pending'}, status=201)

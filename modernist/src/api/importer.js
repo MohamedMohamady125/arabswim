@@ -16,9 +16,10 @@ export const mergeSwimmers = (keepId, removeIds) =>
   api.post('/import/merge/', { keep_id: keepId, remove_ids: Array.isArray(removeIds) ? removeIds : [removeIds] })
 export const getImportHistory = () => api.get('/import/history/')
 export const getScrapeJobs = () => api.get('/import/scrape/')
-export const startScrape = (url, pdfs = []) => {
+export const startScrape = (urls, pdfs = []) => {
   const fd = new FormData()
-  fd.append('url', url)
+  const list = (Array.isArray(urls) ? urls : [urls]).map((u) => (u || '').trim()).filter(Boolean)
+  list.forEach((u) => fd.append('urls', u))
   pdfs.forEach((f) => fd.append('name_pdfs', f))
   return api.post('/import/scrape/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },

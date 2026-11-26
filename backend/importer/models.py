@@ -29,6 +29,10 @@ class ImportLog(models.Model):
 class ScrapeJob(models.Model):
     """One scrape of a federation Hy-Tek HTML results site → clean Excel."""
     url = models.URLField(max_length=500)
+    # When a single meet is published across several links (e.g. one per age
+    # group), all of them are scraped and merged into this one job. ``url``
+    # keeps the first link for back-compat; ``source_urls`` holds every link.
+    source_urls = models.JSONField(default=list, blank=True)
     meet_name = models.CharField(max_length=255, blank=True, default='')
     date_text = models.CharField(max_length=100, blank=True, default='')
     status = models.CharField(max_length=20, default='pending')  # pending, running, done, failed

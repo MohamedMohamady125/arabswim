@@ -259,3 +259,71 @@ def scrape_meet(base_url, progress_cb=None, delay=0.15):
         if delay:
             time.sleep(delay)
     return meet_name, date_text, rows
+
+
+def _first_int(value, default):
+    m = re.search(r'\d+', str(value or ''))
+    return int(m.group()) if m else default
+
+
+def _finals_cs(value):
+    """Finals time as centiseconds for sorting; blank/DQ sort last."""
+    from .parsers.base import parse_time_to_centiseconds
+    cs = parse_time_to_centiseconds(str(value or ''))
+    return cs if cs > 0 else 10 ** 9
+
+
+# A result is the same swim across two overlapping links when these match.
+_MERGE_DEDUP_FIELDS = ('Event', 'Gender', 'Age Group', 'Name', 'Finals Time', 'Rank')
+
+
+def merge_meets(parts):
+    """Combine several scraped links for ONE meet into a single result set.
+
+    ``parts`` is a list of ``(meet_name, date_text, rows)`` tuples (one per
+    pasted link). Returns a single ``(meet_name, date_text, rows)`` in which
+    cross-link duplicates are removed, the rows are sorted into a coherent
+    program order (event → age group → rank → time), and ``Event #`` is
+    renumbered so events coming from different links never collide.
+
+    A single part is returned unchanged, so single-link scrapes behave
+    exactly as before.
+    """
+    parts = [p for p in parts if p and p[2]]
+    if not parts:
+        return '', '', []
+    if len(parts) == 1:
+        return parts[0]
+
+    meet_name = next((m for m, _, _ in parts if m), '')
+    date_text = next((d for _, d, _ in parts if d), '')
+
+    seen = set()
+    tagged = []  # (source_link_index, row)
+    for src, (_, _, rows) in enumerate(parts):
+        for r in rows:
+            key = tuple(str(r.get(f, '')).strip().lower() for f in _MERGE_DEDUP_FIELDS)
+            if key in seen:
+                continue
+            seen.add(key)
+            tagged.append((src, r))
+
+    tagged.sort(key=lambda t: (
+        str(t[1].get('Gender', '')),
+        _first_int(t[1].get('Distance'), 0),
+        str(t[1].get('Stroke', '')),
+        _first_int(t[1].get('Age Group'), 999),
+        _first_int(t[1].get('Rank'), 10 ** 6),
+        _finals_cs(t[1].get('Finals Time')),
+    ))
+
+    # Renumber Event # per (source link, original event number), in the new
+    # reading order, so merged events are unique and sequential.
+    evno = {}
+    out = []
+    for src, r in tagged:
+        ekey = (src, str(r.get('Event #', '')))
+        if ekey not in evno:
+            evno[ekey] = len(evno) + 1
+        out.append({**r, 'Event #': evno[ekey]})
+    return meet_name, date_text, out

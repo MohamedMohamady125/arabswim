@@ -2446,7 +2446,9 @@ function SaudiScrapePanel() {
 
 function ScrapeTab() {
   const [jobs, setJobs] = useState([])
-  const [url, setUrl] = useState('')
+  // One meet can be split across several links (one per age group); scrape
+  // them together and the backend merges + sorts them into one Excel.
+  const [links, setLinks] = useState([''])
   const [heatsPdfs, setHeatsPdfs] = useState([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
@@ -2466,14 +2468,18 @@ function ScrapeTab() {
     return () => clearInterval(t)
   }, [jobs])
 
+  const setLinkAt = (i, v) => setLinks((ls) => ls.map((l, j) => (j === i ? v : l)))
+  const addLink = () => setLinks((ls) => [...ls, ''])
+  const removeLink = (i) => setLinks((ls) => (ls.length > 1 ? ls.filter((_, j) => j !== i) : ls))
+
   const handleStart = async () => {
-    const u = url.trim()
-    if (!u) return
+    const list = links.map((l) => l.trim()).filter(Boolean)
+    if (!list.length) return
     setStarting(true)
     setError('')
     try {
-      await startScrape(u, heatsPdfs)
-      setUrl('')
+      await startScrape(list, heatsPdfs)
+      setLinks([''])
       setHeatsPdfs([])
       await load()
     } catch (err) {
@@ -2515,24 +2521,41 @@ function ScrapeTab() {
           Paste the federation results link (e.g.
           <span className="asw-num" style={{ margin: '0 4px' }}>esf-eg.org/images/results/swimming/…/results/</span>)
           and every event will be scraped into one clean Excel file, ready to import
-          via <strong>Import File → Upload Excel</strong>.
+          via <strong>Import File → Upload Excel</strong>. If one meet is split across
+          several links (one per age group), add them all — they are merged, de-duplicated
+          and sorted into a single file.
         </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <input
-            type="url"
-            inputMode="url"
-            className="input"
-            aria-label="Federation results link"
-            placeholder="https://www.esf-eg.org/images/results/swimming/…/results/"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-            style={{ flex: '1 1 320px', minWidth: 0 }}
-            disabled={starting}
-          />
+        <div style={{ display: 'grid', gap: 8 }}>
+          {links.map((link, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="url"
+                inputMode="url"
+                className="input"
+                aria-label={links.length > 1 ? `Results link ${i + 1}` : 'Federation results link'}
+                placeholder="https://www.esf-eg.org/images/results/swimming/…/results/"
+                value={link}
+                onChange={(e) => setLinkAt(i, e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                style={{ flex: '1 1 320px', minWidth: 0 }}
+                disabled={starting}
+              />
+              {links.length > 1 && (
+                <button type="button" className="btn btn-ghost" aria-label={`Remove link ${i + 1}`}
+                  onClick={() => removeLink(i)} disabled={starting}
+                  style={{ flex: 'none', padding: '0 12px', fontSize: 18, lineHeight: 1 }}>×</button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+          <button type="button" className="btn btn-ghost" onClick={addLink} disabled={starting}>
+            + Add another link
+          </button>
           <button type="button" className="btn btn-primary" onClick={handleStart}
-            disabled={starting || !url.trim()}>
-            {starting ? 'Starting…' : 'Scrape'}
+            disabled={starting || !links.some((l) => l.trim())}
+            style={{ marginLeft: 'auto' }}>
+            {starting ? 'Starting…' : (links.filter((l) => l.trim()).length > 1 ? 'Scrape & merge' : 'Scrape')}
           </button>
         </div>
         <div style={{
